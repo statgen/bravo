@@ -911,5 +911,12 @@ def oauth_callback_google():
 
     return redirect(url_for('get_authorized'))
 
+@app.after_request
+def apply_caching(response):
+    # prevent click-jacking vulnerability identified by BITs
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    return response
+
+
 if __name__ == "__main__":
     app.run(host='browser.sph.umich.edu', port=5000, threaded=True)
