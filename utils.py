@@ -71,8 +71,9 @@ def add_consequence_to_variant(variant):
     worst_csq = worst_csq_with_vep(variant['vep_annotations'])
     if worst_csq is None: return
     variant['major_consequence'] = worst_csq['major_consequence']
-    variant['HGVSp'] = get_proper_hgvs(worst_csq)
-    variant['HGVSc'] = worst_csq['HGVSc'].split(':')[-1]
+    variant['HGVSp'] = get_protein_hgvs(worst_csq)
+    variant['HGVSc'] = get_transcript_hgvs(worst_csq)
+    variant['HGVS'] = get_proper_hgvs(worst_csq)
     variant['CANONICAL'] = worst_csq['CANONICAL']
     if csq_order_dict[variant['major_consequence']] <= csq_order_dict["LOF_THRESHOLD"]:
         variant['category'] = 'lof_variant'
@@ -95,6 +96,18 @@ protein_letters_1to3 = {
 
 
 def get_proper_hgvs(annotation):
+    # Needs major_consequence
+    if annotation['major_consequence'] in ('splice_donor_variant', 'splice_acceptor_variant', 'splice_region_variant'):
+        return get_transcript_hgvs(annotation)
+    else:
+        return get_protein_hgvs(annotation)
+
+
+def get_transcript_hgvs(annotation):
+    return annotation['HGVSc'].split(':')[-1]
+
+
+def get_protein_hgvs(annotation):
     """
     Takes consequence dictionary, returns proper variant formatting for synonymous variants
     """
