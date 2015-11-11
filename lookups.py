@@ -275,6 +275,29 @@ def remove_extraneous_information(variant):
     del variant['vep_annotations']
 
 
+def get_most_important_variants_in_gene(db, gene_id, limit=200):
+    """
+    """
+    # Note: this can almost certainly be heavily optimized.
+    lof_variants = []
+    missense_variants = []
+    other_variants = []
+    for variant in db.variants.find({'genes': gene_id}, fields={'_id': False}):
+        variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
+        add_consequence_to_variant(variant)
+        remove_extraneous_information(variant)
+
+        if variant['category'] == 'lof_variant':
+            lof_variants.append(variant)
+        elif variant['category'] == 'missense_variant' and len(lof_variants) + len(missense_variants) < limit:
+            missense_variants.append(variant)
+        elif len(lof_variants) + len(missense_variants) + len(other_variants) < limit:
+            other_variants.append(variant)
+
+        if len(lof_variants) == limit:
+            return lof_variants
+    return lof_variants + missense_variants[:limit - len(lof_variants)] + other_variants[:limit - len(lof_variants) - len(missense_variants)]
+
 def get_variants_in_gene(db, gene_id):
     """
     """
@@ -303,6 +326,29 @@ def get_variants_in_transcript(db, transcript_id):
         remove_extraneous_information(variant)
         variants.append(variant)
     return variants
+
+def get_most_important_variants_in_transcript(db, transcript_id, limit=200):
+    """
+    """
+    # Note: this can almost certainly be heavily optimized.
+    lof_variants = []
+    missense_variants = []
+    other_variants = []
+    for variant in db.variants.find({'transcripts': transcript_id}, fields={'_id': False}):
+        variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Feature'] == transcript_id]
+        add_consequence_to_variant(variant)
+        remove_extraneous_information(variant)
+
+        if variant['category'] == 'lof_variant':
+            lof_variants.append(variant)
+        elif variant['category'] == 'missense_variant' and len(lof_variants) + len(missense_variants) < limit:
+            missense_variants.append(variant)
+        elif len(lof_variants) + len(missense_variants) + len(other_variants) < limit:
+            other_variants.append(variant)
+
+        if len(lof_variants) == limit:
+            return lof_variants
+    return lof_variants + missense_variants[:limit - len(lof_variants)] + other_variants[:limit - len(lof_variants) - len(missense_variants)]
 
 
 def get_exons_in_transcript(db, transcript_id):

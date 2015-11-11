@@ -546,13 +546,13 @@ def get_gene_page_content(gene_id):
         cache_key = 't-gene-{}'.format(gene_id)
         t = cache.get(cache_key)
         if t is None:
-            variants_in_gene = lookups.get_variants_in_gene(db, gene_id)
+            variants_in_gene = lookups.get_most_important_variants_in_gene(db, gene_id, limit=200)
             transcripts_in_gene = lookups.get_transcripts_in_gene(db, gene_id)
 
             # Get some canonical transcript and corresponding info
             transcript_id = gene['canonical_transcript']
             transcript = lookups.get_transcript(db, transcript_id)
-            variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
+            variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id, limit=200)
             coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
