@@ -2,7 +2,8 @@
 {% include 'variant_selectors.html' %}
 {% include "variant_table_template.html" %}
 <script>
-    $(document).ready(function() {
+
+    function add_tablesorter_csq_parser() {
 
         // This list is simply copied from utils.py.
         // Obviously that's not ideal, but I wanted to keep this diff isolated.
@@ -70,6 +71,11 @@
             },
             type: 'numeric'
         });
+    }
+
+    $(document).ready(function() {
+
+        add_tablesorter_csq_parser();
 
         $("#variants_loading").hide();
         $("#variants_table_container").show();
