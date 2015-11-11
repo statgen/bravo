@@ -274,10 +274,18 @@ def remove_extraneous_information(variant):
     del variant['site_quality']
     del variant['vep_annotations']
 
+def get_variants_in_gene(db, gene_id):
+    """
+    """
+    variants = []
+    for variant in db.variants.find({'genes': gene_id}, fields={'_id': False}):
+        variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
+        add_consequence_to_variant(variant)
+        remove_extraneous_information(variant)
+        variants.append(variant)
+    return variants
 
 def get_most_important_variants_in_gene(db, gene_id, limit=200):
-    """
-    """
     # Note: this can almost certainly be heavily optimized.
     lof_variants = []
     missense_variants = []
@@ -298,16 +306,8 @@ def get_most_important_variants_in_gene(db, gene_id, limit=200):
             return lof_variants
     return lof_variants + missense_variants[:limit - len(lof_variants)] + other_variants[:limit - len(lof_variants) - len(missense_variants)]
 
-def get_variants_in_gene(db, gene_id):
-    """
-    """
-    variants = []
-    for variant in db.variants.find({'genes': gene_id}, fields={'_id': False}):
-        variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
-        add_consequence_to_variant(variant)
-        remove_extraneous_information(variant)
-        variants.append(variant)
-    return variants
+def get_num_variants_in_gene(db, gene_id):
+    return db.variants.find({'genes': gene_id}, fields={'_id': False}).count()
 
 
 def get_transcripts_in_gene(db, gene_id):
@@ -328,8 +328,6 @@ def get_variants_in_transcript(db, transcript_id):
     return variants
 
 def get_most_important_variants_in_transcript(db, transcript_id, limit=200):
-    """
-    """
     # Note: this can almost certainly be heavily optimized.
     lof_variants = []
     missense_variants = []

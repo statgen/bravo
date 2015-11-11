@@ -547,6 +547,7 @@ def get_gene_page_content(gene_id):
         t = cache.get(cache_key)
         if t is None:
             variants_in_gene = lookups.get_most_important_variants_in_gene(db, gene_id, limit=200)
+            num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
             transcripts_in_gene = lookups.get_transcripts_in_gene(db, gene_id)
 
             # Get some canonical transcript and corresponding info
@@ -561,6 +562,7 @@ def get_gene_page_content(gene_id):
                 gene=gene,
                 transcript=transcript,
                 variants_in_gene=variants_in_gene,
+                num_variants_in_gene=num_variants_in_gene,
                 variants_in_transcript=variants_in_transcript,
                 transcripts_in_gene=transcripts_in_gene,
                 coverage_stats=coverage_stats
