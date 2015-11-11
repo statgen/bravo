@@ -107,19 +107,19 @@ def get_variants_from_sites_vcf(sites_vcf):
                 variant['filter'] = fields[6]
                 variant['vep_annotations'] = vep_annotations
 
-                variant['allele_count'] = int(info_field['AC_Adj'].split(',')[i])
-                if not variant['allele_count'] and variant['filter'] == 'PASS': variant['filter'] = 'AC_Adj0' # Temporary filter
-                variant['allele_num'] = int(info_field['AN_Adj'])
+                # DT: variant['allele_count'] = int(info_field['AC_Adj'].split(',')[i])
+                # DT: if not variant['allele_count'] and variant['filter'] == 'PASS': variant['filter'] = 'AC_Adj0' # Temporary filter
+                # DT: variant['allele_num'] = int(info_field['AN_Adj'])
 
-                if variant['allele_num'] > 0:
-                    variant['allele_freq'] = variant['allele_count']/float(info_field['AN_Adj'])
-                else:
-                    variant['allele_freq'] = None
+                # DT: if variant['allele_num'] > 0:
+                # DT:    variant['allele_freq'] = variant['allele_count']/float(info_field['AN_Adj'])
+                # DT: else:
+                variant['allele_freq'] = None
 
-                variant['pop_acs'] = dict([(POPS[x], int(info_field['AC_%s' % x].split(',')[i])) for x in POPS])
-                variant['pop_ans'] = dict([(POPS[x], int(info_field['AN_%s' % x])) for x in POPS])
-                variant['pop_homs'] = dict([(POPS[x], int(info_field['Hom_%s' % x].split(',')[i])) for x in POPS])
-                variant['hom_count'] = sum(variant['pop_homs'].values())
+                #variant['pop_acs'] = dict([(POPS[x], int(info_field['AC_%s' % x].split(',')[i])) for x in POPS])
+                #variant['pop_ans'] = dict([(POPS[x], int(info_field['AN_%s' % x])) for x in POPS])
+                #variant['pop_homs'] = dict([(POPS[x], int(info_field['Hom_%s' % x].split(',')[i])) for x in POPS])
+                #variant['hom_count'] = sum(variant['pop_homs'].values())
                 if variant['chrom'] in ('X', 'Y'):
                     variant['pop_hemis'] = dict([(POPS[x], int(info_field['Hemi_%s' % x].split(',')[i])) for x in POPS])
                     variant['hemi_count'] = sum(variant['pop_hemis'].values())

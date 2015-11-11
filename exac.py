@@ -33,7 +33,8 @@ Compress(app)
 app.config['COMPRESS_DEBUG'] = True
 cache = SimpleCache()
 
-EXAC_FILES_DIRECTORY = '../exac_data/'
+#EXAC_FILES_DIRECTORY = '../exac_data/'
+EXAC_FILES_DIRECTORY = '/net/wonderland/home/dtaliun/exac/1000G_chr22_data/'
 REGION_LIMIT = 1E5
 EXON_PADDING = 50
 # Load default config and override config from an environment variable
@@ -43,8 +44,8 @@ app.config.update(dict(
     DB_NAME='exac', 
     DEBUG=True,
     SECRET_KEY='development key',
-    LOAD_DB_PARALLEL_PROCESSES = 4,  # contigs assigned to threads, so good to make this a factor of 24 (eg. 2,3,4,6,8)
-    SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ExAC*.vep.vcf.gz')),
+    LOAD_DB_PARALLEL_PROCESSES = 2,  # contigs assigned to threads, so good to make this a factor of 24 (eg. 2,3,4,6,8)
+    SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ALL.chr22.*.VEP.vcf.gz')),
     GENCODE_GTF=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'gencode.gtf.gz'),
     CANONICAL_TRANSCRIPT_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'canonical_transcripts.txt.gz'),
     OMIM_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'omim_info.txt.gz'),
@@ -756,4 +757,4 @@ http://omim.org/entry/%(omim_accession)s''' % gene
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host='gvs.sph.umich.edu', port=5000)
