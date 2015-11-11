@@ -99,7 +99,7 @@ def get_proper_hgvs(csq):
     """
     Takes consequence dictionary, returns proper variant formatting for synonymous variants
     """
-    if '%3D' in csq['HGVSp']:
+    if '%3D' in csq['HGVSp']: # "%3D" is "="
         try:
             amino_acids = ''.join([protein_letters_1to3[x] for x in csq['Amino_acids']])
             return "p." + amino_acids + csq['Protein_position'] + amino_acids
