@@ -609,6 +609,39 @@ def transcript_page(transcript_id):
         print 'Failed on transcript:', transcript_id, ';Error=', e
         abort(404)
 
+@app.route('/api/variants_in_gene/<gene_id>')
+def variants_gene_api(gene_id):
+    # TODO maybe use `transcript_id = lookups.get_gene(db, gene_id)['canonical_transcript']`
+    db = get_db()
+    try:
+        variants_in_gene = lookups.get_variants_in_gene(db, gene_id)
+        return Response(json.dumps(variants_in_gene), mimetype='application/json')
+    except Exception as e:
+        print 'Failed on gene:', gene_id, ';Error=', e
+        abort(404)
+
+@app.route('/api/variants_in_transcript/<transcript_id>')
+def variants_transcript_api(transcript_id):
+    db = get_db()
+    try:
+        variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
+        add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
+        return Response(json.dumps(variants_in_transcript), mimetype='application/json')
+    except Exception as e:
+        print 'Failed on transcript:', transcript_id, ';Error=', e
+        abort(404)
+
+@app.route('/api/variants_in_region/<region_id>')
+def variants_region_api(region_id):
+    db = get_db()
+    try:
+        chrom, start, stop = region_id.split('-')
+        start, stop = int(start), int(stop)
+        variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
+        return Response(json.dumps(variants_in_region), mimetype='application/json')
+    except Exception as e:
+        print 'Failed on region:', region_id, ';Error=', e
+        abort(404)
 
 @app.route('/region/<region_id>')
 def region_page(region_id):
