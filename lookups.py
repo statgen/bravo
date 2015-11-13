@@ -1,5 +1,6 @@
 import re
 from utils import *
+import itertools
 
 SEARCH_LIMIT = 10000
 UNSUPPORTED_QUERIES = ['TTN', 'ENSG00000155657', 'CMD1G', 'CMH9', 'CMPD4', 'FLJ32040', 'LGMD2J', 'MYLK5', 'TMD',
@@ -118,8 +119,9 @@ def get_awesomebar_suggestions(g, query):
     If it is the prefix for a gene, return list of gene names
     """
     regex = re.compile('^' + re.escape(query), re.IGNORECASE)
-    results = [r for r in g.autocomplete_strings if regex.match(r)][:20]
-    return results
+    results = (r for r in g.autocomplete_strings if regex.match(r))
+    results = itertools.islice(results, 0, 20)
+    return list(results)
 
 
 # 1:1-1000
