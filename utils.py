@@ -114,6 +114,7 @@ csq_order = ["transcript_ablation",
 "stop_gained",
 "frameshift_variant",
 "stop_lost",
+"start_lost", # PJVH: I took this from https://github.com/konradjk/loftee/blob/master/src/loftee_utils.py#L13 because of errors
 "initiator_codon_variant",
 "transcript_amplification",
 "inframe_insertion",
