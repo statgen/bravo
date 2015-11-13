@@ -15,7 +15,7 @@ from flask_errormail import mail_on_500
 
 from flask import Response
 from collections import defaultdict
-from werkzeug.contrib.cache import SimpleCache
+from werkzeug.contrib.cache import FileSystemCache
 
 from multiprocessing import Process
 import glob
@@ -31,7 +31,7 @@ app = Flask(__name__)
 mail_on_500(app, ADMINISTRATORS)
 Compress(app)
 app.config['COMPRESS_DEBUG'] = True
-cache = SimpleCache()
+cache = FileSystemCache('cache_dir', default_timeout=60*60*24*31, threshold=500)
 
 #EXAC_FILES_DIRECTORY = '../exac_data/'
 EXAC_FILES_DIRECTORY = '/net/wonderland/home/dtaliun/exac/1000G_chr22_data/'
@@ -428,7 +428,12 @@ def get_db():
 
 @app.route('/')
 def homepage():
-    return render_template('homepage.html')
+    cache_key = 't-homepage'
+    t = cache.get(cache_key)
+    if t is None:
+        t = render_template('homepage.html')
+        cache.set(cache_key, t)
+    return t
 
 
 @app.route('/autocomplete/<query>')
@@ -524,6 +529,7 @@ def get_gene_page_content(gene_id):
             abort(404)
         cache_key = 't-gene-{}'.format(gene_id)
         t = cache.get(cache_key)
+        print 'Rendering %sgene: %s' % ('' if t is None else 'cached ', gene_id)
         if t is None:
             variants_in_gene = lookups.get_most_important_variants_in_gene(db, gene_id, limit=200)
             num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
@@ -546,8 +552,7 @@ def get_gene_page_content(gene_id):
                 transcripts_in_gene=transcripts_in_gene,
                 coverage_stats=coverage_stats
             )
-            cache.set(cache_key, t, timeout=1000*60)
-        print 'Rendering gene: %s' % gene_id
+            cache.set(cache_key, t)
         return t
     except Exception, e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
@@ -562,6 +567,7 @@ def transcript_page(transcript_id):
 
         cache_key = 't-transcript-{}'.format(transcript_id)
         t = cache.get(cache_key)
+        print 'Rendering %stranscript: %s' % ('' if t is None else 'cached ', transcript_id)
         if t is None:
 
             gene = lookups.get_gene(db, transcript['gene_id'])
@@ -583,8 +589,7 @@ def transcript_page(transcript_id):
                 gene=gene,
                 gene_json=json.dumps(gene),
             )
-            cache.set(cache_key, t, timeout=1000*60)
-        print 'Rendering transcript: %s' % transcript_id
+            cache.set(cache_key, t)
         return t
     except Exception, e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
@@ -592,7 +597,7 @@ def transcript_page(transcript_id):
 
 @app.route('/api/variants_in_gene/<gene_id>')
 def variants_gene_api(gene_id):
-    # TODO maybe use `transcript_id = lookups.get_gene(db, gene_id)['canonical_transcript']`
+    # TODO use `cache`
     db = get_db()
     try:
         variants_in_gene = lookups.get_variants_in_gene(db, gene_id)
@@ -603,6 +608,7 @@ def variants_gene_api(gene_id):
 
 @app.route('/api/variants_in_transcript/<transcript_id>')
 def variants_transcript_api(transcript_id):
+    # TODO use `cache`
     db = get_db()
     try:
         variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
@@ -614,6 +620,7 @@ def variants_transcript_api(transcript_id):
 
 @app.route('/api/variants_in_region/<region_id>')
 def variants_region_api(region_id):
+    # TODO use `cache`
     db = get_db()
     try:
         chrom, start, stop = region_id.split('-')
@@ -631,6 +638,7 @@ def region_page(region_id):
         region = region_id.split('-')
         cache_key = 't-region-{}'.format(region_id)
         t = cache.get(cache_key)
+        print 'Rendering %sregion: %s' % ('' if t is None else 'cached ', region_id)
         if t is None:
             chrom = region[0]
             start = None
@@ -666,7 +674,7 @@ def region_page(region_id):
                 stop=stop,
                 coverage=coverage_array
             )
-        print 'Rendering region: %s' % region_id
+            cache.set(cache_key, t)
         return t
     except Exception, e:
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
