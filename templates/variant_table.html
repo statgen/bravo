@@ -74,7 +74,10 @@
     }
 
     $(document).ready(function() {
+        build_variant_table();
+    });
 
+    function build_variant_table() {
         add_tablesorter_csq_parser();
 
         $("#variants_loading").hide();
@@ -162,7 +165,7 @@
             var timestamp = date_format(new Date());
             exportTableToCSV.apply(this, [$('#variant_table'), 'exac_' + output_name + '_' + timestamp + '.csv']);
         });
-    });
+    }
 </script>
 <div id="variants_loading">Loading variants...</div>
 <div id="variants_table_container" style="display: none;"></div>

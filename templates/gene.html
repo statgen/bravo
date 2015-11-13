@@ -18,6 +18,15 @@
         $(document).ready(function() {
             $("#variants_loading").hide();
             $("#variants_table_container").show();
+
+            $.getJSON("/api/variants_in_gene/" + window.gene.gene_id)
+            .done(function(data) {
+                window.table_variants = data;
+                build_variant_table();
+            })
+            .fail(function() {
+                console.log("failed.");
+            });
         });
     </script>
     <div class="container-fluid">
