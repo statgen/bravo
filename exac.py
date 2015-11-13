@@ -461,8 +461,6 @@ def awesome():
         return redirect('/region/{}'.format(identifier))
     elif datatype == 'dbsnp_variant_set':
         return redirect('/dbsnp/{}'.format(identifier))
-    elif datatype == 'error':
-        return redirect('/error/{}'.format(identifier))
     elif datatype == 'not_found':
         return redirect('/not_found/{}'.format(identifier))
     else:
@@ -716,14 +714,9 @@ def not_found_page(query):
 @app.route('/error/<query>')
 @app.errorhandler(404)
 def error_page(query):
-    if type(query) == str or type(query) == unicode:
-        unsupported = "TTN" if query.upper() in lookups.UNSUPPORTED_QUERIES else None
-    else:
-        unsupported = None
     return render_template(
         'error.html',
-        query=query,
-        unsupported=unsupported
+        query=query
     )
 
 
