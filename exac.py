@@ -62,8 +62,6 @@ app.config.update(dict(
     #   tabix -s 2 -b 3 -e 3 dbsnp142.txt.bgz
     DBSNP_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'dbsnp142.txt.bgz')
 ))
-GENE_CACHE_DIR = os.path.join(os.path.dirname(__file__), 'gene_cache')
-GENES_TO_CACHE = {l.strip('\n') for l in open(os.path.join(os.path.dirname(__file__), 'genes_to_cache.txt'))}
 
 
 def connect_db():
@@ -345,22 +343,6 @@ def create_cache():
     for s in sorted(autocomplete_strings):
         f.write(s+'\n')
     f.close()
-    print >> sys.stderr, "Done! Getting largest genes..."
-
-    # create static gene pages for genes in
-    if not os.path.exists(GENE_CACHE_DIR):
-        os.makedirs(GENE_CACHE_DIR)
-
-    # get list of genes ordered by num_variants
-    for gene_id in GENES_TO_CACHE:
-        try:
-            page_content = get_gene_page_content(gene_id)
-        except Exception as e:
-            print e
-            continue
-        f = open(os.path.join(GENE_CACHE_DIR, '{}.html'.format(gene_id)), 'w')
-        f.write(page_content)
-        f.close()
     print >> sys.stderr, "Done!"
 
 
@@ -531,10 +513,7 @@ def variant_page(variant_str):
 
 @app.route('/gene/<gene_id>')
 def gene_page(gene_id):
-    if gene_id in GENES_TO_CACHE:
-        return open(os.path.join(GENE_CACHE_DIR, '{}.html'.format(gene_id))).read()
-    else:
-        return get_gene_page_content(gene_id)
+    return get_gene_page_content(gene_id)
 
 
 def get_gene_page_content(gene_id):
