@@ -355,8 +355,8 @@ def create_cache():
     for gene_id in GENES_TO_CACHE:
         try:
             page_content = get_gene_page_content(gene_id)
-        except Exception:
-            print Exception
+        except Exception as e:
+            print e
             continue
         f = open(os.path.join(GENE_CACHE_DIR, '{}.html'.format(gene_id)), 'w')
         f.write(page_content)
@@ -571,7 +571,7 @@ def get_gene_page_content(gene_id):
         print 'Rendering gene: %s' % gene_id
         return t
     except Exception, e:
-        print 'Failed on gene:', gene_id, ';Error=', e
+        print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
 
 
@@ -608,7 +608,7 @@ def transcript_page(transcript_id):
         print 'Rendering transcript: %s' % transcript_id
         return t
     except Exception, e:
-        print 'Failed on transcript:', transcript_id, ';Error=', e
+        print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
 
 @app.route('/api/variants_in_gene/<gene_id>')
@@ -619,7 +619,7 @@ def variants_gene_api(gene_id):
         variants_in_gene = lookups.get_variants_in_gene(db, gene_id)
         return Response(json.dumps(variants_in_gene), mimetype='application/json')
     except Exception as e:
-        print 'Failed on gene:', gene_id, ';Error=', e
+        print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
 
 @app.route('/api/variants_in_transcript/<transcript_id>')
@@ -630,7 +630,7 @@ def variants_transcript_api(transcript_id):
         add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
         return Response(json.dumps(variants_in_transcript), mimetype='application/json')
     except Exception as e:
-        print 'Failed on transcript:', transcript_id, ';Error=', e
+        print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
 
 @app.route('/api/variants_in_region/<region_id>')
@@ -642,7 +642,7 @@ def variants_region_api(region_id):
         variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
         return Response(json.dumps(variants_in_region), mimetype='application/json')
     except Exception as e:
-        print 'Failed on region:', region_id, ';Error=', e
+        print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
 
 @app.route('/region/<region_id>')
@@ -690,7 +690,7 @@ def region_page(region_id):
         print 'Rendering region: %s' % region_id
         return t
     except Exception, e:
-        print 'Failed on region:', region_id, ';Error=', e
+        print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
 
 
@@ -714,7 +714,7 @@ def dbsnp_page(rsid):
             genes_in_region=None
         )
     except Exception, e:
-        print 'Failed on rsid:', rsid, ';Error=', e
+        print 'Failed on rsid:', rsid, ';Error=', traceback.format_exc()
         abort(404)
 
 
