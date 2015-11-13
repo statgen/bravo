@@ -24,7 +24,7 @@ import time
 import sys
 
 ADMINISTRATORS = (
-    'exac.browser.errors@gmail.com',
+    'pjvh@umich.edu',
 )
 
 app = Flask(__name__)
