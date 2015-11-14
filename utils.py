@@ -108,13 +108,14 @@ def get_proper_hgvs(csq):
     return csq['HGVSp'].split(':')[-1]
 
 # Note that this is the current as of v77 with 2 included for backwards compatibility (VEP <= 75)
-csq_order = ["transcript_ablation",
+csq_order = [ # Note: see http://useast.ensembl.org/info/genome/variation/predicted_data.html#consequences
+"transcript_ablation",
 "splice_donor_variant",
 "splice_acceptor_variant",
 "stop_gained",
 "frameshift_variant",
 "stop_lost",
-"start_lost", # PJVH: I took this from https://github.com/konradjk/loftee/blob/master/src/loftee_utils.py#L13 because of errors
+"start_lost",
 "initiator_codon_variant",
 "transcript_amplification",
 "inframe_insertion",
