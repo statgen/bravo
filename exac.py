@@ -548,7 +548,8 @@ def get_gene_page_content(gene_id):
                 num_variants_in_gene=num_variants_in_gene,
                 variants_in_transcript=variants_in_transcript,
                 transcripts_in_gene=transcripts_in_gene,
-                coverage_stats=coverage_stats
+                coverage_stats=coverage_stats,
+                csq_order=csq_order,
             )
             cache.set(cache_key, t)
         return t
@@ -586,6 +587,7 @@ def transcript_page(transcript_id):
                 coverage_stats_json=json.dumps(coverage_stats),
                 gene=gene,
                 gene_json=json.dumps(gene),
+                csq_order=csq_order,
             )
             cache.set(cache_key, t)
         return t
@@ -653,7 +655,8 @@ def region_page(region_id):
                     chrom=chrom,
                     start=start,
                     stop=stop,
-                    coverage=None
+                    coverage=None,
+                    csq_order=csq_order,
                 )
             if start == stop:
                 start -= 20
@@ -670,7 +673,8 @@ def region_page(region_id):
                 chrom=chrom,
                 start=start,
                 stop=stop,
-                coverage=coverage_array
+                coverage=coverage_array,
+                csq_order=csq_order,
             )
             cache.set(cache_key, t)
         return t
@@ -696,7 +700,8 @@ def dbsnp_page(rsid):
             start=start,
             stop=stop,
             coverage=None,
-            genes_in_region=None
+            genes_in_region=None,
+            csq_order=csq_order,
         )
     except Exception, e:
         print 'Failed on rsid:', rsid, ';Error=', traceback.format_exc()
