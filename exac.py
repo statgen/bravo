@@ -15,7 +15,7 @@ from flask_errormail import mail_on_500
 
 from flask import Response
 from collections import defaultdict
-from werkzeug.contrib.cache import SimpleCache
+from werkzeug.contrib.cache import FileSystemCache
 
 from multiprocessing import Process
 import glob
@@ -24,14 +24,14 @@ import time
 import sys
 
 ADMINISTRATORS = (
-    'exac.browser.errors@gmail.com',
+    'pjvh@umich.edu',
 )
 
 app = Flask(__name__)
 mail_on_500(app, ADMINISTRATORS)
 Compress(app)
 app.config['COMPRESS_DEBUG'] = True
-cache = SimpleCache()
+cache = FileSystemCache('cache_dir', default_timeout=60*60*24*31, threshold=500)
 
 #EXAC_FILES_DIRECTORY = '../exac_data/'
 EXAC_FILES_DIRECTORY = '/net/wonderland/home/dtaliun/exac/1000G_chr22_data/'
@@ -62,8 +62,6 @@ app.config.update(dict(
     #   tabix -s 2 -b 3 -e 3 dbsnp142.txt.bgz
     DBSNP_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'dbsnp142.txt.bgz')
 ))
-GENE_CACHE_DIR = os.path.join(os.path.dirname(__file__), 'gene_cache')
-GENES_TO_CACHE = {l.strip('\n') for l in open(os.path.join(os.path.dirname(__file__), 'genes_to_cache.txt'))}
 
 
 def connect_db():
@@ -345,22 +343,6 @@ def create_cache():
     for s in sorted(autocomplete_strings):
         f.write(s+'\n')
     f.close()
-    print >> sys.stderr, "Done! Getting largest genes..."
-
-    # create static gene pages for genes in
-    if not os.path.exists(GENE_CACHE_DIR):
-        os.makedirs(GENE_CACHE_DIR)
-
-    # get list of genes ordered by num_variants
-    for gene_id in GENES_TO_CACHE:
-        try:
-            page_content = get_gene_page_content(gene_id)
-        except Exception as e:
-            print e
-            continue
-        f = open(os.path.join(GENE_CACHE_DIR, '{}.html'.format(gene_id)), 'w')
-        f.write(page_content)
-        f.close()
     print >> sys.stderr, "Done!"
 
 
@@ -446,7 +428,12 @@ def get_db():
 
 @app.route('/')
 def homepage():
-    return render_template('homepage.html')
+    cache_key = 't-homepage'
+    t = cache.get(cache_key)
+    if t is None:
+        t = render_template('homepage.html')
+        cache.set(cache_key, t)
+    return t
 
 
 @app.route('/autocomplete/<query>')
@@ -474,8 +461,6 @@ def awesome():
         return redirect('/region/{}'.format(identifier))
     elif datatype == 'dbsnp_variant_set':
         return redirect('/dbsnp/{}'.format(identifier))
-    elif datatype == 'error':
-        return redirect('/error/{}'.format(identifier))
     elif datatype == 'not_found':
         return redirect('/not_found/{}'.format(identifier))
     else:
@@ -531,10 +516,7 @@ def variant_page(variant_str):
 
 @app.route('/gene/<gene_id>')
 def gene_page(gene_id):
-    if gene_id in GENES_TO_CACHE:
-        return open(os.path.join(GENE_CACHE_DIR, '{}.html'.format(gene_id))).read()
-    else:
-        return get_gene_page_content(gene_id)
+    return get_gene_page_content(gene_id)
 
 
 def get_gene_page_content(gene_id):
@@ -545,6 +527,7 @@ def get_gene_page_content(gene_id):
             abort(404)
         cache_key = 't-gene-{}'.format(gene_id)
         t = cache.get(cache_key)
+        print 'Rendering %sgene: %s' % ('' if t is None else 'cached ', gene_id)
         if t is None:
             variants_in_gene = lookups.get_most_important_variants_in_gene(db, gene_id, limit=200)
             num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
@@ -565,10 +548,10 @@ def get_gene_page_content(gene_id):
                 num_variants_in_gene=num_variants_in_gene,
                 variants_in_transcript=variants_in_transcript,
                 transcripts_in_gene=transcripts_in_gene,
-                coverage_stats=coverage_stats
+                coverage_stats=coverage_stats,
+                csq_order=csq_order,
             )
-            cache.set(cache_key, t, timeout=1000*60)
-        print 'Rendering gene: %s' % gene_id
+            cache.set(cache_key, t)
         return t
     except Exception, e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
@@ -583,6 +566,7 @@ def transcript_page(transcript_id):
 
         cache_key = 't-transcript-{}'.format(transcript_id)
         t = cache.get(cache_key)
+        print 'Rendering %stranscript: %s' % ('' if t is None else 'cached ', transcript_id)
         if t is None:
 
             gene = lookups.get_gene(db, transcript['gene_id'])
@@ -603,9 +587,9 @@ def transcript_page(transcript_id):
                 coverage_stats_json=json.dumps(coverage_stats),
                 gene=gene,
                 gene_json=json.dumps(gene),
+                csq_order=csq_order,
             )
-            cache.set(cache_key, t, timeout=1000*60)
-        print 'Rendering transcript: %s' % transcript_id
+            cache.set(cache_key, t)
         return t
     except Exception, e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
@@ -613,7 +597,7 @@ def transcript_page(transcript_id):
 
 @app.route('/api/variants_in_gene/<gene_id>')
 def variants_gene_api(gene_id):
-    # TODO maybe use `transcript_id = lookups.get_gene(db, gene_id)['canonical_transcript']`
+    # TODO use `cache`
     db = get_db()
     try:
         variants_in_gene = lookups.get_variants_in_gene(db, gene_id)
@@ -624,6 +608,7 @@ def variants_gene_api(gene_id):
 
 @app.route('/api/variants_in_transcript/<transcript_id>')
 def variants_transcript_api(transcript_id):
+    # TODO use `cache`
     db = get_db()
     try:
         variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
@@ -635,6 +620,7 @@ def variants_transcript_api(transcript_id):
 
 @app.route('/api/variants_in_region/<region_id>')
 def variants_region_api(region_id):
+    # TODO use `cache`
     db = get_db()
     try:
         chrom, start, stop = region_id.split('-')
@@ -652,6 +638,7 @@ def region_page(region_id):
         region = region_id.split('-')
         cache_key = 't-region-{}'.format(region_id)
         t = cache.get(cache_key)
+        print 'Rendering %sregion: %s' % ('' if t is None else 'cached ', region_id)
         if t is None:
             chrom = region[0]
             start = None
@@ -668,7 +655,8 @@ def region_page(region_id):
                     chrom=chrom,
                     start=start,
                     stop=stop,
-                    coverage=None
+                    coverage=None,
+                    csq_order=csq_order,
                 )
             if start == stop:
                 start -= 20
@@ -685,9 +673,10 @@ def region_page(region_id):
                 chrom=chrom,
                 start=start,
                 stop=stop,
-                coverage=coverage_array
+                coverage=coverage_array,
+                csq_order=csq_order,
             )
-        print 'Rendering region: %s' % region_id
+            cache.set(cache_key, t)
         return t
     except Exception, e:
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
@@ -711,7 +700,8 @@ def dbsnp_page(rsid):
             start=start,
             stop=stop,
             coverage=None,
-            genes_in_region=None
+            genes_in_region=None,
+            csq_order=csq_order,
         )
     except Exception, e:
         print 'Failed on rsid:', rsid, ';Error=', traceback.format_exc()
@@ -729,14 +719,9 @@ def not_found_page(query):
 @app.route('/error/<query>')
 @app.errorhandler(404)
 def error_page(query):
-    if type(query) == str or type(query) == unicode:
-        unsupported = "TTN" if query.upper() in lookups.UNSUPPORTED_QUERIES else None
-    else:
-        unsupported = None
     return render_template(
         'error.html',
-        query=query,
-        unsupported=unsupported
+        query=query
     )
 
 

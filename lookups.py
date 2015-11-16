@@ -1,10 +1,8 @@
 import re
 from utils import *
+import itertools
 
 SEARCH_LIMIT = 10000
-UNSUPPORTED_QUERIES = ['TTN', 'ENSG00000155657', 'CMD1G', 'CMH9', 'CMPD4', 'FLJ32040', 'LGMD2J', 'MYLK5', 'TMD',
-                       u'ENST00000342175', u'ENST00000359218', u'ENST00000342992', u'ENST00000460472',
-                       u'ENST00000589042', u'ENST00000591111']
 
 
 def get_gene(db, gene_id):
@@ -118,8 +116,9 @@ def get_awesomebar_suggestions(g, query):
     If it is the prefix for a gene, return list of gene names
     """
     regex = re.compile('^' + re.escape(query), re.IGNORECASE)
-    results = [r for r in g.autocomplete_strings if regex.match(r)][:20]
-    return results
+    results = (r for r in g.autocomplete_strings if regex.match(r))
+    results = itertools.islice(results, 0, 20)
+    return list(results)
 
 
 # 1:1-1000
@@ -153,8 +152,6 @@ def get_awesomebar_result(db, query):
     """
     query = query.strip()
     print 'Query: %s' % query
-    if query.upper() in UNSUPPORTED_QUERIES:
-        return 'error', query
 
     # Variant
     variant = get_variants_by_rsid(db, query.lower())
