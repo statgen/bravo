@@ -59,7 +59,6 @@ def get_variants_from_sites_vcf(sites_vcf):
     dp_mids = map(float, '2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5'.split('|'))
     gq_mids = map(float, '2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5'.split('|'))
     hists_all = ['0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0', '0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0']
-    #hists_all = ['1|2|3|4|5|6|7|8|9|10|0|0|0|0|0|0|0|0|0|0', '1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0']
 
     vep_field_names = None
     for line in sites_vcf:
@@ -122,7 +121,7 @@ def get_variants_from_sites_vcf(sites_vcf):
                 # DT: if variant['allele_num'] > 0:
                 # DT:    variant['allele_freq'] = variant['allele_count']/float(info_field['AN_Adj'])
                 # DT: else:
-                variant['allele_freq'] = float(info_field['AF'])
+                variant['allele_freq'] = float(info_field['AF'].split(',')[i])
 
                 # DT: variant['pop_acs'] = dict([(POPS[x], int(info_field['AC_%s' % x].split(',')[i])) for x in POPS])
                 variant['pop_acs'] = dict([(POPS[x], 0) for x in POPS])
