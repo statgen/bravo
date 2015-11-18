@@ -82,14 +82,17 @@ def get_variants_from_sites_vcf(sites_vcf):
             info_field = dict([(x.split('=', 1)) if '=' in x else (x, x) for x in re.split(';(?=\w)', fields[7])])
             consequence_array = info_field['CSQ'].split(',') if 'CSQ' in info_field else []
             annotations = [dict(zip(vep_field_names, x.split('|'))) for x in consequence_array if len(vep_field_names) == len(x.split('|'))]
-            coding_annotations = [ann for ann in annotations if ann['Feature'].startswith('ENST')]
+            #DT: we will store anotations for all variants (not only for exonic)
+            #coding_annotations = [ann for ann in annotations if ann['Feature'].startswith('ENST')]
 
             alt_alleles = fields[4].split(',')
 
             # different variant for each alt allele
             for i, alt_allele in enumerate(alt_alleles):
 
-                vep_annotations = [ann for ann in coding_annotations if int(ann['ALLELE_NUM']) == i + 1]
+                #DT: we will store anotations for all variants (not only for exonic)
+                #vep_annotations = [ann for ann in coding_annotations if int(ann['ALLELE_NUM']) == i + 1]
+                vep_annotations = [ann for ann in annotations if int(ann['ALLELE_NUM']) == i + 1]
 
                 # Variant is just a dict
                 # Make a copy of the info_field dict - so all the original data remains
@@ -122,7 +125,7 @@ def get_variants_from_sites_vcf(sites_vcf):
                 # DT: if variant['allele_num'] > 0:
                 # DT:    variant['allele_freq'] = variant['allele_count']/float(info_field['AN_Adj'])
                 # DT: else:
-                variant['allele_freq'] = float(info_field['AF'])
+                variant['allele_freq'] = float(info_field['AF'].split(',')[i])
 
                 # DT: variant['pop_acs'] = dict([(POPS[x], int(info_field['AC_%s' % x].split(',')[i])) for x in POPS])
                 variant['pop_acs'] = dict([(POPS[x], 0) for x in POPS])
