@@ -28,24 +28,25 @@ ADMINISTRATORS = (
 )
 
 app = Flask(__name__)
+app.config.from_object('flask_config') # contains `SECRET_KEY`.
 mail_on_500(app, ADMINISTRATORS)
 Compress(app)
 app.config['COMPRESS_DEBUG'] = True
 cache = FileSystemCache('cache_dir', default_timeout=60*60*24*31, threshold=500)
 
 #EXAC_FILES_DIRECTORY = '../exac_data/'
-EXAC_FILES_DIRECTORY = '/net/wonderland/home/dtaliun/exac/1000G_chr22_data/'
+EXAC_FILES_DIRECTORY = '/net/inpsyght/mongo/orig_data/'
 REGION_LIMIT = 1E5
 EXON_PADDING = 50
 # Load default config and override config from an environment variable
 app.config.update(dict(
     DB_HOST='localhost',
     DB_PORT=27017, 
-    DB_NAME='exac', 
+    DB_NAME='exac2', 
     DEBUG=True,
-    SECRET_KEY='development key',
     LOAD_DB_PARALLEL_PROCESSES = 2,  # contigs assigned to threads, so good to make this a factor of 24 (eg. 2,3,4,6,8)
-    SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ALL.chr22.*.VEP.vcf.gz')),
+    #SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ALL.chr22.*.VEP.vcf.gz')),
+    SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'topmed_freeze1b_20151105_4317_snps_indels.chr22.sites.anno.vcf.gz')),
     GENCODE_GTF=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'gencode.gtf.gz'),
     CANONICAL_TRANSCRIPT_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'canonical_transcripts.txt.gz'),
     OMIM_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'omim_info.txt.gz'),
