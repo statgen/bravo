@@ -159,7 +159,10 @@ def get_awesomebar_result(db, query):
         if len(variant) == 1:
             return 'variant', variant[0]['variant_id']
         else:
-            return 'dbsnp_variant_set', variant[0]['rsid']
+            if query.lower() not in variant[0]['rsid']:
+                print('Warning: get_variants_by_rsid(db, "{query_lower}") returned ({variant}) but {query_lower} is not in {variant[0].rsid}.'.format(
+                    query_lower=query.lower(), variant=variant))
+            return 'dbsnp_variant_set', query.lower() # Sometimes a variant has multiple rsids.
     variant = get_variants_from_dbsnp(db, query.lower())
     if variant:
         return 'variant', variant[0]['variant_id']
