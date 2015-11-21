@@ -77,8 +77,8 @@
                 <% } else { %>
                     <%= variant.alt %>
                 <% } %>
-                <% if (variant.rsid != '.') { %>
-                    (<%= variant.rsid %>)
+                <% if (variant.rsid.length) { %>
+                    (<%= variant.rsid.join(",") %>)
                 <% } %>
                 </a>
             </td>

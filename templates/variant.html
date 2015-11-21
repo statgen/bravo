@@ -165,11 +165,15 @@
                         </dt>
                         <dd>{{ variant.filter }}</dd>
                         <dt>dbSNP</dt>
-                        {% if variant.rsid and variant.rsid != "." %}
-                            <dd><a href="http://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs={{ variant.rsid }}" target="_blank">{{ variant.rsid }}</a></dd>
+                        <dd>
+                        {% if variant.rsid == [] %}
+                            Not found in dbSNP
                         {% else %}
-                            <dd>Not found in dbSNP</dd>
+                            {% for _rsid in variant.rsid %}
+                                <a href="http://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs={{ _rsid }}" target="_blank">{{ _rsid }}</a> 
+                            {% endfor %}
                         {% endif %}
+                        </dd>
                         <dt>Allele Frequency</dt>
                         <dd>{{ '%0.4g' % variant.allele_freq }}</dd>
                         <dt>Allele Count</dt>
