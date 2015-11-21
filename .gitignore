@@ -9,4 +9,3 @@ autocomplete_strings.txt
 gene_cache/
 cache_dir/
 exac.log
-flask_config.py
