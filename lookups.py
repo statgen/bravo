@@ -292,6 +292,8 @@ def get_most_important_variants_in_gene(db, gene_id, limit=200):
     other_variants = []
     for variant in db.variants.find({'genes': gene_id}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
+        if variant['filter'] != "PASS": continue
+
         add_consequence_to_variant(variant)
         remove_extraneous_information(variant)
 
@@ -329,11 +331,14 @@ def get_variants_in_transcript(db, transcript_id):
 
 def get_most_important_variants_in_transcript(db, transcript_id, limit=200):
     # Note: this can almost certainly be heavily optimized.
+
     lof_variants = []
     missense_variants = []
     other_variants = []
     for variant in db.variants.find({'transcripts': transcript_id}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Feature'] == transcript_id]
+        if variant['filter'] != "PASS": continue
+
         add_consequence_to_variant(variant)
         remove_extraneous_information(variant)
 
