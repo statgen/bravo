@@ -15,7 +15,7 @@ from flask_errormail import mail_on_500
 
 from flask import Response
 from collections import defaultdict
-from werkzeug.contrib.cache import FileSystemCache
+from werkzeug.contrib.cache import NullCache # TODO: for production, use FileSystemCache
 
 from multiprocessing import Process
 import glob
@@ -32,7 +32,8 @@ app.config.from_object('flask_config') # contains `SECRET_KEY`.
 mail_on_500(app, ADMINISTRATORS)
 Compress(app)
 app.config['COMPRESS_DEBUG'] = True
-cache = FileSystemCache('cache_dir', default_timeout=60*60*24*31, threshold=500)
+#cache = FileSystemCache('cache_dir', default_timeout=60*60*24*31)
+cache = NullCache()
 
 #EXAC_FILES_DIRECTORY = '../exac_data/'
 EXAC_FILES_DIRECTORY = '/net/inpsyght/mongo/orig_data/'
