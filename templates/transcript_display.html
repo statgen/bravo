@@ -433,6 +433,10 @@ function refresh_links() {
 }
 
 $(document).ready(function() {
+    build_the_graph();
+});
+
+function build_the_graph () {
     if ($(window).width() < 768) {
         $('#gene_plot_container').css('width', $(window).width() + "px");
     } else {
@@ -521,11 +525,8 @@ $(document).ready(function() {
         }, 10);
     });
 
-    $('.consequence_display_buttons, #filtered_checkbox').change(function () {
-        setTimeout(function() {
-            update_variants();
-            refresh_links();
-        }, 10);
+    $(document).on("just_updated_variants", function () {
+        setTimeout(refresh_links, 10);
     });
 
     $('.display_coverage_metric_buttons').change(function () {
@@ -544,5 +545,5 @@ $(document).ready(function() {
         refresh_links();
     });
     refresh_links();
-});
+}
 </script>

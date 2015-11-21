@@ -525,6 +525,7 @@ function update_variants() {
         $('#variants_table_empty').hide();
         $('#variants_table_container').show();
     }
+    $(document).trigger("just_updated_variants");
 }
 
 function get_af_bounds(data) {
