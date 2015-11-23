@@ -3,6 +3,12 @@
 {% include "variant_table_template.html" %}
 <script>
 
+    $(document).ready(function() {
+        $('.consequence_display_buttons, #filtered_checkbox').change(function () {
+            setTimeout(update_variants, 10);
+        });
+    });
+
     function add_tablesorter_csq_parser() {
 
         // This list is simply copied from utils.py.

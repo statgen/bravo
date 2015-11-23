@@ -7,12 +7,6 @@
         window.table_variants = variants;
         window.start = {{ start|tojson|safe }};
         window.stop = {{ stop|tojson|safe }};
-
-        $(document).ready(function() {
-            $('.consequence_display_buttons, #filtered_checkbox').change(function () {
-                setTimeout(update_variants, 10);
-            });
-        });
     </script>
     <div class="container">
         {% if rsid %}
