@@ -27,6 +27,17 @@
             .fail(function() {
                 console.log("XHR failed for gene.");
             });
+
+            $.getJSON("/api/variants_in_transcript/" + window.transcript.transcript_id)
+            .done(function(data) {
+
+                window.variants_in_transcript = data;
+                // build_the_graph(); // TODO: update the graph in-place.  We need to cut that function in two.
+            })
+            .fail(function() {
+                console.log("XHR failed for transcript.");
+            });
+
         });
     </script>
     <div class="container-fluid">
