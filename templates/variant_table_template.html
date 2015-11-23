@@ -13,7 +13,7 @@
 <table id="variant_table" class="tablesorter">
     <thead>
         <tr>
-            <th class="tooltip-table-header omit_csv" data-tooltip="reference/alternate &#xa;(dbSNP135 rsID)">
+            <th class="tooltip-table-header omit_csv" data-tooltip="reference/alternate &#xa;(dbSNP144 rsID)">
                 Allele</th>
             <th class='hidden-xs'>Position on chr{{ chrom }}</th>
             <td class="hidden">RSID</td>
@@ -81,13 +81,13 @@
                 <% } else { %>
                     <%= variant.alt %>
                 <% } %>
-                <% if (variant.rsid.length) { %>
-                    (<%= variant.rsid.join(", ") %>)
+                <% if (variant.rsids.length) { %>
+                    (<%= variant.rsids.join(", ") %>)
                 <% } %>
                 </a>
             </td>
             <td class='hidden-xs'> <%= variant.pos %></td>
-            <td class="hidden"><%= variant.rsid %></td>
+            <td class="hidden"><%= variant.rsids.join(", ") %></td>
             <th class="hidden"> <%= variant.ref %></th>
             <th class="hidden"> <%= variant.alt %></th>
             <td class='hidden-xs'>

@@ -28,12 +28,10 @@ def get_transcript(db, transcript_id):
 
 def get_variant(db, xpos, ref, alt):
     variant = db.variants.find_one({'xpos': xpos, 'ref': ref, 'alt': alt}, projection={'_id': False})
-    if variant is None or 'rsid' not in variant:
-        return variant
-    if variant['rsid'] == '.' or variant['rsid'] is None:
-        rsid = db.dbsnp.find_one({'xpos': xpos})
-        if rsid:
-            variant['rsid'] = 'rs%s' % rsid['rsid']
+    if variant is not None and variant['rsids'] == []:
+        variant['rsids'] = list('rs{}'.format(r['rsid']) for r in db.dbsnp.find({'xpos': xpos}))
+        if variant['rsids']:
+            print("apparently the variant [xpos={!r}, ref={!r}, alt={!r}] didn't have any rsids but found some in db.dbsnp")
     return variant
 
 
@@ -44,7 +42,7 @@ def get_variants_by_rsid(db, rsid):
         int(rsid.lstrip('rs'))
     except Exception, e:
         return None
-    variants = list(db.variants.find({'rsid': rsid}, projection={'_id': False}))
+    variants = list(db.variants.find({'rsids': rsid}, projection={'_id': False}))
     add_consequence_to_variants(variants)
     return variants
 
@@ -154,15 +152,15 @@ def get_awesomebar_result(db, query):
     print 'Query: %s' % query
 
     # Variant
-    variant = get_variants_by_rsid(db, query.lower())
-    if variant:
-        if len(variant) == 1:
-            return 'variant', variant[0]['variant_id']
+    variants = get_variants_by_rsid(db, query.lower())
+    if variants:
+        if len(variants) == 1:
+            return 'variant', variants[0]['variant_id']
         else:
-            if query.lower() not in variant[0]['rsid']:
-                print('Warning: get_variants_by_rsid(db, "{query_lower}") returned ({variant}) but {query_lower} is not in {variant[0].rsid}.'.format(
-                    query_lower=query.lower(), variant=variant))
-            return 'dbsnp_variant_set', query.lower() # Sometimes a variant has multiple rsids.
+            if query.lower() not in variants[0]['rsids']:
+                print('Warning: get_variants_by_rsid(db, "{query_lower!r}") returned ({variants!r}) but {query_lower!r} is not in {variants[0].rsids!r}.'.format(
+                    query_lower=query.lower(), variants=variants))
+            return 'dbsnp_variant_set', query.lower()
     variant = get_variants_from_dbsnp(db, query.lower())
     if variant:
         return 'variant', variant[0]['variant_id']
@@ -309,7 +307,10 @@ def get_most_important_variants_in_gene(db, gene_id, limit=200):
     return lof_variants + missense_variants[:limit - len(lof_variants)] + other_variants[:limit - len(lof_variants) - len(missense_variants)]
 
 def get_num_variants_in_gene(db, gene_id):
-    return db.variants.find({'genes': gene_id}, projection={'_id': False}).count()
+    return {
+        'total': db.variants.find({'genes': gene_id}, projection={'_id': False}).count(),
+        'pass': db.variants.find({'genes': gene_id, 'filter': 'PASS'}, projection={'_id': False}).count()
+    }
 
 
 def get_transcripts_in_gene(db, gene_id):

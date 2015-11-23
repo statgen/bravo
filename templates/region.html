@@ -8,15 +8,6 @@
         window.start = {{ start|tojson|safe }};
         window.stop = {{ stop|tojson|safe }};
 
-        {% if genes_in_region and stop != None %}
-        $(document).ready(function() {
-            if (window.coverage_stats != null) {
-                region_chart(window.coverage_stats, window.variants);
-                update_variants();
-            }
-        });
-        {% endif %}
-
         $(document).ready(function() {
             $('.consequence_display_buttons, #filtered_checkbox').change(function () {
                 setTimeout(update_variants, 10);

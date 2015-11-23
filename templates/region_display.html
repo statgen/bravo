@@ -234,5 +234,11 @@ $(document).ready(function() {
             change_track_chart_variant_size(window.variants, v, '#region_plot_container');
         }, 10);
     });
+
+    if (window.coverage_stats != null) {
+        region_chart(window.coverage_stats, window.variants);
+        update_variants();
+    }
+
 });
 </script>

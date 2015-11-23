@@ -153,7 +153,7 @@ def load_variants_file():
     db.variants.ensure_index('xpos')
     db.variants.ensure_index('xstart')
     db.variants.ensure_index('xstop')
-    db.variants.ensure_index('rsid')
+    db.variants.ensure_index('rsids')
     db.variants.ensure_index('genes')
     db.variants.ensure_index('transcripts')
 
