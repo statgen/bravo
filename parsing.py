@@ -106,11 +106,11 @@ def get_variants_from_sites_vcf(sites_vcf):
                 #variant['rsid'] = fields[2]
 
                 if vep_annotations:
-                   variant['rsid'] = list(rsid for rsid in vep_annotations[0]['Existing_variation'].split('&') if rsid != '')
+                   variant['rsids'] = list(rsid for rsid in vep_annotations[0]['Existing_variation'].split('&') if rsid.startswith("rs"))
                    variant['cadd_raw'] = None if not vep_annotations[0]['CADD_RAW'] else float(vep_annotations[0]['CADD_RAW']) 
                    variant['cadd_phred'] = None if not vep_annotations[0]['CADD_PHRED'] else float(vep_annotations[0]['CADD_PHRED'])
                 else:
-                   variant['rsid'] = []
+                   variant['rsids'] = []
                    variant['cadd_raw'] = None
                    variant['cadd_phred'] = None
                    
