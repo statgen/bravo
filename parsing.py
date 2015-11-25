@@ -56,9 +56,9 @@ def get_variants_from_sites_vcf(sites_vcf):
     """
 
     # DT: dirty temporary fill-in:
-    dp_mids = map(float, '2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5'.split('|'))
-    gq_mids = map(float, '2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5'.split('|'))
-    hists_all = ['0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0', '0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0']
+    #dp_mids = map(float, '2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5'.split('|'))
+    #gq_mids = map(float, '2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5'.split('|'))
+    #hists_all = ['0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0', '0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0']
 
     vep_field_names = None
     for line in sites_vcf:
@@ -144,7 +144,8 @@ def get_variants_from_sites_vcf(sites_vcf):
                 variant['pop_ans'] = dict([(POPS[x], 0) for x in POPS])
                 # DT: variant['pop_homs'] = dict([(POPS[x], int(info_field['Hom_%s' % x].split(',')[i])) for x in POPS])
                 variant['pop_homs'] = dict([(POPS[x], 0) for x in POPS])
-                variant['hom_count'] = sum(variant['pop_homs'].values())
+                # DT: variant['hom_count'] = sum(variant['pop_homs'].values())
+                variant['hom_count'] = int(info_field['Hom'].split(',')[i])
                 if variant['chrom'] in ('X', 'Y'):
                 # DT: variant['pop_hemis'] = dict([(POPS[x], int(info_field['Hemi_%s' % x].split(',')[i])) for x in POPS])
                     variant['pop_hemis'] = dict([(POPS[x], 0) for x in POPS])
@@ -154,15 +155,16 @@ def get_variants_from_sites_vcf(sites_vcf):
                 variant['genes'] = list({annotation['Gene'] for annotation in vep_annotations})
                 variant['transcripts'] = list({annotation['Feature'] for annotation in vep_annotations})
 
-                # DT: if 'DP_HIST' in info_field:
-                # DT:    hists_all = [info_field['DP_HIST'].split(',')[0], info_field['DP_HIST'].split(',')[i+1]]
-                # DT:    variant['genotype_depths'] = [zip(dp_mids, map(int, x.split('|'))) for x in hists_all]
-                # DT: if 'GQ_HIST' in info_field:
-                # DT:    hists_all = [info_field['GQ_HIST'].split(',')[0], info_field['GQ_HIST'].split(',')[i+1]]
-                # DT:    variant['genotype_qualities'] = [zip(gq_mids, map(int, x.split('|'))) for x in hists_all]
+                if 'DP_HIST' in info_field:
+                   hists_all = [info_field['DP_HIST'].split(',')[0], info_field['DP_HIST'].split(',')[i+1]]
+                   variant['genotype_depths'] = [zip(dp_mids, map(int, x.split('|'))) for x in hists_all]
+                if 'GQ_HIST' in info_field:
+                   hists_all = [info_field['GQ_HIST'].split(',')[0], info_field['GQ_HIST'].split(',')[i+1]]
+                   variant['genotype_qualities'] = [zip(gq_mids, map(int, x.split('|'))) for x in hists_all]
+                
                 # DT: dirty temporary fill-in:
-                variant['genotype_depths'] = [zip(dp_mids, map(int, x.split('|'))) for x in hists_all]
-                variant['genotype_qualities'] = [zip(gq_mids, map(int, x.split('|'))) for x in hists_all] 
+                # DT: variant['genotype_depths'] = [zip(dp_mids, map(int, x.split('|'))) for x in hists_all]
+                # DT: variant['genotype_qualities'] = [zip(gq_mids, map(int, x.split('|'))) for x in hists_all] 
 
                 yield variant
         except Exception:
