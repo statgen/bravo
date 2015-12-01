@@ -11,12 +11,6 @@
 
     function add_tablesorter_csq_parser() {
 
-        // This list is simply copied from utils.py.
-        // Obviously that's not ideal, but I wanted to keep this diff isolated.
-        // I'm also not sure how you want to serve additional context to the client -
-        // yet another template variable also seems suboptimal.
-        // xBrowse has a variable DICTIONARY in global scope where we store stuff like this -
-        // might want to try that!
         var csq_order = {{ csq_order|tojson|safe }};
 
         // Make a map of consequence -> index
