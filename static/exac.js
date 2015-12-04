@@ -61,10 +61,10 @@ window.get_coding_coordinates = function(_transcript, position_list, skip_utrs) 
         coding_positions.push(-100);
     }
     _.each(position_list, function(position, i) {
-        _.each(exons, function(exon, j) {
+        _.find(exons, function(exon, j) {
             if (position >= exon.start - EXON_PADDING && position <= exon.stop + EXON_PADDING) {
                 coding_positions[i] = exon_offsets[j] + position - exon.start;
-                return;
+                return true; //break the loop
             }
         });
     });
