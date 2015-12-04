@@ -46,6 +46,12 @@ def create_cache():
 def precalculate_metrics():
     exac.precalculate_metrics()
 
+
+@manager.command
+def precalculate_variant_consqequence_category():
+    exac.precalculate_variant_consqequence_category()
+
+
 if __name__ == "__main__":
     manager.run()
 

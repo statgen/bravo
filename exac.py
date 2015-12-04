@@ -350,6 +350,14 @@ def create_cache():
     print >> sys.stderr, "Done!"
 
 
+def precalculate_variant_consqequence_category():
+    db = get_db()
+    print 'Reading %s variants' % db.variants.count()
+    for variant in db.variants.find(projection=['_id', 'vep_annotations']):
+        add_consequence_to_variant(variant)
+        
+    db.variants.ensure_index('consequence_category')
+
 def precalculate_metrics():
     import numpy
     db = get_db()
