@@ -86,7 +86,7 @@
                 <% } %>
                 </a>
             </td>
-            <td class='hidden-xs'> <%= variant.pos %></td>
+            <td class='hidden-xs' data-pos="<%= variant.pos %>"> <%= variant.pos.toLocaleString() %></td>
             <td class="hidden"><%= variant.rsids.join(", ") %></td>
             <th class="hidden"> <%= variant.ref %></th>
             <th class="hidden"> <%= variant.alt %></th>

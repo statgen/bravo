@@ -10,7 +10,6 @@
     });
 
     function add_tablesorter_csq_parser() {
-
         var csq_order = {{ csq_order|tojson|safe }};
 
         // Make a map of consequence -> index
@@ -36,13 +35,30 @@
             type: 'numeric'
         });
     }
+    add_tablesorter_csq_parser();
+
+
+    function add_tablesorter_formatted_number_parser() {
+        // Here we add a new sort parser - its global identifier is pos'
+        $.tablesorter.addParser({
+            id: 'formatted_number',
+            is: function(s) {
+                return false;  // don't auto-detect parser
+            },
+            format: function(s, table, cell) {
+                return $(cell).data('pos');
+            },
+            type: 'numeric'
+        });
+    }
+    add_tablesorter_formatted_number_parser();
+
 
     $(document).ready(function() {
         build_variant_table();
     });
 
     function build_variant_table() {
-        add_tablesorter_csq_parser();
 
         $("#variants_loading").hide();
         $("#variants_table_container").show();
@@ -53,9 +69,8 @@
             // Here's where we tell tablesorter to use our new consequence sorter on the 9th column
             // 2-minute minor on Konrad for having hidden columns
             headers: {
-                9: {
-                    sorter: 'consequence'
-                }
+                1: {sorter: 'formatted_number'},
+                9: {sorter: 'consequence'}
             }
         });
 {#                .tablesorterPager({container: $("#pager"), positionFixed: false});#}
