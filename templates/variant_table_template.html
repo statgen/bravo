@@ -86,7 +86,7 @@
                 <% } %>
                 </a>
             </td>
-            <td class='hidden-xs' data-pos="<%= variant.pos %>"> <%= variant.pos.toLocaleString() %></td>
+            <td class='hidden-xs' style="text-align:right;padding-right:2em;" data-pos="<%= variant.pos %>"> <%= variant.pos.toLocaleString() %></td>
             <td class="hidden"><%= variant.rsids.join(", ") %></td>
             <th class="hidden"> <%= variant.ref %></th>
             <th class="hidden"> <%= variant.alt %></th>
@@ -110,10 +110,10 @@
                 <% } %>
             </b> </td>
             <td> <%= (variant.cadd_phred === null) ? null : variant.cadd_phred.toPrecision(2) %> </td>
-            <td> <%= variant.allele_count %> </td>
-            <td class='hidden-xs'> <%= variant.allele_num %> </td>
+            <td style="text-align:right;padding-right:2em;"> <%= variant.allele_count %> </td>
+            <td class='hidden-xs' style="text-align:right;padding-right:2em;"> <%= variant.allele_num %> </td>
             {% if chrom != 'Y' %}
-                <td class="hidden-xs"> <%= variant.hom_count %> </td>
+                <td class="hidden-xs" style="text-align:right;padding-right:2em;"> <%= variant.hom_count %> </td>
             {% endif %}
             {% if chrom == 'X' or chrom == 'Y' %}
                 <td class="hidden-xs"> <%= variant.hemi_count %> </td>
