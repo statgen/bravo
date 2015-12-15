@@ -442,8 +442,7 @@
             </div>
 
             <div class="col-md-6">
-              {% if False %}
-                {% if variant.pop_acs %}
+                {% if variant.pop_acs and False %}
                     <div id="frequency_info_container">
                         <div class="section_header">Population Frequencies</div>
                         <div id="frequency_table_container" class="frequency_displays">
@@ -520,7 +519,6 @@
                         <h3>This region is not covered in the ExAC dataset.</h3>
                     {% endif %}
                 {% endif %}
-              {% endif %}
             </div>
         </div>
     </div>
