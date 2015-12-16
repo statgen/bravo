@@ -66,7 +66,7 @@ def get_variants_from_dbsnp(db, rsid):
 def get_coverage_for_bases(db, xstart, xstop=None):
     """
     Get the coverage for the list of bases given by xstart->xstop, inclusive
-    Returns list of coverage dicts
+    Returns list of coverage dicts sorted by pos
     xstop can be None if just one base, but you'll still get back a list
     """
     if xstop is None:
@@ -89,13 +89,13 @@ def get_coverage_for_bases(db, xstart, xstop=None):
     return ret
 
 
-def get_coverage_for_transcript(db, xstart, xstop=None):
+def get_coverage_for_transcript(db, xstart, xstop=None, num_bins=None):
     """
-
     :param db:
     :param genomic_coord_to_exon:
     :param xstart:
     :param xstop:
+    :param num_bins: An approximate intented number of bins.
     :return:
     """
     coverage_array = get_coverage_for_bases(db, xstart, xstop)
@@ -104,6 +104,25 @@ def get_coverage_for_transcript(db, xstart, xstop=None):
     covered = [c for c in coverage_array if c['has_coverage']]
     for c in covered:
         del c['has_coverage']
+
+    if num_bins is not None and xstop is not None:
+        bin_length = int((xstop - xstart) / num_bins) + 1
+        cur_bin = []
+        bins = []
+        for base in covered:
+            if cur_bin == [] or cur_bin[0]['pos']+bin_length > base['pos']:
+                cur_bin.append(base)
+            else:
+                avg_base = {}
+                for key in cur_bin[0]:
+                    avg_base[key] = sum(b[key] for b in cur_bin) / len(cur_bin)
+                avg_base['start_pos'] = cur_bin[0]['pos']
+                avg_base['stop_pos'] = cur_bin[-1]['pos']
+                del avg_base['pos']
+                bins.append(avg_base)
+                cur_bin = [base]
+        return bins
+
     return covered
 
 
