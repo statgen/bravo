@@ -22,7 +22,8 @@
             $.getJSON("/api/variants_in_gene/" + window.gene.gene_id)
             .done(function(data) {
                 window.table_variants = data;
-                build_variant_table();
+                $('#consequence_other_variant_button').removeClass('disabled').removeAttr('disabled').removeAttr('data-tooltip');
+                // We're no longer showing all the variants by default.  The user must click. build_variant_table();
             })
             .fail(function() {
                 console.log("XHR failed for gene.");
