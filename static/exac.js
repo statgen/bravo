@@ -161,7 +161,8 @@ function draw_quality_histogram(data, container, log, xlabel, ylabel) {
 
     var xAxis = d3.svg.axis()
         .scale(x)
-        .orient("bottom");
+        .orient("bottom")
+        .ticks(7);
 
     var yAxis = d3.svg.axis()
         .scale(y)
