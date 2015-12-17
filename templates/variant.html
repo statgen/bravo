@@ -100,13 +100,13 @@
                 $('#site_quality_note').html(get_af_bucket_text(bin));
                 var pos = $('#quality_metric_select').val().split(': ')[1];
                 add_line_to_quality_histogram(data, pos, '#quality_metric_container', true);
-                var log_these = ['Site Quality', 'DP'];
+                var log_scale_metrics = ['Site Quality', 'Total Depth'];
                 $('#quality_metric_select').change(function() {
                     var v = $(this).val().split(': ');
                     var log = false;
                     $('#site_quality_note').html('');
                     var data;
-                    if (log_these.indexOf(v[0]) > -1) {
+                    if (log_scale_metrics.indexOf(v[0]) > -1) {
                         data = _.zip(_.map(window.metrics[v[0]]['mids'], Math.exp), window.metrics[v[0]]['hist']);
                         log = true;
                     } else {

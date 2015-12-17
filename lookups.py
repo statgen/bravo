@@ -264,6 +264,18 @@ def get_metrics(db, variant):
     for metric in METRICS:
         metrics[metric] = db.metrics.find_one({'metric': metric}, projection={'_id': False})
 
+    # Rename
+    for old_name, new_name in [("DP", "Total Depth"), ("MQ", "Mapping Quality")]:
+        if old_name in metric:
+            metrics[new_name] = metrics[old_name]
+            metrics[new_name]['metric'] = new_name
+            del metrics[old_name]
+            variant['quality_metrics'][new_name] = variant['quality_metrics'][old_name]
+            del variant['quality_metrics'][old_name]
+        else:
+            if 'variant_id' in variant:
+                print('failed to find {} in metrics for variant {}'.format(old_name, variant['variant_id']))
+
     metric = None
     if variant['allele_count'] == 1:
         metric = 'singleton'
