@@ -54,11 +54,11 @@
         var af_buckets = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1];
         function get_af_bucket_text(bin) {
             if (bin == 'singleton' || bin == 'doubleton') {
-                return 'This is the site quality distribution for all ' + bin + 's in ExAC.';
+                return 'This is the site quality distribution for all ' + bin + 's in TOPMED.';
             } else if (bin == '0.0001') {
-                return 'This is the site quality distribution for all variants with AF < ' + bin + ' in ExAC.';
+                return 'This is the site quality distribution for all variants with AF < ' + bin + ' in TOPMED.';
             } else {
-                return 'This is the site quality distribution for all variants with ' + af_buckets[af_buckets.indexOf(parseFloat(bin)) - 1] + ' < AF < ' + bin + ' in ExAC.';
+                return 'This is the site quality distribution for all variants with ' + af_buckets[af_buckets.indexOf(parseFloat(bin)) - 1] + ' < AF < ' + bin + ' in TOPMED.';
             }
         }
         $(document).ready(function() {
@@ -150,7 +150,7 @@
         {% if variant.variant_id %}
             {% if variant.allele_num < 6907.2 %}
                 <p><span class="label label-warning">Warning!</span> This variant is only covered in {{ (variant.allele_num/2)|int }} individuals (adjusted allele number = {{ variant.allele_num }}).<br/>
-                This means that the site is covered in fewer than 80% of the individuals in ExAC, which may indicate a low-quality site.</p>
+                This means that the site is covered in fewer than 80% of the individuals in TOPMED, which may indicate a low-quality site.</p>
                 <hr/>
             {% endif %}
             <div class="row">
@@ -434,7 +434,7 @@
                         No annotations were found for this variant.
                     {% endif %}
                 {% else %}
-                    <h3>This variant is not found in ExAC.</h3>
+                    <h3>This variant is not found in TOPMED.</h3>
                 {% endif %}
                 </div>
                 <div id="browser_container">
@@ -516,7 +516,7 @@
                         </div>
                         <div id="region_coverage"></div>
                     {% else %}
-                        <h3>This region is not covered in the ExAC dataset.</h3>
+                        <h3>This region is not covered in the TOPMED dataset.</h3>
                     {% endif %}
                 {% endif %}
             </div>
