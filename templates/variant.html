@@ -115,23 +115,25 @@
             });
 
             if (window.variant != null && 'genotype_depths' in window.variant) {
-                draw_quality_histogram(window.variant.genotype_depths[0], '#quality_display_container', false, 'Depth', 'Individuals');
+                draw_quality_histogram(window.variant.genotype_depths[0], '#quality_display_container', false, true, 'Depth', 'Individuals');
                 $('.quality_display_buttons').change(function() {
                     var v = $(this).attr('id').replace('_button', '');
                     var f = $('.quality_full_site_buttons.active').attr('id') == 'variant_site_button' ? 0 : 1;
                     var ylab = f ? 'Variant Carriers' : 'Individuals';
-                    draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, $(this).text(), ylab);
+                    var xlab = $(this).text().replace(/^\s+|\s+$/g, '');
+                    draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, xlab === 'Depth', xlab, ylab);
                 });
                 $('.quality_full_site_buttons').change(function() {
                     var v = $('.quality_display_buttons.active').attr('id').replace('_button', '');
                     var f = $(this).attr('id') == 'variant_site_button' ? 0 : 1;
                     var ylab = f ? 'Variant Carriers' : 'Individuals';
-                    draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, $('.quality_display_buttons.active').text(), ylab);
+                    var xlab = $('.quality_display_buttons.active').text().replace(/^\s+|\s+$/g, '');
+                    draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, xlab === 'Depth', ylab);
                 });
 
                 // Quality metric histograms
                 var data = _.zip(_.map(window.metrics['Site Quality']['mids'], Math.exp), window.metrics['Site Quality']['hist']);
-                draw_quality_histogram(data, '#quality_metric_container', true, 'Site Quality', 'Variants');
+                draw_quality_histogram(data, '#quality_metric_container', true, false, 'Site Quality', 'Variants');
                 var bin = window.metrics['Site Quality']['metric'].split('_')[1];
                 $('#site_quality_note').html(get_af_bucket_text(bin));
                 var pos = $('#quality_metric_select').val().split(': ')[1];
@@ -152,7 +154,7 @@
                         var bin = window.metrics['Site Quality']['metric'].split('_')[1];
                         $('#site_quality_note').html(get_af_bucket_text(bin));
                     }
-                    draw_quality_histogram(data, '#quality_metric_container', log, v[0], 'Variants');
+                    draw_quality_histogram(data, '#quality_metric_container', log, false, v[0], 'Variants');
                     add_line_to_quality_histogram(data, v[1], '#quality_metric_container', log);
                 });
             } else {

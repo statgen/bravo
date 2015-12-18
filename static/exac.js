@@ -133,7 +133,7 @@ quality_chart_width = 300 - quality_chart_margin.left - quality_chart_margin.rig
 xoffset = 40;
 yoffset = 55;
 
-function draw_quality_histogram(data, container, log, xlabel, ylabel) {
+function draw_quality_histogram(data, container, log, integer_scale, xlabel, ylabel) {
     //Takes histogram data as a list of [midpoint, value] and puts into container
     //If data already in container, transitions to new data
     var x;
@@ -167,6 +167,9 @@ function draw_quality_histogram(data, container, log, xlabel, ylabel) {
     var yAxis = d3.svg.axis()
         .scale(y)
         .orient("left");
+    if (integer_scale) {
+        yAxis.tickFormat(d3.format("d"));
+    }
 
     var svg = d3.select(container);
     if (svg.selectAll('rect').length == 0 || svg.selectAll('rect')[0].length == 0) {
