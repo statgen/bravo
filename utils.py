@@ -74,12 +74,11 @@ def add_consequence_to_variant(variant):
     variant['HGVSp'] = get_proper_hgvs(worst_csq)
     variant['HGVSc'] = worst_csq['HGVSc'].split(':')[-1]
     variant['CANONICAL'] = worst_csq['CANONICAL']
-    if csq_order_dict[variant['major_consequence']] <= csq_order_dict["frameshift_variant"]:
+    if csq_order_dict[variant['major_consequence']] <= csq_order_dict["LOF_THRESHOLD"]:
         variant['category'] = 'lof_variant'
-    elif csq_order_dict[variant['major_consequence']] <= csq_order_dict["missense_variant"]:
-        # Should be noted that this grabs inframe deletion, etc.
+    elif csq_order_dict[variant['major_consequence']] <= csq_order_dict["MISSENSE_THRESHOLD"]:
         variant['category'] = 'missense_variant'
-    elif csq_order_dict[variant['major_consequence']] <= csq_order_dict["synonymous_variant"]:
+    elif csq_order_dict[variant['major_consequence']] <= csq_order_dict["SYNONYMOUS_THRESHOLD"]:
         variant['category'] = 'synonymous_variant'
     else:
         variant['category'] = 'other_variant'
@@ -107,46 +106,69 @@ def get_proper_hgvs(csq):
             print 'Could not create HGVS for: %s' % csq
     return csq['HGVSp'].split(':')[-1]
 
-# Note that this is the current as of v77 with 2 included for backwards compatibility (VEP <= 75)
-csq_order = [ # Note: see http://useast.ensembl.org/info/genome/variation/predicted_data.html#consequences
-"transcript_ablation",
-"splice_donor_variant",
-"splice_acceptor_variant",
-"stop_gained",
+# This is a slightly modified version of snpEff's recommendations - see http://snpeff.sourceforge.net/VCFannotationformat_v1.0.pdf
+# ExAC's ordering was based on VEP annotations - see http://useast.ensembl.org/info/genome/variation/predicted_data.html#consequences
+# To find all variants that are used, run:
+# mongo --host topmed --eval 'db.variants.distinct("vep_annotations.Consequence").forEach(printjson)' topmed | tr -d '",' | tr "&" "\n" | sort | uniq
+csq_order = [
+"chromosome_number_variation",
+"exon_loss_variant",
 "frameshift_variant",
+"stop_gained",
 "stop_lost",
 "start_lost",
-"initiator_codon_variant",
-"transcript_amplification",
-"inframe_insertion",
-"inframe_deletion",
+"splice_acceptor_variant",
+"splice_donor_variant",
+"rare_amino_acid_variant",
+"LOF_THRESHOLD",
 "missense_variant",
+"disruptive_inframe_insertion", # Note: I changed these at Hyun's suggestion. snpEff's dev agreed.
+"inframe_insertion",
+"disruptive_inframe_deletion",
+"inframe_deletion",
+"protein_altering_variant", # added for VEP-compatibility, but I'm not sure if this is the correct place
+"5_prime_UTR_truncation+exon_loss_variant",
+"3_prime_UTR_truncation+exon_loss",
+"MISSENSE_THRESHOLD",
+"splice_branch_variant",
 "splice_region_variant",
-"incomplete_terminal_codon_variant",
+"splice_branch_variant",
 "stop_retained_variant",
+"initiator_codon_variant",
 "synonymous_variant",
+"SYNONYMOUS_THRESHOLD",
+"initiator_codon_variant+non_canonical_start_codon",
+"stop_retained_variant",
 "coding_sequence_variant",
-"mature_miRNA_variant",
+"mature_miRNA_variant", # added for VEP-compatibility
 "5_prime_UTR_variant",
 "3_prime_UTR_variant",
-"non_coding_transcript_exon_variant",
-"non_coding_exon_variant",  # deprecated
-"intron_variant",
-"NMD_transcript_variant",
-"non_coding_transcript_variant",
-"nc_transcript_variant",  # deprecated
+"5_prime_UTR_premature_start_codon_gain_variant",
 "upstream_gene_variant",
 "downstream_gene_variant",
-"TFBS_ablation",
-"TFBS_amplification",
+"TFBS_ablation", # added for VEP-compatibility
 "TF_binding_site_variant",
-"regulatory_region_ablation",
-"regulatory_region_amplification",
+"regulatory_region_ablation", # added for VEP-compatibility
 "regulatory_region_variant",
-"feature_elongation",
-"feature_truncation",
-"intergenic_variant",
-""]
+"miRNA",
+"custom",
+"sequence_feature",
+"conserved_intron_variant",
+"intron_variant",
+"NMD_transcript_variant", # added for VEP-compatibility
+"intragenic_variant",
+"conserved_intergenic_variant",
+"intergenic_region",
+"intergenic_variant", # added for VEP-compatibility
+"coding_sequence_variant",
+"non_coding_exon_variant",
+"non_coding_transcript_exon_variant", # added for VEP-compatibility
+"non_coding_transcript_variant", # added for VEP-compatibility
+"nc_transcript_variant",
+"gene_variant",
+"chromosome",
+]
+
 csq_order_dict = dict(zip(csq_order, range(len(csq_order))))
 rev_csq_order_dict = dict(zip(range(len(csq_order)), csq_order))
 
@@ -160,8 +182,12 @@ def worst_csq_index(csq_list):
     :param annnotation:
     :return most_severe_consequence_index:
     """
-    return min([csq_order_dict[ann] for ann in csq_list])
-
+    # Note: this is the first place that an unknown csq will fail.
+    try:
+        return min([csq_order_dict[ann] for ann in csq_list])
+    except KeyError as exc:
+        print("failed on csq_list {!r} with error: {}".format(csq_list, traceback.format_exc()))
+        return -9999
 
 def worst_csq_from_list(csq_list):
     """
