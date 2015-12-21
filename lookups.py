@@ -1,9 +1,11 @@
 import re
 from utils import *
 import itertools
+import pysam
+import json
+import time
 
 SEARCH_LIMIT = 10000
-
 
 def get_gene(db, gene_id):
     return db.genes.find_one({'gene_id': gene_id}, projection={'_id': False})
@@ -62,7 +64,62 @@ def get_variants_from_dbsnp(db, rsid):
             return variants
     return []
 
+# DT: version that uses tabix
+def get_coverage_for_bases(tabix, contig, xstart, xstop=None):
+    """
+    Get the coverage for the list of bases given by xstart->xstop, inclusive
+    Returns list of coverage dicts sorted by pos
+    xstop can be None if just one base, but you'll still get back a list
+    """
 
+    start = xpos_to_pos(xstart)
+
+    if xstop is None:
+        xstop = xstart 
+
+    stop = xpos_to_pos(xstop)
+      
+    start_time = time.time()
+   
+    coverages_json = [{
+        'xpos': long(get_single_location('chr' + contig, int(row[1]))),
+        'pos' : float(row[1]), 
+        'mean': float(row[2]), 
+        'median': float(row[3]), 
+        '1': float(row[4]), 
+        '5': float(row[5]), 
+        '10': float(row[6]), 
+        '15': float(row[7]), 
+        '20': float(row[8]), 
+        '25': float(row[9]), 
+        '30': float(row[10]), 
+        '50': float(row[11]), 
+        '100': float(row[12])} for row in tabix.fetch(str(contig), start, stop + 1, parser=pysam.asTuple())]
+
+    print 'tabix\'ed %s base(s) from %s-%s-%s in %s sec' % (len(coverages_json), contig, start, stop, time.time() - start_time)
+
+    start_time = time.time()
+
+    coverages = {
+        doc['xpos']: doc for doc in coverages_json
+    }
+
+    ret = []
+    for i in range(xstart, xstop+1):
+        if i in coverages:
+            ret.append(coverages[i])
+        else:
+            ret.append({'xpos': i, 'pos': xpos_to_pos(i)})
+    for item in ret:
+        item['has_coverage'] = 'mean' in item
+        del item['xpos']
+
+    print 'parsed %s base(s) from %s-%s-%s in %s sec' % (len(coverages_json), contig, start, stop, time.time() - start_time)
+
+    return ret
+
+# DT: version that uses mongodb
+'''
 def get_coverage_for_bases(db, xstart, xstop=None):
     """
     Get the coverage for the list of bases given by xstart->xstop, inclusive
@@ -87,8 +144,49 @@ def get_coverage_for_bases(db, xstart, xstop=None):
         item['has_coverage'] = 'mean' in item
         del item['xpos']
     return ret
+'''
 
+# DT: version that uses tabix
+def get_coverage_for_transcript(tabix, contig, xstart, xstop=None, num_bins=None):
+    """
+    :param tabix:
+    :param contig:
+    :param xstart:
+    :param xstop:
+    :param num_bins: An approximate intented number of bins.
+    :return:
+    """
+ 
+    coverage_array = get_coverage_for_bases(tabix, contig, xstart, xstop)
 
+    # only return coverages that have coverage (if that makes any sense?)
+    # return coverage_array
+    covered = [c for c in coverage_array if c['has_coverage']]
+    for c in covered:
+        del c['has_coverage']
+
+    if num_bins is not None and xstop is not None:
+        bin_length = int((xstop - xstart) / num_bins) + 1
+        cur_bin = []
+        bins = []
+        for base in covered:
+            if cur_bin == [] or cur_bin[0]['pos']+bin_length > base['pos']:
+                cur_bin.append(base)
+            else:
+                avg_base = {}
+                for key in cur_bin[0]:
+                    avg_base[key] = sum(b[key] for b in cur_bin) / len(cur_bin)
+                avg_base['start_pos'] = cur_bin[0]['pos']
+                avg_base['stop_pos'] = cur_bin[-1]['pos']
+                del avg_base['pos']
+                bins.append(avg_base)
+                cur_bin = [base]
+        return bins
+   
+    return covered
+
+# DT: version that uses mongodb
+'''
 def get_coverage_for_transcript(db, xstart, xstop=None, num_bins=None):
     """
     :param db:
@@ -98,7 +196,7 @@ def get_coverage_for_transcript(db, xstart, xstop=None, num_bins=None):
     :param num_bins: An approximate intented number of bins.
     :return:
     """
-    coverage_array = get_coverage_for_bases(db, xstart, xstop)
+    coverage_array = get_coverage_for_bases_mongo(db, xstart, xstop)
     # only return coverages that have coverage (if that makes any sense?)
     # return coverage_array
     covered = [c for c in coverage_array if c['has_coverage']]
@@ -123,8 +221,8 @@ def get_coverage_for_transcript(db, xstart, xstop=None, num_bins=None):
                 cur_bin = [base]
         return bins
 
-    return covered
-
+   return covered
+'''
 
 def get_awesomebar_suggestions(g, query):
     """

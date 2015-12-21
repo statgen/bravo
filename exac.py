@@ -67,6 +67,33 @@ app.config.update(dict(
     DBSNP_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'dbsnp142.txt.bgz')
 ))
 
+# DT: load tabix files for base coverage
+FULL_COVERAGE_FILES = {
+   '1' : '/net/topmed/working/mongo/imported_data/coverage/full/1.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
+   '2' : '/net/topmed/working/mongo/imported_data/coverage/full/2.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
+   '3' : '/net/topmed/working/mongo/imported_data/coverage/full/3.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '4' : '/net/topmed/working/mongo/imported_data/coverage/full/4.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
+   '5' : '/net/topmed/working/mongo/imported_data/coverage/full/5.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
+   '6' : '/net/topmed/working/mongo/imported_data/coverage/full/6.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
+   '7' : '/net/topmed/working/mongo/imported_data/coverage/full/7.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
+   '8' : '/net/topmed/working/mongo/imported_data/coverage/full/8.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
+   '9' : '/net/topmed/working/mongo/imported_data/coverage/full/9.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
+   '10' : '/net/topmed/working/mongo/imported_data/coverage/full/10.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '11' : '/net/topmed/working/mongo/imported_data/coverage/full/11.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '12' : '/net/topmed/working/mongo/imported_data/coverage/full/12.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '13' : '/net/topmed/working/mongo/imported_data/coverage/full/13.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '14' : '/net/topmed/working/mongo/imported_data/coverage/full/14.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '15' : '/net/topmed/working/mongo/imported_data/coverage/full/15.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '16' : '/net/topmed/working/mongo/imported_data/coverage/full/16.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '17' : '/net/topmed/working/mongo/imported_data/coverage/full/17.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '18' : '/net/topmed/working/mongo/imported_data/coverage/full/18.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '19' : '/net/topmed/working/mongo/imported_data/coverage/full/19.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '21' : '/net/topmed/working/mongo/imported_data/coverage/full/20.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '21' : '/net/topmed/working/mongo/imported_data/coverage/full/21.topmed_freeze1c_20151119_4317.coverage.txt.gz',
+   '22' : '/net/topmed/working/mongo/imported_data/coverage/full/22.topmed_freeze1c_20151119_4317.coverage.txt.gz'
+}
+
+FULL_COVERAGE_TABIX = {contig: pysam.Tabixfile(file) for contig, file in FULL_COVERAGE_FILES.iteritems()}
 
 def connect_db():
     """
@@ -507,7 +534,9 @@ def variant_page(variant_str):
             for annotation in variant['vep_annotations']:
                 annotation['HGVS'] = get_proper_hgvs(annotation)
                 consequences[annotation['major_consequence']][annotation['Gene']].append(annotation)
-        base_coverage = lookups.get_coverage_for_bases(db, xpos, xpos + len(ref) - 1)
+        # DT: get coverage from tabix
+        base_coverage = lookups.get_coverage_for_bases(FULL_COVERAGE_TABIX[chrom], chrom, xpos, xpos + len(ref) - 1)
+        #base_coverage = lookups.get_coverage_for_bases(db, xpos, xpos + len(ref) - 1)
         any_covered = any([x['has_coverage'] for x in base_coverage])
         metrics = lookups.get_metrics(db, variant)
 
@@ -549,7 +578,10 @@ def get_gene_page_content(gene_id):
             transcript_id = gene['canonical_transcript']
             transcript = lookups.get_transcript(db, transcript_id)
             variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id, limit=200)
-            coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING) #, num_bins=1000)
+            # DT: get coverage from tabix
+            contig = str(transcript['xstart'] // 1000000000)
+            coverage_stats = lookups.get_coverage_for_transcript(FULL_COVERAGE_TABIX[contig], contig, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING) #, num_bins=1000)
+            #coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING) #, num_bins=1000)
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
             t = render_template(
@@ -584,8 +616,10 @@ def transcript_page(transcript_id):
             gene = lookups.get_gene(db, transcript['gene_id'])
             gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
             variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
-
-            coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+            # DT: get coverage from tabix
+            contig = str(transcript['xstart'] // 1000000000)
+            coverage_stats = lookups.get_coverage_for_transcript(FULL_COVERAGE_TABIX[contig], contig, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+            #coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
 
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
@@ -601,6 +635,7 @@ def transcript_page(transcript_id):
                 gene_json=json.dumps(gene),
                 csq_order=csq_order,
             )
+            
             cache.set(cache_key, t)
         return t
     except Exception, e:
@@ -677,7 +712,9 @@ def region_page(region_id):
             variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
             xstart = get_xpos(chrom, start)
             xstop = get_xpos(chrom, stop)
-            coverage_array = lookups.get_coverage_for_bases(db, xstart, xstop)
+            # DT: get coverage from tabix
+            coverage_array = lookups.get_coverage_for_bases(FULL_COVERAGE_TABIX[chrom], chrom, xstart, xstop)
+            #coverage_array = lookups.get_coverage_for_bases(db, xstart, xstop)
             t = render_template(
                 'region.html',
                 genes_in_region=genes_in_region,
@@ -832,4 +869,4 @@ def oauth_callback_google():
     return redirect(url_for('homepage'))
 
 if __name__ == "__main__":
-    app.run(host='gvs.sph.umich.edu', port=5000)
+    app.run(host='localhost', port=7777)
