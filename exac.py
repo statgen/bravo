@@ -15,7 +15,7 @@ import auth
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
 from flask.ext.compress import Compress
 from flask_errormail import mail_on_500
-from flask.ext.login import LoginManager, login_user, logout_user, current_user, login_required
+from flask.ext.login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from collections import defaultdict
 from werkzeug.contrib.cache import NullCache # TODO: for production, use FileSystemCache
 
@@ -825,11 +825,19 @@ http://omim.org/entry/%(omim_accession)s''' % gene
         return "Search types other than gene transcript not yet supported"
 
 # OAuth2
-users = {} # store by email
+users = {} # email -> User
 google_sign_in = auth.GoogleSignIn(app)
 
 lm = LoginManager(app)
 lm.login_view = 'homepage'
+
+class User(UserMixin):
+    "A user's id is their email address."
+    def __init__(self, username=None, email=None):
+        self.username = username
+        self.email = email
+    def get_id(self):
+        return unicode(self.email)
 
 @lm.user_loader
 def load_user(id):
@@ -838,7 +846,7 @@ def load_user(id):
         print('user [{!r}] found with id [{!r}]'.format(u, id))
     except KeyError:
         print('user not found with id [{!r}]'.format(id))
-        u = None
+        u = None # This method is supposed to support bad `id`s.
     return u
 
 @app.route('/authorize/google')
@@ -862,7 +870,8 @@ def oauth_callback_google():
     try:
         user = users[email]
     except KeyError:
-        users[email] = username or email.split('@')[0]
+        user = User(email=email, username=username or email.split('@')[0])
+        users[email] = user
     # Log in the user, by default remembering them for their next visit
     # unless they log out.
     login_user(user, remember=True)
