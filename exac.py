@@ -838,6 +838,8 @@ class User(UserMixin):
         self.email = email
     def get_id(self):
         return unicode(self.email)
+    def __repr__(self):
+        return "<User email={!r} username={!r}>".format(self.email, self.username)
 
 @lm.user_loader
 def load_user(id):
