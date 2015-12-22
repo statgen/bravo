@@ -30,14 +30,15 @@ class GoogleSignIn(object):
     def callback(self):
         if 'code' not in request.args:
             return None, None, None
+        # The following two commands are based on `requests` and pass **kwargs to it.
         oauth_session = self.service.get_auth_session(
                 data={'code': request.args['code'],
                       'grant_type': 'authorization_code',
                       'redirect_uri': self.get_callback_url()
                      },
                 decoder = json.loads,
-                verify = False
+                verify = '/etc/ssl/certs'
         )
-        me = oauth_session.get('', verify=False).json()
+        me = oauth_session.get('', verify='/etc/ssl/certs').json()
         return (me['name'],
                 me['email'])
