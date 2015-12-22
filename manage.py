@@ -1,10 +1,9 @@
 #!/usr/bin/env python2
 
 from flask.ext.script import Manager
-from exac import app
 import exac
 
-manager = Manager(app)
+manager = Manager(exac.app)
 
 
 @manager.command
