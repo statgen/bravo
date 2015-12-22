@@ -35,8 +35,9 @@ class GoogleSignIn(object):
                       'grant_type': 'authorization_code',
                       'redirect_uri': self.get_callback_url()
                      },
-                decoder = json.loads
+                decoder = json.loads,
+                verify = False
         )
-        me = oauth_session.get('').json()
+        me = oauth_session.get('', verify=False).json()
         return (me['name'],
                 me['email'])
