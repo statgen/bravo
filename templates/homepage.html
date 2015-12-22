@@ -5,10 +5,22 @@
     </script>
     <div class="container">
         {% for message in get_flashed_messages() %}
+        <br><br><br>
         <p><b>Error:</b> {{ message }}</p>
         {% endfor %}
         {% if not current_user.is_authenticated %}
-        <p><a href="{{ url_for('oauth_authorize_google') }}">Login with Google</a></p>
+        <div class="jumbotron" style="margin-top:3em">
+          <p>To protect the privacy of our study participants, you must log in to view our data.</p>
+          <br>
+          <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('oauth_authorize_google') }}">Click here to login with Google</a><p>
+        </div>
+        <script>
+        $(function() {
+          $('#home-searchbox-input')
+          //.prop('disabled', true)
+          .css("background-color", "lightgray");
+        });
+        </script>
         {% endif %}
         <h1 id="home-title">TOPVAR Variant Server</h1>
         <div class="row">
