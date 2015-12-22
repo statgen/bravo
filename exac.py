@@ -856,8 +856,7 @@ def oauth_authorize_google():
     # Flask-Login function
     if not current_user.is_anonymous: # If a user is already logged in, just redirect to the homepage
         return redirect(url_for('homepage'))
-    oauth = google_sign_in
-    return oauth.authorize()
+    return google_sign_in.authorize()
 
 @app.route('/callback/google')
 def oauth_callback_google():
