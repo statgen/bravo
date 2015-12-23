@@ -3,6 +3,7 @@
     <script>
         $('#navbar_form_container').hide();
     </script>
+    <br>
     <div class="container">
         {% for message in get_flashed_messages() %}
         <br><br><br>
@@ -12,15 +13,10 @@
         <div class="jumbotron" style="margin-top:3em">
           <p>To protect the privacy of our study participants, you must log in to view our data.</p>
           <br>
-          <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('oauth_authorize_google') }}">Click here to login with Google</a><p>
+          <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('login_with_google') }}">Click here to login with Google</a><p>
         </div>
-        <script>
-        $(function() {
-          $('#home-searchbox-input')
-          //.prop('disabled', true)
-          .css("background-color", "lightgray");
-        });
-        </script>
+        {% else %}
+        <p><a class="btn btn-primary" role="button" href="{{ url_for('logout') }}" style="float:right">Logout</a><p>
         {% endif %}
         <h1 id="home-title">TOPVAR Variant Server</h1>
         <div class="row">

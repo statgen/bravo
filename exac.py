@@ -24,6 +24,7 @@ import glob
 import traceback
 import time
 import sys
+import functools
 
 ADMINISTRATORS = (
     'pjvh@umich.edu',
@@ -464,6 +465,20 @@ def get_db():
 #     if hasattr(g, 'db_conn'):
 #         g.db_conn.close()
 
+def require_agreement_to_terms_and_store_destination(func):
+    "This decorator for routes checks that the user is logged in and has agreed to the terms. If they haven't, their intended destination is stored and they're sent to get authorized."
+    # inspired by <https://flask-login.readthedocs.org/en/latest/_modules/flask_login.html#login_required>
+    @functools.wraps(func)
+    def decorated_view(*args, **kwargs):
+        if hasattr(current_user, 'agreed_to_terms') and current_user.agreed_to_terms:
+            return func(*args, **kwargs)
+        else:
+            print('unauthorized user {!r} visited the url [{!r}]'.format(current_user, request.path))
+            session['original_destination'] = request.path
+            return redirect(url_for('get_authorized'))
+        return func(*args, **kwargs)
+    return decorated_view
+
 
 @app.route('/')
 def homepage():
@@ -558,7 +573,6 @@ def variant_page(variant_str):
 @app.route('/gene/<gene_id>')
 def gene_page(gene_id):
     return get_gene_page_content(gene_id)
-
 
 def get_gene_page_content(gene_id):
     db = get_db()
@@ -678,6 +692,7 @@ def variants_region_api(region_id):
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
 
+@require_agreement_to_terms_and_store_destination
 @app.route('/region/<region_id>')
 def region_page(region_id):
     db = get_db()
@@ -836,10 +851,11 @@ class User(UserMixin):
     def __init__(self, username=None, email=None):
         self.username = username
         self.email = email
+        self.agreed_to_terms = False
     def get_id(self):
-        return unicode(self.email)
+        return self.email
     def __repr__(self):
-        return "<User email={!r} username={!r}>".format(self.email, self.username)
+        return "<User email={!r} username={!r} agreed_to_terms={!r}>".format(self.email, self.username, self.agreed_to_terms)
 
 @lm.user_loader
 def load_user(id):
@@ -851,12 +867,40 @@ def load_user(id):
         u = None # This method is supposed to support bad `id`s.
     return u
 
-@app.route('/authorize/google')
-def oauth_authorize_google():
-    # Flask-Login function
-    if not current_user.is_anonymous: # If a user is already logged in, just redirect to the homepage
-        return redirect(url_for('homepage'))
-    return google_sign_in.authorize()
+@app.route('/agreed_to_terms')
+def agree_to_terms():
+    "this route is for when the user has clicked 'I agree to the terms'."
+    if not current_user.is_anonymous:
+        current_user.agreed_to_terms = True
+    print('User [{!r}] agreed to the terms!'.format(current_user))
+    return redirect(url_for('get_authorized'))
+
+@app.route('/logout')
+def logout():
+    print('logging out user {!r}'.format(current_user))
+    logout_user()
+    return redirect(url_for('homepage'))
+
+@app.route('/login_with_google')
+def login_with_google():
+    "this route is for the login button"
+    session['original_destination'] = url_for('homepage')
+    return redirect(url_for('get_authorized'))
+
+@app.route('/get_authorized')
+def get_authorized():
+    "This route tries to be clever and handle lots of situations."
+    if current_user.is_anonymous:
+        return google_sign_in.authorize()
+    elif not current_user.agreed_to_terms:
+        return redirect(url_for('terms_page'))
+    else:
+        if 'original_destination' in session:
+            orig_dest = session['original_destination']
+            del session['original_destination'] # We don't want old destinations hanging around.  If this leads to problems with re-opening windows, disable this line.
+        else:
+            orig_dest = '/'
+        return redirect(orig_dest)
 
 @app.route('/callback/google')
 def oauth_callback_google():
@@ -873,10 +917,12 @@ def oauth_callback_google():
     except KeyError:
         user = User(email=email, username=username or email.split('@')[0])
         users[email] = user
+
     # Log in the user, by default remembering them for their next visit
     # unless they log out.
     login_user(user, remember=True)
-    return redirect(url_for('homepage'))
+
+    return redirect(url_for('get_authorized'))
 
 if __name__ == "__main__":
     app.run(host='localhost', port=7777)
