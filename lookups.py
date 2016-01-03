@@ -65,43 +65,27 @@ def get_variants_from_dbsnp(db, rsid):
     return []
 
 # DT: version that uses tabix
-def get_coverage_for_bases(tabix, contig, xstart, xstop=None):
+def get_coverage_for_bases(coverages, xstart, xstop=None):
     """
     Get the coverage for the list of bases given by xstart->xstop, inclusive
     Returns list of coverage dicts sorted by pos
     xstop can be None if just one base, but you'll still get back a list
     """
 
-    start = xpos_to_pos(xstart)
-
     if xstop is None:
         xstop = xstart 
-
-    stop = xpos_to_pos(xstop)
-      
+     
     start_time = time.time()
-   
-    coverages_json = [{
-        'xpos': long(get_single_location('chr' + contig, int(row[1]))),
-        'pos' : float(row[1]), 
-        'mean': float(row[2]), 
-        'median': float(row[3]), 
-        '1': float(row[4]), 
-        '5': float(row[5]), 
-        '10': float(row[6]), 
-        '15': float(row[7]), 
-        '20': float(row[8]), 
-        '25': float(row[9]), 
-        '30': float(row[10]), 
-        '50': float(row[11]), 
-        '100': float(row[12])} for row in tabix.fetch(str(contig), start, stop + 1, parser=pysam.asTuple())]
 
-    print 'tabix\'ed %s base(s) from %s-%s-%s in %s sec' % (len(coverages_json), contig, start, stop, time.time() - start_time)
+    coverages_json = coverages.getCoverageX(xstart, xstop)   
+
+    print 'tabix\'ed %s base(s) from %s-%s in %s sec' % (len(coverages_json), xstart, xstop, time.time() - start_time)
 
     start_time = time.time()
 
     coverages = {
-        doc['xpos']: doc for doc in coverages_json
+        #doc['xpos']: doc for doc in coverages_json
+        long(get_single_location('chr' + doc['chrom'], doc['pos'])): doc for doc in coverages_json
     }
 
     ret = []
@@ -112,9 +96,9 @@ def get_coverage_for_bases(tabix, contig, xstart, xstop=None):
             ret.append({'xpos': i, 'pos': xpos_to_pos(i)})
     for item in ret:
         item['has_coverage'] = 'mean' in item
-        del item['xpos']
+        #del item['xpos']
 
-    print 'parsed %s base(s) from %s-%s-%s in %s sec' % (len(coverages_json), contig, start, stop, time.time() - start_time)
+    print 'parsed %s base(s) from %s-%s in %s sec' % (len(ret), xstart, xstop, time.time() - start_time)
 
     return ret
 
@@ -147,7 +131,7 @@ def get_coverage_for_bases(db, xstart, xstop=None):
 '''
 
 # DT: version that uses tabix
-def get_coverage_for_transcript(tabix, contig, xstart, xstop=None, num_bins=None):
+def get_coverage_for_transcript(coverages, xstart, xstop=None, num_bins=None):
     """
     :param tabix:
     :param contig:
@@ -157,7 +141,7 @@ def get_coverage_for_transcript(tabix, contig, xstart, xstop=None, num_bins=None
     :return:
     """
  
-    coverage_array = get_coverage_for_bases(tabix, contig, xstart, xstop)
+    coverage_array = get_coverage_for_bases(coverages, xstart, xstop)
 
     # only return coverages that have coverage (if that makes any sense?)
     # return coverage_array

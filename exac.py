@@ -10,6 +10,7 @@ from parsing import *
 import lookups
 import random
 from utils import *
+from pycoverage import *
 import auth
 
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
@@ -70,31 +71,65 @@ app.config.update(dict(
 
 # DT: load tabix files for base coverage
 FULL_COVERAGE_FILES = {
-   '1' : '/net/topmed/working/mongo/imported_data/coverage/full/1.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
-   '2' : '/net/topmed/working/mongo/imported_data/coverage/full/2.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
-   '3' : '/net/topmed/working/mongo/imported_data/coverage/full/3.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '4' : '/net/topmed/working/mongo/imported_data/coverage/full/4.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
-   '5' : '/net/topmed/working/mongo/imported_data/coverage/full/5.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
-   '6' : '/net/topmed/working/mongo/imported_data/coverage/full/6.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
-   '7' : '/net/topmed/working/mongo/imported_data/coverage/full/7.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
-   '8' : '/net/topmed/working/mongo/imported_data/coverage/full/8.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
-   '9' : '/net/topmed/working/mongo/imported_data/coverage/full/9.topmed_freeze1c_20151119_4317.coverage.txt.gz', 
-   '10' : '/net/topmed/working/mongo/imported_data/coverage/full/10.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '11' : '/net/topmed/working/mongo/imported_data/coverage/full/11.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '12' : '/net/topmed/working/mongo/imported_data/coverage/full/12.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '13' : '/net/topmed/working/mongo/imported_data/coverage/full/13.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '14' : '/net/topmed/working/mongo/imported_data/coverage/full/14.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '15' : '/net/topmed/working/mongo/imported_data/coverage/full/15.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '16' : '/net/topmed/working/mongo/imported_data/coverage/full/16.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '17' : '/net/topmed/working/mongo/imported_data/coverage/full/17.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '18' : '/net/topmed/working/mongo/imported_data/coverage/full/18.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '19' : '/net/topmed/working/mongo/imported_data/coverage/full/19.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '21' : '/net/topmed/working/mongo/imported_data/coverage/full/20.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '21' : '/net/topmed/working/mongo/imported_data/coverage/full/21.topmed_freeze1c_20151119_4317.coverage.txt.gz',
-   '22' : '/net/topmed/working/mongo/imported_data/coverage/full/22.topmed_freeze1c_20151119_4317.coverage.txt.gz'
+   '1' : '/net/topmed/working/mongo/imported_data/coverage/full_json/1.topmed_freeze1c_20151119_4317.coverage.json.gz', 
+   '2' : '/net/topmed/working/mongo/imported_data/coverage/full_json/2.topmed_freeze1c_20151119_4317.coverage.json.gz', 
+   '3' : '/net/topmed/working/mongo/imported_data/coverage/full_json/3.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '4' : '/net/topmed/working/mongo/imported_data/coverage/full_json/4.topmed_freeze1c_20151119_4317.coverage.json.gz', 
+   '5' : '/net/topmed/working/mongo/imported_data/coverage/full_json/5.topmed_freeze1c_20151119_4317.coverage.json.gz', 
+   '6' : '/net/topmed/working/mongo/imported_data/coverage/full_json/6.topmed_freeze1c_20151119_4317.coverage.json.gz', 
+   '7' : '/net/topmed/working/mongo/imported_data/coverage/full_json/7.topmed_freeze1c_20151119_4317.coverage.json.gz', 
+   '8' : '/net/topmed/working/mongo/imported_data/coverage/full_json/8.topmed_freeze1c_20151119_4317.coverage.json.gz', 
+   '9' : '/net/topmed/working/mongo/imported_data/coverage/full_json/9.topmed_freeze1c_20151119_4317.coverage.json.gz', 
+   '10' : '/net/topmed/working/mongo/imported_data/coverage/full_json/10.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '11' : '/net/topmed/working/mongo/imported_data/coverage/full_json/11.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '12' : '/net/topmed/working/mongo/imported_data/coverage/full_json/12.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '13' : '/net/topmed/working/mongo/imported_data/coverage/full_json/13.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '14' : '/net/topmed/working/mongo/imported_data/coverage/full_json/14.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '15' : '/net/topmed/working/mongo/imported_data/coverage/full_json/15.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '16' : '/net/topmed/working/mongo/imported_data/coverage/full_json/16.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '17' : '/net/topmed/working/mongo/imported_data/coverage/full_json/17.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '18' : '/net/topmed/working/mongo/imported_data/coverage/full_json/18.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '19' : '/net/topmed/working/mongo/imported_data/coverage/full_json/19.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '20' : '/net/topmed/working/mongo/imported_data/coverage/full_json/20.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '21' : '/net/topmed/working/mongo/imported_data/coverage/full_json/21.topmed_freeze1c_20151119_4317.coverage.json.gz',
+   '22' : '/net/topmed/working/mongo/imported_data/coverage/full_json/22.topmed_freeze1c_20151119_4317.coverage.json.gz'
 }
 
-FULL_COVERAGE_TABIX = {contig: pysam.Tabixfile(file) for contig, file in FULL_COVERAGE_FILES.iteritems()}
+BINNED_COVERAGE_FILES = {
+#   '1' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/1.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+#   '2' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/2.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+#   '3' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/3.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '4' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/4.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+#   '5' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/5.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+#   '6' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/6.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+#   '7' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/7.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+#   '8' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/8.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+#   '9' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/9.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+#   '10' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/10.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '11' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/11.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '12' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/12.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '13' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/13.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '14' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/14.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '15' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/15.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '16' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/16.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '17' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/17.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '18' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/18.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '19' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/19.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '20' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/20.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+#   '21' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/21.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '22' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/22.topmed_freeze1c_20151119_4317.coverage.bins.json.gz'
+}
+
+coverages = CoverageCollection()
+
+for contig, file in FULL_COVERAGE_FILES.iteritems():
+#    coverages.setTabixPath(0, 50000, contig, file)
+    coverages.setTabixPath(0, sys.maxint, contig, file)
+
+#for contig, file in BINNED_COVERAGE_FILES.iteritems():
+#    coverages.setTabixPath(50000, sys.maxint, contig, file)
+
+coverages.openAll()
 
 def connect_db():
     """
@@ -550,7 +585,7 @@ def variant_page(variant_str):
                 annotation['HGVS'] = get_proper_hgvs(annotation)
                 consequences[annotation['major_consequence']][annotation['Gene']].append(annotation)
         # DT: get coverage from tabix
-        base_coverage = lookups.get_coverage_for_bases(FULL_COVERAGE_TABIX[chrom], chrom, xpos, xpos + len(ref) - 1)
+        base_coverage = lookups.get_coverage_for_bases(coverages, xpos, xpos + len(ref) - 1)
         #base_coverage = lookups.get_coverage_for_bases(db, xpos, xpos + len(ref) - 1)
         any_covered = any([x['has_coverage'] for x in base_coverage])
         metrics = lookups.get_metrics(db, variant)
@@ -593,8 +628,7 @@ def get_gene_page_content(gene_id):
             transcript = lookups.get_transcript(db, transcript_id)
             variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id, limit=200)
             # DT: get coverage from tabix
-            contig = str(transcript['xstart'] // 1000000000)
-            coverage_stats = lookups.get_coverage_for_transcript(FULL_COVERAGE_TABIX[contig], contig, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING) #, num_bins=1000)
+            coverage_stats = lookups.get_coverage_for_transcript(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING) #, num_bins=1000)
             #coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING) #, num_bins=1000)
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
@@ -631,8 +665,7 @@ def transcript_page(transcript_id):
             gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
             variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
             # DT: get coverage from tabix
-            contig = str(transcript['xstart'] // 1000000000)
-            coverage_stats = lookups.get_coverage_for_transcript(FULL_COVERAGE_TABIX[contig], contig, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+            coverage_stats = lookups.get_coverage_for_transcript(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
             #coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
 
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
@@ -728,7 +761,7 @@ def region_page(region_id):
             xstart = get_xpos(chrom, start)
             xstop = get_xpos(chrom, stop)
             # DT: get coverage from tabix
-            coverage_array = lookups.get_coverage_for_bases(FULL_COVERAGE_TABIX[chrom], chrom, xstart, xstop)
+            coverage_array = lookups.get_coverage_for_bases(coverages, xstart, xstop)
             #coverage_array = lookups.get_coverage_for_bases(db, xstart, xstop)
             t = render_template(
                 'region.html',
