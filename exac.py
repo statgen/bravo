@@ -16,7 +16,7 @@ import auth
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
 from flask.ext.compress import Compress
 from flask_errormail import mail_on_500
-from flask.ext.login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
+from flask.ext.login import LoginManager, UserMixin, login_user, logout_user, current_user
 from collections import defaultdict
 from werkzeug.contrib.cache import NullCache # TODO: for production, use FileSystemCache
 
@@ -501,7 +501,11 @@ def get_db():
 #         g.db_conn.close()
 
 def require_agreement_to_terms_and_store_destination(func):
-    "This decorator for routes checks that the user is logged in and has agreed to the terms. If they haven't, their intended destination is stored and they're sent to get authorized."
+    """
+    This decorator for routes checks that the user is logged in and has agreed to the terms.
+    If they haven't, their intended destination is stored and they're sent to get authorized.
+    I think that it has to be placed AFTER @app.route() so that it can capture `request.path`.
+    """
     # inspired by <https://flask-login.readthedocs.org/en/latest/_modules/flask_login.html#login_required>
     @functools.wraps(func)
     def decorated_view(*args, **kwargs):
@@ -557,6 +561,7 @@ def awesome():
 
 
 @app.route('/variant/<variant_str>')
+@require_agreement_to_terms_and_store_destination
 def variant_page(variant_str):
     db = get_db()
     try:
@@ -606,6 +611,7 @@ def variant_page(variant_str):
 
 
 @app.route('/gene/<gene_id>')
+@require_agreement_to_terms_and_store_destination
 def gene_page(gene_id):
     return get_gene_page_content(gene_id)
 
@@ -651,6 +657,7 @@ def get_gene_page_content(gene_id):
 
 
 @app.route('/transcript/<transcript_id>')
+@require_agreement_to_terms_and_store_destination
 def transcript_page(transcript_id):
     db = get_db()
     try:
@@ -690,6 +697,7 @@ def transcript_page(transcript_id):
         abort(404)
 
 @app.route('/api/variants_in_gene/<gene_id>')
+@require_agreement_to_terms_and_store_destination
 def variants_gene_api(gene_id):
     # TODO use `cache`
     db = get_db()
@@ -701,6 +709,7 @@ def variants_gene_api(gene_id):
         abort(404)
 
 @app.route('/api/variants_in_transcript/<transcript_id>')
+@require_agreement_to_terms_and_store_destination
 def variants_transcript_api(transcript_id):
     # TODO use `cache`
     db = get_db()
@@ -713,6 +722,7 @@ def variants_transcript_api(transcript_id):
         abort(404)
 
 @app.route('/api/variants_in_region/<region_id>')
+@require_agreement_to_terms_and_store_destination
 def variants_region_api(region_id):
     # TODO use `cache`
     db = get_db()
@@ -725,8 +735,8 @@ def variants_region_api(region_id):
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@require_agreement_to_terms_and_store_destination
 @app.route('/region/<region_id>')
+@require_agreement_to_terms_and_store_destination
 def region_page(region_id):
     db = get_db()
     try:
@@ -781,6 +791,7 @@ def region_page(region_id):
 
 
 @app.route('/dbsnp/<rsid>')
+@require_agreement_to_terms_and_store_destination
 def dbsnp_page(rsid):
     db = get_db()
     try:
