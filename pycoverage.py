@@ -1,16 +1,16 @@
 import json
 import pysam
 from intervaltree import IntervalTree
-import sys   
- 
+import sys
+
 class Coverage(object):
-    
+
     def __init__(self):
         self.tabix_path = {}
         self.tabix_handler = {}
 
-    def setTabixPath(self, contig, path): 
-        self.tabix_path[contig] = path 
+    def setTabixPath(self, contig, path):
+        self.tabix_path[contig] = path
 
     def open(self):
         self.tabix_handler = {contig: pysam.Tabixfile(path) for contig, path in self.tabix_path.iteritems()}
@@ -26,16 +26,16 @@ class Coverage(object):
         contig = str(xstart // 1000000000)
         start = xstart % 1000000000
         end = xend % 1000000000
-        return self.getCoverage(contig, start, end) 
+        return self.getCoverage(contig, start, end)
 
 
 class CoverageCollection(object):
 
     def __init__(self):
-        self.collection = IntervalTree()      
+        self.collection = IntervalTree()
 
     def setTabixPath(self, min_length, max_length, contig, path):
-        coverages = self.collection.search(min_length, max_length) 
+        coverages = self.collection.search(min_length, max_length)
         if coverages:
             for coverage in coverages:
                 coverage.data.setTabixPath(contig, path)
@@ -56,7 +56,7 @@ class CoverageCollection(object):
     def clearAll(self):
         self.closeAll()
         collection.clear()
-    
+
     def getCoverage(self, contig, start, end):
         for coverage in self.collection.search(end - start):
             return coverage.data.getCoverage(contig, start, end)
@@ -67,7 +67,7 @@ class CoverageCollection(object):
         for coverage in self.collection.search(xend - xstart):
             return coverage.data.getCoverageX(xstart, xend)
 
-        return []     
+        return []
 
     def printAll(self):
         for coverage in self.collection.items():
