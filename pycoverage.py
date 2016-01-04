@@ -1,9 +1,9 @@
 import json
 import pysam
-from intervaltree import *
+from intervaltree import IntervalTree
 import sys   
  
-class Coverage:
+class Coverage(object):
     
     def __init__(self):
         self.tabix_path = {}
@@ -29,7 +29,7 @@ class Coverage:
         return self.getCoverage(contig, start, end) 
 
 
-class CoverageCollection:
+class CoverageCollection(object):
 
     def __init__(self):
         self.collection = IntervalTree()      
@@ -72,5 +72,3 @@ class CoverageCollection:
     def printAll(self):
         for coverage in self.collection.items():
             print coverage
-
-
