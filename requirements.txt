@@ -9,3 +9,4 @@ numpy
 python-slugify
 rauth==0.7.2
 Flask-Login
+intervaltree
