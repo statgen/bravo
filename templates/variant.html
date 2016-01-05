@@ -232,16 +232,18 @@
                 <div class="col-md-6">
                     <div class="row">
                         <div class="col-md-8 col-md-offset-1">
-                            <div class="panel-group" role="tablist">
+                            <div class="panel-group" id="quality_metrics_accordion" role="tablist" aria-multiselectable="true">
+                              {# see http://getbootstrap.com/javascript/#collapse-example-accordion #}
                                 <div class="panel panel-default">
-                                    <div class="panel-heading" role="tab" style="height: auto">
+                                    <div class="panel-heading" role="tab" id="geno_quality_collapse_heading">
                                         <div class="panel-title">
-                                            <a data-toggle="collapse" href="#gt_quality_collapse" aria-expanded="true" aria-controls="gt_quality_collapse">
+                                            <a data-toggle="collapse" data-parent="#quality_metrics_accordion" href="#geno_quality_collapse"
+                                               aria-expanded="true" aria-controls="geno_quality_collapse">
                                                 <small>Genotype Quality Metrics</small>
                                             </a>
                                         </div>
                                     </div>
-                                    <div id="gt_quality_collapse" class="collapse in" role="tabpanel">
+                                    <div id="geno_quality_collapse" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="geno_quality_collapse_heading">
                                         <div class="row">
                                             <div class="col-md-10 col-md-offset-1">
                                                 <div id="quality_metrics_container">
@@ -274,14 +276,15 @@
                                     </div>
                                 </div>
                                 <div class="panel panel-default">
-                                    <div class="panel-heading" role="tab" style="height: auto">
+                                    <div class="panel-heading" role="tab" id="site_quality_collapse_heading">
                                         <div class="panel-title">
-                                            <a data-toggle="collapse" href="#site_quality_collapse" aria-expanded="true" aria-controls="site_quality_collapse">
+                                            <a data-toggle="collapse" data-parent="#quality_metrics_accordion" href="#site_quality_collapse"
+                                               aria-expanded="false" aria-controls="site_quality_collapse">
                                                 <small>Site Quality Metrics</small>
                                             </a>
                                         </div>
                                     </div>
-                                    <div id="site_quality_collapse" class="collapse in" role="tabpanel">
+                                    <div id="site_quality_collapse" class="panel-collapse collapse" role="tabpanel" aria-labelledby="site_quality_collapse_heading">
                                         <div class="row">
                                             <div class="col-md-10 col-md-offset-1">
                                                 <select id="quality_metric_select" class="form-control">
