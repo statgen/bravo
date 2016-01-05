@@ -122,12 +122,13 @@ BINNED_COVERAGE_FILES = {
 
 coverages = CoverageCollection()
 
+region_size_bin_threshold = 5000
 for contig, file in FULL_COVERAGE_FILES.iteritems():
-    coverages.setTabixPath(0, 50000, contig, file)
+    coverages.setTabixPath(0, region_size_bin_threshold, contig, file)
 #    coverages.setTabixPath(0, sys.maxint, contig, file)
 
 for contig, file in BINNED_COVERAGE_FILES.iteritems():
-    coverages.setTabixPath(50000, sys.maxint, contig, file)
+    coverages.setTabixPath(region_size_bin_threshold, sys.maxint, contig, file)
 
 coverages.openAll()
 
