@@ -16,7 +16,7 @@
           <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('login_with_google') }}">Click here to login with Google</a><p>
         </div>
         {% else %}
-        <p><a class="btn btn-primary" role="button" href="{{ url_for('logout') }}" style="float:right">Logout</a><p>
+        <p><a class="btn btn-primary" role="button" href="{{ url_for('logout') }}" style="float:right">Logout as {{ current_user.email }}</a><p>
         {% endif %}
         <h1 id="home-title">TOPVAR Variant Server</h1>
         <div class="row">
