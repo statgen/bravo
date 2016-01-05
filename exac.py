@@ -96,38 +96,38 @@ FULL_COVERAGE_FILES = {
 }
 
 BINNED_COVERAGE_FILES = {
-#   '1' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/1.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-#   '2' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/2.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-#   '3' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/3.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '4' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/4.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-#   '5' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/5.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-#   '6' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/6.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-#   '7' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/7.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-#   '8' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/8.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-#   '9' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/9.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-#   '10' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/10.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '11' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/11.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '12' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/12.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '13' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/13.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '14' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/14.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '15' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/15.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '16' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/16.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '17' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/17.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '18' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/18.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '19' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/19.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '20' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/20.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-#   '21' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/21.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '1' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/1.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+   '2' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/2.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+   '3' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/3.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '4' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/4.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+   '5' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/5.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+   '6' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/6.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+   '7' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/7.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+   '8' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/8.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+   '9' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/9.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
+   '10' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/10.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '11' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/11.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '12' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/12.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '13' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/13.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '14' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/14.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '15' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/15.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '16' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/16.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '17' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/17.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '18' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/18.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '19' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/19.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '20' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/20.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
+   '21' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/21.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
    '22' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/22.topmed_freeze1c_20151119_4317.coverage.bins.json.gz'
 }
 
 coverages = CoverageCollection()
 
 for contig, file in FULL_COVERAGE_FILES.iteritems():
-#    coverages.setTabixPath(0, 50000, contig, file)
-    coverages.setTabixPath(0, sys.maxint, contig, file)
+    coverages.setTabixPath(0, 50000, contig, file)
+#    coverages.setTabixPath(0, sys.maxint, contig, file)
 
-#for contig, file in BINNED_COVERAGE_FILES.iteritems():
-#    coverages.setTabixPath(50000, sys.maxint, contig, file)
+for contig, file in BINNED_COVERAGE_FILES.iteritems():
+    coverages.setTabixPath(50000, sys.maxint, contig, file)
 
 coverages.openAll()
 
