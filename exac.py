@@ -635,8 +635,7 @@ def get_gene_page_content(gene_id):
             transcript = lookups.get_transcript(db, transcript_id)
             variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id, limit=200)
             # DT: get coverage from tabix
-            coverage_stats = lookups.get_coverage_for_transcript(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING) #, num_bins=1000)
-            #coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING) #, num_bins=1000)
+            coverage_stats = lookups.get_coverage_for_transcript(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
             t = render_template(

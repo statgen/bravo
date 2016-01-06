@@ -131,16 +131,15 @@ def get_coverage_for_bases(db, xstart, xstop=None):
 '''
 
 # DT: version that uses tabix
-def get_coverage_for_transcript(coverages, xstart, xstop=None, num_bins=None):
+def get_coverage_for_transcript(coverages, xstart, xstop=None):
     """
     :param tabix:
     :param contig:
     :param xstart:
     :param xstop:
-    :param num_bins: An approximate intented number of bins.
     :return:
     """
- 
+
     coverage_array = get_coverage_for_bases(coverages, xstart, xstop)
 
     # only return coverages that have coverage (if that makes any sense?)
@@ -149,24 +148,6 @@ def get_coverage_for_transcript(coverages, xstart, xstop=None, num_bins=None):
     for c in covered:
         del c['has_coverage']
 
-    if num_bins is not None and xstop is not None:
-        bin_length = int((xstop - xstart) / num_bins) + 1
-        cur_bin = []
-        bins = []
-        for base in covered:
-            if cur_bin == [] or cur_bin[0]['pos']+bin_length > base['pos']:
-                cur_bin.append(base)
-            else:
-                avg_base = {}
-                for key in cur_bin[0]:
-                    avg_base[key] = sum(b[key] for b in cur_bin) / len(cur_bin)
-                avg_base['start_pos'] = cur_bin[0]['pos']
-                avg_base['stop_pos'] = cur_bin[-1]['pos']
-                del avg_base['pos']
-                bins.append(avg_base)
-                cur_bin = [base]
-        return bins
-   
     return covered
 
 # DT: version that uses mongodb
