@@ -965,4 +965,4 @@ def oauth_callback_google():
     return redirect(url_for('get_authorized'))
 
 if __name__ == "__main__":
-    app.run(host='localhost', port=7777)
+    app.run(host='gvs.sph.umich.edu', port=5000, threaded=True)
