@@ -842,7 +842,6 @@ def terms_page():
 
 
 # OAuth2
-users = {} # email -> User
 google_sign_in = auth.GoogleSignIn(app)
 
 lm = LoginManager(app)
@@ -850,30 +849,44 @@ lm.login_view = 'homepage'
 
 class User(UserMixin):
     "A user's id is their email address."
-    def __init__(self, username=None, email=None):
+    def __init__(self, username=None, email=None, agreed_to_terms=False):
         self.username = username
         self.email = email
-        self.agreed_to_terms = False
+        self.agreed_to_terms = agreed_to_terms
     def get_id(self):
         return self.email
     def __repr__(self):
         return "<User email={!r} username={!r} agreed_to_terms={!r}>".format(self.email, self.username, self.agreed_to_terms)
 
+def encode_user(user):
+    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms}
+
+def decode_user(document):
+    assert document['_type'] == 'User'
+    return User(document['username'], document['email'], document['agreed_to_terms'])
+
 @lm.user_loader
 def load_user(id):
-    try:
-        u = users[id]
+    db = get_db()
+    document = db.users.find_one({'user_id': id}, projection = {'_id': False})
+
+    if document:
+        u = decode_user(document)
         print('user [{!r}] found with id [{!r}]'.format(u, id))
-    except KeyError:
+    else:
+        # This method is supposed to support bad `id`s.
         print('user not found with id [{!r}]'.format(id))
-        u = None # This method is supposed to support bad `id`s.
+        u = None
+
     return u
 
-@app.route('/agreed_to_terms')
+@app.route('/agree_to_terms')
 def agree_to_terms():
     "this route is for when the user has clicked 'I agree to the terms'."
     if not current_user.is_anonymous:
         current_user.agreed_to_terms = True
+        db = get_db()
+        result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})
     print('User [{!r}] agreed to the terms!'.format(current_user))
     return redirect(url_for('get_authorized'))
 
@@ -914,11 +927,15 @@ def oauth_callback_google():
         flash('Authentication failed.')
         return redirect(url_for('homepage'))
     # Look if the user already exists
-    try:
-        user = users[email]
-    except KeyError:
+
+    db = get_db()
+    document = db.users.find_one({'user_id': email}, projection = {'_id': False})
+
+    if document:
+        user = decode_user(document)
+    else:
         user = User(email=email, username=username or email.split('@')[0])
-        users[email] = user
+        db.users.insert(encode_user(user))
 
     # Log in the user, by default remembering them for their next visit
     # unless they log out.
