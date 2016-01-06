@@ -824,7 +824,6 @@ def not_found_page(query):
         query=query
     )
 
-
 @app.route('/error/<query>')
 @app.errorhandler(404)
 def error_page(query):
@@ -833,51 +832,14 @@ def error_page(query):
         query=query
     )
 
-
 @app.route('/about')
 def about_page():
     return render_template('about.html')
-
-
-@app.route('/participants')
-def participants_page():
-    return render_template('about.html')
-
 
 @app.route('/terms')
 def terms_page():
     return render_template('terms.html')
 
-
-@app.route('/contact')
-def contact_page():
-    return render_template('contact.html')
-
-
-@app.route('/faq')
-def faq_page():
-    return render_template('faq.html')
-
-
-@app.route('/text')
-def text_page():
-    db = get_db()
-    query = request.args.get('text')
-    datatype, identifier = lookups.get_awesomebar_result(db, query)
-    if datatype in ['gene', 'transcript']:
-        gene = lookups.get_gene(db, identifier)
-        link = "http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr%(chrom)s%%3A%(start)s-%(stop)s" % gene
-        output = '''Searched for %s. Found %s.
-%s; Canonical: %s.
-%s''' % (query, identifier, gene['full_gene_name'], gene['canonical_transcript'], link)
-        output += '' if 'omim_accession' not in gene else '''
-In OMIM: %(omim_description)s
-http://omim.org/entry/%(omim_accession)s''' % gene
-        return output
-    elif datatype == 'error' or datatype == 'not_found':
-        return "Gene/transcript %s not found" % query
-    else:
-        return "Search types other than gene transcript not yet supported"
 
 # OAuth2
 users = {} # email -> User
