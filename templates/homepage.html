@@ -5,10 +5,14 @@
     </script>
     <br>
     <div class="container">
-        {% for message in get_flashed_messages() %}
-        <br><br><br>
-        <p><b>Error:</b> {{ message }}</p>
-        {% endfor %}
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <br><br> {# Don't get stuck behind the navbar #}
+            {% for message in messages %}
+              <div class="alert alert-danger" role="alert"><b>Error:</b> {{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
         {% if not current_user.is_authenticated %}
         <div class="jumbotron" style="margin-top:3em">
           <p>To protect the privacy of our study participants, you must log in to view our data.</p>

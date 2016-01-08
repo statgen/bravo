@@ -925,6 +925,11 @@ def oauth_callback_google():
         # I need a valid email address for my user identification
         flash('Authentication failed.')
         return redirect(url_for('homepage'))
+
+    if email not in ['pjvh@umich.edu']:
+        flash('Your email is not in the list of allowed emails.')
+        return redirect(url_for('homepage'))
+
     # Look if the user already exists
 
     db = get_db()
