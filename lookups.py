@@ -329,7 +329,7 @@ def get_metrics(db, variant):
 
     # Rename
     for old_name, new_name in [("DP", "Total Depth"), ("MQ", "Mapping Quality")]:
-        if old_name in metrics:
+        if old_name in metrics and old_name in variant['quality_metrics']:
             metrics[new_name] = metrics[old_name]
             metrics[new_name]['metric'] = new_name
             del metrics[old_name]
