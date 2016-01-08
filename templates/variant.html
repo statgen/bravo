@@ -270,10 +270,10 @@
                             {% endif %}
                         </dt>
                         <dd>{{ variant.filter }}</dd>
-                        <dt>dbSNP</dt>
+                        <dt>Existing Variation</dt>
                         <dd>
                         {% if variant.rsids == [] %}
-                            Not found in dbSNP
+                            None found
                         {% else %}
                             {% for _rsid in variant.rsids %}
                                 <a href="http://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs={{ _rsid }}" target="_blank">{{ _rsid }}</a> 
