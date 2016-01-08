@@ -3,9 +3,12 @@
     <div class="container">
         <div class="row" style="font-size: 16px;">
             <h1>Terms of use</h1>
-            <p>You are required to abide by the following terms of use:</p>
+            <p>To use this site, you must agree with all of the following:</p>
             <ul>
-                <li>You will not attempt to download any dataset in bulk from the portal.
+                {% if not current_user.is_anonymous %}
+                <li>The name <b>{{ current_user.username }}</b> and the email <b>{{ current_user.email }}</b> correctly identify you.</li>
+                {% endif %}
+                <li>You will not attempt to download any dataset in bulk from this website.
                 <li>You will not attempt to re-identify or contact research participants.
                 <li>You will protect data confidentiality.
                 <li>You will not share any of the data with unauthorized users.
