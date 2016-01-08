@@ -124,7 +124,7 @@
                     var f = $(this).attr('id') == 'variant_site_button' ? 0 : 1;
                     var ylab = f ? 'Variant Carriers' : 'Individuals';
                     var xlab = $('.quality_display_buttons.active').text().replace(/^\s+|\s+$/g, '');
-                    draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, xlab === 'Depth', ylab);
+                    draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, xlab === 'Depth', xlab, ylab);
                 });
 
                 // Quality metric histograms
