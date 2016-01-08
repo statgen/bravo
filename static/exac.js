@@ -319,6 +319,9 @@ function add_line_to_quality_histogram(data, position, container, log) {
 }
 
 function draw_region_coverage(raw_data, metric, ref) {
+    // pjvh removed a bunch of functionality from this.  There's some useless code left behind.
+    // If this function gets a single base, it draws the full distribution.
+    // If it receives multiple bases, it draws a coverage graph, letting the user select mean, median, % > X
     region_chart_width = 500;
     region_chart_margin = {top: 10, right: 50, bottom: 55, left: 50};
     if (raw_data.length > 1) {
@@ -391,34 +394,24 @@ function draw_region_coverage(raw_data, metric, ref) {
                 .attr("y", function(d) { return y(d[metric]); });
         }
     } else {
-        PADDING = 1;
-        var data1 = {};
+        var data = {};
         $.each(raw_data[0], function(d, i) {
             var num = parseInt(d);
             if (!isNaN(num)) {
-                data1[d] = raw_data[0][d];
+                data[d] = raw_data[0][d];
             }
         });
-        var data2 = {};
-        data2['mean'] = raw_data[0]['mean'];
-        data2['median'] = raw_data[0]['median'];
 
-        var coverages = Object.keys(data1);
-        var other_labels = Object.keys(data2);
-        var all_labels = coverages.concat(Array.apply(null, Array(PADDING)).map(String.prototype.valueOf,""), other_labels);
+        var coverages = Object.keys(data);
+        var all_labels = coverages;
 
         var chart_width = region_chart_width;
-        var total_data_length = coverages.length + other_labels.length + PADDING;
         var x = d3.scale.linear()
-            .domain([0, total_data_length])
+            .domain([0, coverages.length])
             .range([0, chart_width]);
 
-        var y1 = d3.scale.linear()
-            .domain([0, d3.max(coverages, function(d) { return data1[d]; })])
-            .range([quality_chart_height, 0]);
-
-        var y2 = d3.scale.linear()
-            .domain([0, d3.max(other_labels, function(d) { return data2[d]; })])
+        var y = d3.scale.linear()
+            .domain([0, d3.max(coverages, function(d) { return data[d]; })])
             .range([quality_chart_height, 0]);
 
         var xAxis = d3.svg.axis()
@@ -426,13 +419,9 @@ function draw_region_coverage(raw_data, metric, ref) {
             .tickFormat(function(d) { return all_labels[d - 1]; })
             .orient("bottom");
 
-        var yAxis1 = d3.svg.axis()
-            .scale(y1)
+        var yAxis = d3.svg.axis()
+            .scale(y)
             .orient("left");
-
-        var yAxis2 = d3.svg.axis()
-            .scale(y2)
-            .orient("right");
 
         svg = d3.select('#region_coverage').append("svg")
             .attr('id', 'inner_svg')
@@ -449,9 +438,9 @@ function draw_region_coverage(raw_data, metric, ref) {
 
         bar.append("rect")
             .attr("x", function(d, i) { return x(i); })
-            .attr("width", chart_width/total_data_length)
-            .attr("height", function(d) { return quality_chart_height - y1(data1[d]); })
-            .attr("y", function(d) { return y1(data1[d]); });
+            .attr("width", chart_width/coverages.length)
+            .attr("height", function(d) { return quality_chart_height - y(data[d]); })
+            .attr("y", function(d) { return y(data[d]); });
 
         svg.append("g")
             .attr("class", "x axis")
@@ -460,25 +449,9 @@ function draw_region_coverage(raw_data, metric, ref) {
             .selectAll("text")
             .attr("transform", "translate(0, 10) rotate(45)");
 
-        var bar = svg.selectAll(".bar").select('g')
-            .data(other_labels)
-            .enter().append("g")
-            .attr("class", "bar");
-
-        bar.append("rect")
-            .attr("x", function(d, i) { return x(i + coverages.length + PADDING); })
-            .attr("width", chart_width/total_data_length)
-            .attr("height", function(d) { return quality_chart_height - y2(data2[d]); })
-            .attr("y", function(d) { return y2(data2[d]); });
-
         svg.append("g")
             .attr("class", "y axis")
-            .call(yAxis1);
-
-        svg.append("g")
-            .attr("class", "y axis")
-            .attr("transform", "translate(" + chart_width + " ,0)")
-            .call(yAxis2);
+            .call(yAxis);
 
         svg.append("text")
             .attr("class", "x label")
@@ -495,14 +468,6 @@ function draw_region_coverage(raw_data, metric, ref) {
             .attr("x", -quality_chart_height/2)
             .attr("y", -40)
             .text("Fraction individuals covered");
-        svg.append("text")
-            .attr("class", "y label")
-            .attr("text-anchor", "middle")
-            .style("font-size", "12px")
-            .attr("transform", "rotate(-90)")
-            .attr("x", -quality_chart_height/2)
-            .attr("y", region_chart_width+40)
-            .text("Depth");
     }
 }
 
