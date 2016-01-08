@@ -50,13 +50,13 @@
             $.getJSON(clinvar_search.xhr_url)
             .done(function(data) {
                 var link_text = (data.esearchresult.count !== "0") ? 'Open <%= name %> in ClinVar' : '<%= name %> is not in ClinVar';
-                var link_style = '';
+                var link_style = 'style="float:left; clear:both"';
                 if ($('#clinvar_loading').length !== 0) {
                     $('#clinvar_loading').remove();
-                    link_style = 'float:left; clear:both';
+                    link_style = ''; // One of the links must not float or clear, so that it can sit next to <dt>ClinVar</dt>
                 }
                 $('#clinvar').append(_.template(
-                    '<a href="<%= url %>" target="_blank" style="<%= style %>">' + link_text + ' <i class="fa fa-external-link"></i> </a> '
+                    '<a href="<%= url %>" target="_blank" <%= style %>>' + link_text + ' <i class="fa fa-external-link"></i> </a> '
                 )({name: clinvar_search.name, url: clinvar_search.webpage_url, style: link_style}));
             });
         });
