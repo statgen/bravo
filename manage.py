@@ -50,6 +50,9 @@ def precalculate_metrics():
 def precalculate_variant_consqequence_category():
     exac.precalculate_variant_consqequence_category()
 
+@manager.command
+def create_users():
+    exac.create_users()
 
 if __name__ == "__main__":
     manager.run()

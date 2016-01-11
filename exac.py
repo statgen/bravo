@@ -484,6 +484,13 @@ def precalculate_metrics():
     db.metrics.ensure_index('metric')
     print 'Done pre-calculating metrics!'
 
+def create_users():
+    db = get_db()
+    db.users.drop()
+    print 'Dropped users database.'
+    db.users.ensure_index('user_id')
+    print 'Created new users database.'
+    
 
 def get_db():
     """
