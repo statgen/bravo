@@ -45,7 +45,7 @@ REGION_LIMIT = 1E5
 EXON_PADDING = 50
 # Load default config and override config from an environment variable
 app.config.update(dict(
-    DB_HOST='topmed.sph.umich.edu',
+    DB_HOST='topmed.sph.umich.edu', 
     DB_PORT=27017,
     DB_NAME='topmed_chr22',
     DEBUG=True,
@@ -470,7 +470,7 @@ def precalculate_metrics():
         db.metrics.insert({
             'metric': metric,
             'mids': lefts,
-            'hist': list(hist[0])
+            'hist': hist[0].tolist()
         })
     for metric in binned_metrics:
         hist = numpy.histogram(map(numpy.log, binned_metrics[metric]), bins=40)
@@ -479,7 +479,7 @@ def precalculate_metrics():
         db.metrics.insert({
             'metric': 'binned_%s' % metric,
             'mids': mids,
-            'hist': list(hist[0])
+            'hist': hist[0].tolist()
         })
     db.metrics.ensure_index('metric')
     print 'Done pre-calculating metrics!'
