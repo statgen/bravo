@@ -23,7 +23,6 @@
             .done(function(data) {
                 window.table_variants = data;
                 $('#consequence_other_variant_button').removeClass('disabled').removeAttr('disabled').removeAttr('data-tooltip');
-                // We're no longer showing all the variants by default.  The user must click. build_variant_table();
             })
             .fail(function() {
                 console.log("XHR failed for gene.");
@@ -34,8 +33,6 @@
 
                 window.variants_in_transcript = data;
                 window.precalc_coding_coordinates(window.transcript, window.variants_in_transcript);
-                
-
                 update_variants();
             })
             .fail(function() {

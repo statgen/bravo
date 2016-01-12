@@ -22,14 +22,6 @@
     <script type="text/javascript" src="{{ url_for('static', filename='index.js') }}"></script>
     <script type="text/javascript" src="{{  url_for('static', filename='exac.js') }}"></script>
     <script type="text/javascript">
-        number_of_samples = 60706;
-        release_number = 0.3;
-        number_of_samples_full = 91796;
-        $(document).ready(function() {
-            $('.number_samples').html(Number(number_of_samples).toLocaleString('en'));
-            $('.number_samples_full').html(Number(number_of_samples_full).toLocaleString('en'));
-            $('.release_number').html(Number(release_number).toLocaleString('en'));
-        });
         $(function() {
             var bestPictures = new Bloodhound({
               datumTokenizer: Bloodhound.tokenizers.obj.whitespace('value'),
