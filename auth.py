@@ -20,6 +20,7 @@ class GoogleSignIn(object):
         return redirect(self.service.get_authorize_url(
             scope='email',
             response_type='code',
+            prompt='select_account',
             redirect_uri=self.get_callback_url())
             )
 
