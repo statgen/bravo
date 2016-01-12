@@ -47,7 +47,7 @@ EXON_PADDING = 50
 app.config.update(dict(
     DB_HOST='topmed.sph.umich.edu', 
     DB_PORT=27017,
-    DB_NAME='topmed_chr22',
+    DB_NAME='topmed',
     DEBUG=True,
     LOAD_DB_PARALLEL_PROCESSES = 2,  # contigs assigned to threads, so good to make this a factor of 24 (eg. 2,3,4,6,8)
     #SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ALL.chr22.*.VEP.vcf.gz')),
