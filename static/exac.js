@@ -103,7 +103,7 @@ window.get_coding_coordinate_params = function(_transcript, skip_utrs) {
     return ret;
 };
 
-window.precalc_coding_coordinates = function(_transcript, objects) {
+window.precalc_coding_coordinates = function(_transcript, objects, also_convert_bin_end) {
     var orig_positions = _.map(objects, function(o) { return o['pos'] });
     var new_positions;
     new_positions = get_coding_coordinates(_transcript, orig_positions, false);
@@ -114,6 +114,17 @@ window.precalc_coding_coordinates = function(_transcript, objects) {
     _.each(objects, function(o, i) {
         o['pos_coding_noutr'] = new_positions[i];
     });
+    if (also_convert_bin_end) {
+        orig_positions = _.map(objects, function(o) { return o['bin_end'] });
+        new_positions = get_coding_coordinates(_transcript, orig_positions, false);
+        _.each(objects, function(o, i) {
+            o['bin_end_coding'] = new_positions[i];
+        });
+        new_positions = get_coding_coordinates(_transcript, orig_positions, true);
+        _.each(objects, function(o, i) {
+            o['bin_end_coding_noutr'] = new_positions[i];
+        });
+    }
 };
 
 
