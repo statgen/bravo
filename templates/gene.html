@@ -33,11 +33,7 @@
             .done(function(data) {
 
                 window.variants_in_transcript = data;
-                // build_the_graph(); // TODO: update the graph in-place.  We need to cut that function in two.
-                window.precalc_coding_coordinates(window.transcript, window.variants_in_transcript, 'pos');
-                window.variants_in_transcript = _.filter(window.variants_in_transcript, function(variant) {
-                    return variant.pos_coding !== undefined; // TODO: There's no point to this. precalc_coding_coordinates uses -100 as a sentinel, not undefined.
-                });
+                window.precalc_coding_coordinates(window.transcript, window.variants_in_transcript);
                 
 
                 update_variants();

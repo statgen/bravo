@@ -40,7 +40,11 @@
 <br/>
 <script>
 function gene_chart(data, new_data, variant_data, _transcript) {
+    // This draws the coverage graph and the exons beneath it exactly once, using 'pos_coding_noutr', no details view, and 'mean'.
+    // Could half of this be replaced by a call to change_coverage_chart?
+
     var coords = 'pos_coding_noutr';
+    var coords_end = coords.replace('pos_', 'bin_end_');
     var coding_coordinate_params = get_coding_coordinate_params(_transcript, true);
     var chart_width = gene_chart_width;
     var metric = 'mean';
@@ -76,8 +80,19 @@ function gene_chart(data, new_data, variant_data, _transcript) {
             return (metric in d) ? y(d[metric]) : gene_chart_height;
         });
 
+    //This is a hack, revealing that I don't understand the surrounding code.
+    var my_datum = [];
+    _.each(data, function(d) {
+        if (d['pos_coding_noutr'] && d['bin_end_coding_noutr']) {
+            my_datum.push({pos_coding_noutr: d['pos_coding_noutr'], mean: 0});
+            my_datum.push({pos_coding_noutr: d['pos_coding_noutr'], mean: d['mean'] || 0});
+            my_datum.push({pos_coding_noutr: d['bin_end_coding_noutr']+1, mean: d['mean'] || 0});
+            my_datum.push({pos_coding_noutr: d['bin_end_coding_noutr']+1, mean: 0});
+        }
+    });
+
     svg.append("path")
-        .datum(new_data)
+        .datum(my_datum)
         .style("fill", "steelblue")
         .attr('class', 'area')
         .attr("d", area);
@@ -86,19 +101,16 @@ function gene_chart(data, new_data, variant_data, _transcript) {
         .attr("class", "y axis")
         .call(yAxis);
 
-    svg.selectAll("circle")
+    svg.selectAll("line")
         .data(data)
         .enter()
-        .append("circle")
-        .attr("cx", function(d) {
-            if (d['pos_coding_noutr'] == undefined) {
-                return -100;
-            } else {
-                return exon_x_scale(d[coords]);
-            }
-        })
-        .attr("cy", gene_chart_height + 3)
-        .attr('r', 2 );
+        .append("line")
+        .attr("y1", gene_chart_height + 3)
+        .attr("y2", gene_chart_height + 3)
+        .attr("x1", function(d) { return exon_x_scale(d['pos_coding_noutr']) || exon_x_scale(d['bin_end_coding_noutr']) || -100; })
+        .attr("x2", function(d) { return exon_x_scale(d['bin_end_coding_noutr'])+1 || exon_x_scale(d['pos_coding_noutr']) || -100; })
+        .style("stroke", "black")
+        .style("stroke-width", "3");
 
     d3.select('#gene_plot_container').append("br"); //make sure track_svg is below graph and not to the right of it
 
@@ -121,7 +133,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
         .attr("stroke-width", 5)
         .attr("stroke", exon_color);
 
-    console.log(_transcript);
+    //console.log(_transcript);
     // plot exon rects
     svg_outer.selectAll("bar")
         .data(_transcript.exons)
@@ -284,7 +296,17 @@ function variant_colors(d) {
 }
 
 function change_coverage_chart(data, new_data, variant_data, _transcript, scale_type, metric, skip_utrs, container) {
+    //data is window.coverage_stats
+    //plot_data is either new_data or new_data_skip_utr
+    //variant_data is window.variants_in_transcript
+    //_transcript is window.transcript
+    //scale_type is either "detail" or "overview" (or later "linear_overview")
+    //metric is one of "mean", "median", "1", "5", "10", ... "50", "100"
+    //skip_utrs is boolean
+    //container is '#gene_plot_container'
+
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
+    var coords_end = coords.replace('pos_', 'bin_end_');
     var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
     var coding_coordinate_params = get_coding_coordinate_params(_transcript, skip_utrs);
     var chart_width;
@@ -308,7 +330,7 @@ function change_coverage_chart(data, new_data, variant_data, _transcript, scale_
         .range([gene_chart_height, 0]);
 
     var area = d3.svg.area()
-        .x( function(d) {
+        .x( function(d) { // Is .x() necessary?
             return exon_x_scale(d[coords]);
         }).y0( function(d) {
             return gene_chart_height;
@@ -316,26 +338,34 @@ function change_coverage_chart(data, new_data, variant_data, _transcript, scale_
             return (metric in d) ? y(d[metric]) : gene_chart_height;
         });
 
-{#    var new_data = create_new_data(data);#}
+    //This is a hack, revealing that the surrounding code needs changes.
+    var my_datum = [];
+    _.each(data, function(d) {
+        if (d[coords] && d[coords_end]) {
+            var o = [{}, {}, {}, {}];
+            o[0][coords] = o[1][coords] = d[coords];
+            o[2][coords] = o[3][coords] = 1 + d[coords_end];
+            o[1][metric] = o[2][metric] = d[metric] || 0;
+            o[0][metric] = o[3][metric] = 0;
+            my_datum.push.apply(my_datum, o); //concatenate o to my_datum
+        }
+    });
+
     var path = svg.selectAll("path")
-        .datum(new_data)
+        //.datum(new_data)
+        .datum(my_datum)
         .transition()
         .duration(500)
         .attr("d", area)
         .style("fill", "steelblue")
         .attr('class', 'area');
 
-    svg.selectAll("circle")
+    svg.selectAll("line")
         .data(data)
         .transition()
         .duration(500)
-        .attr("cx", function(d) {
-            if (d[coords] == undefined) {
-                return -100;
-            } else {
-                return exon_x_scale(d[coords]);
-            }
-        });
+        .attr("x1", function(d) { return exon_x_scale(d[coords]) || exon_x_scale(d[coords_end]) || -100; })
+        .attr("x2", function(d) { return 1 + exon_x_scale(d[coords_end]) || exon_x_scale(d[coords]) || -100; });
 
     // plot exons
     var svg_outer = d3.select(container).select('#track_svg')
@@ -390,6 +420,11 @@ function change_coverage_chart(data, new_data, variant_data, _transcript, scale_
 }
 
 function create_new_data(data, coords) {
+    //Mostly, new_data contains an object for every position in its range, with not much info for the intronic positions.
+    //However, the first and last positions of each consecutive group are included twice, to get a straight vertical.
+    //The exon-focus here doesn't work, because we now have data for every base.
+
+    //Seems like `coords` should be renamed `position_key`
     var data_object = {};
     $.each(data, function(i, d) {
         data_object[d[coords]] = d;
@@ -397,15 +432,14 @@ function create_new_data(data, coords) {
     var new_data = [];
     var max_coord = d3.max(data, function(d) { return d[coords] });
     for (var i = d3.min(data, function(d) { return d[coords] }); i < max_coord; i++) {
+        //Seems like `i` should be renamed `current_pos`, with a note that it is `pos_coding` or `pos_coding_noutr`.
         var x = {'has_coverage': false};
         x[coords] = i;
         //Check the previous base to see if this is the beginning of an exon
-{#        if (i in data_object && data_object[i].has_coverage && !(i-1 in data_object && data_object[i-1].has_coverage)) {#}
         if (i in data_object && !(i-1 in data_object)) {
             new_data.push(x);
         }
         //Check the previous base to see if this is the end of an exon
-{#        if (!(i in data_object && data_object[i].has_coverage) && i-1 in data_object && data_object[i-1].has_coverage) {#}
         if (!(i in data_object) && i-1 in data_object) {
             x[coords] = i-1;
             new_data.push(x);
