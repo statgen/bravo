@@ -6,7 +6,7 @@
             <p>To use this site, you must agree with all of the following:</p>
             <ul>
                 {% if not current_user.is_anonymous %}
-                <li>The name <b>{{ current_user.username }}</b> and the email <b>{{ current_user.email }}</b> correctly identify you.</li>
+                <li>The Google login name <b>{{ current_user.username }}</b> and the email <b>{{ current_user.email }}</b> correctly identify you.</li>
                 {% endif %}
                 <li>You will not attempt to download any dataset in bulk from this website.
                 <li>You will not attempt to re-identify or contact research participants.
