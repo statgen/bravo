@@ -103,16 +103,16 @@ window.get_coding_coordinate_params = function(_transcript, skip_utrs) {
     return ret;
 };
 
-window.precalc_coding_coordinates = function(_transcript, objects, key) {
-    var orig_positions = _.map(objects, function(o) { return o[key] });
+window.precalc_coding_coordinates = function(_transcript, objects) {
+    var orig_positions = _.map(objects, function(o) { return o['pos'] });
     var new_positions;
     new_positions = get_coding_coordinates(_transcript, orig_positions, false);
     _.each(objects, function(o, i) {
-        o[key+'_coding'] = new_positions[i];
+        o['pos_coding'] = new_positions[i];
     });
     new_positions = get_coding_coordinates(_transcript, orig_positions, true);
     _.each(objects, function(o, i) {
-        o[key+'_coding_noutr'] = new_positions[i];
+        o['pos_coding_noutr'] = new_positions[i];
     });
 };
 
