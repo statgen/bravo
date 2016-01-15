@@ -15,7 +15,7 @@
         <tr>
             <th class="tooltip-table-header omit_csv" data-tooltip="reference/alternate &#xa;(dbSNP144 rsID)">
                 Allele</th>
-            <th class='hidden-xs'>Position on chr{{ chrom }}</th>
+            <th>Position on chr{{ chrom }}</th>
             <td class="hidden">RSID</td>
             <th class="hidden">Reference</th>
             <th class="hidden">Alternate</th>
@@ -26,7 +26,7 @@
             <th class="tooltip-table-header" data-tooltip="Variant Effect Predictor (VEP) &#xa; annotation using Gencode 75.&#xa; Worst across all transcripts of this gene.">Annotation</th>
             <th class="tooltip-table-header">
                 CADD score</th>
-            <th class="tooltip-table-header" data-tooltip="Alternate allele count in genotypes &#xa;(genotype quality >=20 & depth >=10)">
+            <th class="hidden-xs tooltip-table-header" data-tooltip="Alternate allele count in genotypes &#xa;(genotype quality >=20 & depth >=10)">
                 Allele Count</th>
             <th class="hidden-xs tooltip-table-header" data-tooltip="Total number of called genotypes &#xa;(genotype quality >= 20 & depth >=10)">
                 Allele Number</th>
@@ -86,7 +86,7 @@
                 <% } %>
                 </a>
             </td>
-            <td class='hidden-xs' style="text-align:right;padding-right:2em;" data-pos="<%= variant.pos %>"> <%= variant.pos.toLocaleString() %></td>
+            <td style="text-align:right;padding-right:2em;" data-pos="<%= variant.pos %>"> <%= variant.pos.toLocaleString() %></td>
             <td class="hidden"><%= variant.rsids.join(", ") %></td>
             <th class="hidden"> <%= variant.ref %></th>
             <th class="hidden"> <%= variant.alt %></th>
@@ -110,7 +110,7 @@
                 <% } %>
             </b> </td>
             <td> <%= (variant.cadd_phred === null) ? null : Number(variant.cadd_phred.toPrecision(1)) %> </td>
-            <td style="text-align:right;padding-right:2em;"> <%= variant.allele_count %> </td>
+            <td class="hidden-xs" style="text-align:right;padding-right:2em;"> <%= variant.allele_count %> </td>
             <td class='hidden-xs' style="text-align:right;padding-right:2em;"> <%= variant.allele_num %> </td>
             {% if chrom != 'Y' %}
                 <td class="hidden-xs" style="text-align:right;padding-right:2em;"> <%= variant.hom_count %> </td>
