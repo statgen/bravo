@@ -933,8 +933,8 @@ def oauth_callback_google():
         flash('Authentication failed.')
         return redirect(url_for('homepage'))
 
-    if email not in ['pjvh@umich.edu']:
-        flash('Your email is not in the list of allowed emails.')
+    if email.lower() not in auth.email_whitelist:
+        flash('Your email, {}, is not in the list of allowed emails.'.format(email.lower()))
         return redirect(url_for('homepage'))
 
     # Look if the user already exists
