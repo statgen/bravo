@@ -39,13 +39,13 @@
 </div>
 <br/>
 <script>
-function gene_chart(data, new_data, variant_data, _transcript) {
+function gene_chart(new_data) {
     // This draws the coverage graph and the exons beneath it exactly once, using 'pos_coding_noutr', no details view, and 'mean'.
     // Could half of this be replaced by a call to change_coverage_chart() or change_coverage_chart_with_values_from_page()?
 
     var coords = 'pos_coding_noutr';
     var coords_end = coords.replace('pos_', 'bin_end_');
-    var coding_coordinate_params = get_coding_coordinate_params(_transcript, true);
+    var coding_coordinate_params = get_coding_coordinate_params(window.transcript, true);
     var chart_width = gene_chart_width;
     var metric = 'mean';
 
@@ -82,7 +82,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
 
     //This is a hack, revealing that I don't understand the surrounding code.
     var my_datum = [];
-    _.each(data, function(d) {
+    _.each(window.coverage_stats, function(d) {
         if (d['pos_coding_noutr'] && d['bin_end_coding_noutr']) {
             my_datum.push({pos_coding_noutr: d['pos_coding_noutr'], mean: 0});
             my_datum.push({pos_coding_noutr: d['pos_coding_noutr'], mean: d['mean'] || 0});
@@ -102,7 +102,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
         .call(yAxis);
 
     svg.selectAll("line")
-        .data(data)
+        .data(window.coverage_stats)
         .enter()
         .append("line")
         .attr("y1", gene_chart_height + 3)
@@ -133,15 +133,14 @@ function gene_chart(data, new_data, variant_data, _transcript) {
         .attr("stroke-width", 5)
         .attr("stroke", exon_color);
 
-    //console.log(_transcript);
     // plot exon rects
     svg_outer.selectAll("this text also doesnt matter")
-        .data(_transcript.exons)
+        .data(window.transcript.exons)
         .enter()
         .append("rect")
         .attr('class', 'track_bar')
         .style("fill", exon_color)
-        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(_transcript, d.start, true)); })
+        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(window.transcript, d.start, true)); })
         .attr("y", function(d, i) {
             if (d.feature_type == 'CDS') {
                 return 0;
@@ -152,7 +151,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
 {#        .attr("rx", 6)#}
 {#        .attr("ry", 6)#}
         .attr("width", function(d, i) {
-            if (get_coding_coordinate(_transcript, d.start, true) == -100) {
+            if (get_coding_coordinate(window.transcript, d.start, true) == -100) {
                 return exon_x_scale(175);
             }
             return exon_x_scale(d.stop-d.start+1);
@@ -166,7 +165,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
         });
 
 
-    var a_s = _transcript.strand == "-"? -1 : 1; //arrow direction
+    var a_s = window.transcript.strand == "-"? -1 : 1; //arrow direction
     var a_x = -5;  //arrow position on x-axis
     var a_y = lower_gene_chart_height/2.0; //arrow position on y-axis
     var a_w = 2; //arrow width
@@ -177,7 +176,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
             .attr("fill", "steelblue")
             .attr("stroke", "black");
 
-    var bounds = get_af_bounds(variant_data);
+    var bounds = get_af_bounds(window.variants_in_transcript);
     var min_af = bounds[0];
     var max_af = bounds[1];
     var variant_size_scale = d3.scale.log()
@@ -210,7 +209,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
 
     // plot variants
     svg_outer.selectAll('this text doesnt matter')
-        .data(variant_data)
+        .data(window.variants_in_transcript)
         .enter()
         .append("a")
         .attr('class', 'track_variant_link')
@@ -269,20 +268,16 @@ function variant_colors(d) {
     }
 }
 
-function change_coverage_chart(data, new_data, variant_data, _transcript, scale_type, metric, skip_utrs, container) {
-    //data is window.coverage_stats
+function change_coverage_chart(new_data, scale_type, metric, skip_utrs) {
     //plot_data is either new_data or new_data_skip_utr
-    //variant_data is window.variants_in_transcript
-    //_transcript is window.transcript
     //scale_type is either "detail" or "overview" (or later "linear_overview")
     //metric is one of "mean", "median", "1", "5", "10", ... "50", "100"
     //skip_utrs is boolean
-    //container is '#gene_plot_container'
 
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
     var coords_end = coords.replace('pos_', 'bin_end_');
     var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
-    var coding_coordinate_params = get_coding_coordinate_params(_transcript, skip_utrs);
+    var coding_coordinate_params = get_coding_coordinate_params(window.transcript, skip_utrs);
     var chart_width;
     if (scale_type == 'overview') {
         chart_width = gene_chart_width;
@@ -294,7 +289,7 @@ function change_coverage_chart(data, new_data, variant_data, _transcript, scale_
         .domain([0, coding_coordinate_params.size])
         .range([0, chart_width]);
 
-    var svg = d3.select(container).select('#inner_svg')
+    var svg = d3.select('#gene_plot_container').select('#inner_svg')
         .attr("width", chart_width + gene_chart_margin.left + gene_chart_margin.right)
         .attr("height", gene_chart_height + gene_chart_margin.top + gene_chart_margin.bottom)
         .select('#inner_graph');
@@ -314,7 +309,7 @@ function change_coverage_chart(data, new_data, variant_data, _transcript, scale_
 
     //This is a hack, revealing that the surrounding code needs changes.
     var my_datum = [];
-    _.each(data, function(d) {
+    _.each(window.coverage_stats, function(d) {
         if (d[coords] && d[coords_end]) {
             var o = [{}, {}, {}, {}];
             o[0][coords] = o[1][coords] = d[coords];
@@ -335,14 +330,14 @@ function change_coverage_chart(data, new_data, variant_data, _transcript, scale_
         .attr('class', 'area');
 
     svg.selectAll("line")
-        .data(data)
+        .data(window.coverage_stats)
         .transition()
         .duration(500)
         .attr("x1", function(d) { return exon_x_scale(d[coords]) || exon_x_scale(d[coords_end]) || -100; })
         .attr("x2", function(d) { return 1 + exon_x_scale(d[coords_end]) || exon_x_scale(d[coords]) || -100; });
 
     // plot exons
-    var svg_outer = d3.select(container).select('#track_svg')
+    var svg_outer = d3.select('#gene_plot_container').select('#track_svg')
         .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
         .attr("height", lower_gene_chart_height).select('#track');
 
@@ -351,12 +346,12 @@ function change_coverage_chart(data, new_data, variant_data, _transcript, scale_
 
     // plot exon rounded rects
     svg_outer.selectAll("rect")
-        .data(_transcript.exons)
+        .data(window.transcript.exons)
         .transition()
         .duration(500)
-        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(_transcript, d.start, skip_utrs)); })
+        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(window.transcript, d.start, skip_utrs)); })
         .attr("width", function(d, i) {
-            if (get_coding_coordinate(_transcript, d.start, skip_utrs) == -100) {
+            if (get_coding_coordinate(window.transcript, d.start, skip_utrs) == -100) {
                 return exon_x_scale(175);
             }
             return exon_x_scale(d.stop-d.start+1);
@@ -371,7 +366,7 @@ function change_coverage_chart(data, new_data, variant_data, _transcript, scale_
 
     // plot variants
     svg_outer.selectAll("a")
-        .data(variant_data)
+        .data(window.variants_in_transcript)
         .transition()
         .duration(500)
         .selectAll('ellipse')
@@ -469,7 +464,7 @@ function build_the_graph () {
     var new_data = create_new_data(window.coverage_stats, 'pos_coding');
     var new_data_skip_utr = create_new_data(window.coverage_stats, 'pos_coding_noutr');
     if (window.coverage_stats != null) {
-        gene_chart(window.coverage_stats, new_data_skip_utr, window.variants_in_transcript, window.transcript);
+        gene_chart(new_data_skip_utr);
         if (window.variants_in_transcript.length) {
             update_variants();
         }
@@ -492,7 +487,7 @@ function build_the_graph () {
         } else {
             metric = $("#average_select").val();
         }
-        change_coverage_chart(window.coverage_stats, plot_data, window.variants_in_transcript, window.transcript, scale_type, metric, skip_utrs, '#gene_plot_container');
+        change_coverage_chart(plot_data, scale_type, metric, skip_utrs);
         refresh_links();
     }
 
