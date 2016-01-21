@@ -22,7 +22,11 @@
             $.getJSON("/api/variants_in_gene/" + window.gene.gene_id)
             .done(function(data) {
                 window.table_variants = data;
-                $('#consequence_other_variant_button').removeClass('disabled').removeAttr('disabled').removeAttr('data-tooltip');
+                $('#consequence_other_variant_button')
+                    .removeClass('disabled')
+                    .removeAttr('disabled')
+                    .removeAttr('data-tooltip')
+                    .one('click', build_variant_table);
             })
             .fail(function() {
                 console.log("XHR failed for gene.");
