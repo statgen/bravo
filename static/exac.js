@@ -106,6 +106,7 @@ window.get_coding_coordinate_params = function(_transcript, skip_utrs) {
 };
 
 window.precalc_coding_coordinates = function(_transcript, objects, also_convert_bin_end) {
+    //Note: this modifies `objects`.
     var orig_positions = _.map(objects, function(o) { return o['pos'] });
     var new_positions;
     new_positions = get_coding_coordinates(_transcript, orig_positions, false);
