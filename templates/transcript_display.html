@@ -41,7 +41,7 @@
 <script>
 function gene_chart(data, new_data, variant_data, _transcript) {
     // This draws the coverage graph and the exons beneath it exactly once, using 'pos_coding_noutr', no details view, and 'mean'.
-    // Could half of this be replaced by a call to change_coverage_chart?
+    // Could half of this be replaced by a call to change_coverage_chart() or change_coverage_chart_with_values_from_page()?
 
     var coords = 'pos_coding_noutr';
     var coords_end = coords.replace('pos_', 'bin_end_');
@@ -135,7 +135,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
 
     //console.log(_transcript);
     // plot exon rects
-    svg_outer.selectAll("bar")
+    svg_outer.selectAll("this text also doesnt matter")
         .data(_transcript.exons)
         .enter()
         .append("rect")
@@ -209,7 +209,7 @@ function gene_chart(data, new_data, variant_data, _transcript) {
     svg.call(tip);
 
     // plot variants
-    svg_outer.selectAll("bar")
+    svg_outer.selectAll('this text doesnt matter')
         .data(variant_data)
         .enter()
         .append("a")
@@ -233,9 +233,6 @@ function gene_chart(data, new_data, variant_data, _transcript) {
             $('#variant_' + d.variant_id).find('td').removeClass('table_hover');
             tip.hide(d);
         })
-        //Circle
-//        .append("circle")
-        //Ellipse
         .append("ellipse")
         .attr("class", function(d) {
             return "track_variant " + d.category;
@@ -249,9 +246,6 @@ function gene_chart(data, new_data, variant_data, _transcript) {
             }
         })
         .attr("cy", lower_gene_chart_height/2)
-        //Circle
-//        .attr("r", function(d, i) { return variant_size_scale(d.allele_freq); })
-        //Ellipse
         .attr("rx", 2)
         .attr("ry", function(d, i) {
             if (!d.allele_freq) {
@@ -263,26 +257,6 @@ function gene_chart(data, new_data, variant_data, _transcript) {
         // Workaround for exporting d3 to SVG (other delcaration in style.css).
         .attr('stroke', variant_colors)
         .attr('fill', variant_colors);
-        //Rectangle
-//        .append("rect")
-//        .attr("class", "track_variant")
-//        .style("fill", "darkred")
-//        .style("opacity", 0.5)
-//        .attr("x", function(d, i) {
-//            var tx_coord = d.transcript_coordinates[transcript];
-//            if (tx_coord == 0) {
-//                return -1000;
-//            } else {
-//                var variant_exon_number = d.vep_annotations[0]['EXON'].split('/')[0] - 1;
-//                return exon_x_scale(tx_coord + variant_exon_number*padding);
-//            }
-//        })
-//        .attr("y", function(d, i) { return lower_gene_chart_height/2 - variant_size_scale(d.allele_freq)/2; } )
-//        .attr("width", 2)
-//        .attr("height", function(d, i) { return variant_size_scale(d.allele_freq); })
-//        .attr("rx", 6)
-//        .attr("ry", 6);
-
 }
 
 function variant_colors(d) {
@@ -491,6 +465,7 @@ function build_the_graph () {
     $('#avg_coverage').html(coverage_sum('mean'));
     $('#avg_coverage_x').html(coverage_sum('30')*100 + '%');
 
+    //TODO: compute `new_data` before `document.ready`
     var new_data = create_new_data(window.coverage_stats, 'pos_coding');
     var new_data_skip_utr = create_new_data(window.coverage_stats, 'pos_coding_noutr');
     if (window.coverage_stats != null) {
@@ -503,81 +478,53 @@ function build_the_graph () {
         $('#gene_plot').hide();
         $('#not_covered').show();
     }
-    // Change coverage plot
+    refresh_links();
+
+    // Listen for changes to the coverage plot
+    function change_coverage_chart_with_values_from_page() {
+        // Note: if this function runs immediately after a button is pressed, Bootstrap might not have toggled '.active' yet, so the results will be bad. Use setTimeout(..., 0)
+        var skip_utrs = ! $('#include_utrs_checkbox').is(':checked');
+        var plot_data = skip_utrs ? new_data_skip_utr : new_data;
+        var scale_type = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
+        var metric;
+        if ($('.coverage_metric_buttons.active').attr('id') === 'covered_covmet_button') {
+            metric = $('#over_x_select').val().replace('X', '');
+        } else {
+            metric = $("#average_select").val();
+        }
+        change_coverage_chart(window.coverage_stats, plot_data, window.variants_in_transcript, window.transcript, scale_type, metric, skip_utrs, '#gene_plot_container');
+        refresh_links();
+    }
+
     $('.coverage_metric_buttons').change(function () {
-        var v = $(this).attr('id').replace('_covmet_button', '');
         $('.coverage_subcat_selectors').hide();
-        if (v == 'covered') {
+        if ($(this).attr('id') === 'covered_covmet_button') {
             $('#over_x_select_container').show();
-            v = $('#over_x_select').val().replace('X', '');
         } else {
             $('#average_select_container').show();
-            v = $("#average_select").val();
         }
-        var detail = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
-        var include_utrs = $('#include_utrs_checkbox').is(':checked');
-        var plot_data = include_utrs ? new_data : new_data_skip_utr;
-        change_coverage_chart(window.coverage_stats, plot_data, window.variants_in_transcript, window.transcript, detail, v, !include_utrs, '#gene_plot_container');
-        refresh_links();
-    });
-    $('#over_x_select').change(function () {
-        var detail = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
-        var include_utrs = $('#include_utrs_checkbox').is(':checked');
-        var plot_data = include_utrs ? new_data : new_data_skip_utr;
-        $('#avg_coverage_type_x').html($(this).val());
-        $('#avg_coverage_x').html(coverage_sum($(this).val().replace('X', ''))*100 + '%');
-        change_coverage_chart(window.coverage_stats, plot_data, window.variants_in_transcript, window.transcript, detail, $(this).val().replace('X', ''), !include_utrs, '#gene_plot_container');
-        refresh_links();
+        setTimeout(change_coverage_chart_with_values_from_page, 0);
     });
     $('#average_select').change(function () {
-        var detail = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
-        var include_utrs = $('#include_utrs_checkbox').is(':checked');
-        var plot_data = include_utrs ? new_data : new_data_skip_utr;
         $('#avg_coverage_type').html($(this).val());
         $('#avg_coverage').html(coverage_sum($(this).val()));
-        change_coverage_chart(window.coverage_stats, plot_data, window.variants_in_transcript, window.transcript, detail, $(this).val(), !include_utrs, '#gene_plot_container');
-        refresh_links();
+        setTimeout(change_coverage_chart_with_values_from_page, 0);
     });
-    $('#include_utrs_checkbox').change(function () {
-        setTimeout(function() {
-            var detail = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
-            var v = $('.coverage_metric_buttons.active').attr('id').replace('_covmet_button', '');
-            v = (v == 'covered') ? $('#over_x_select').val().replace('X', '') : $("#average_select").val();
-            var include_utrs = $('#include_utrs_checkbox').is(':checked');
-            var plot_data = include_utrs ? new_data : new_data_skip_utr;
-            change_coverage_chart(window.coverage_stats, plot_data, window.variants_in_transcript, window.transcript, detail, v, !include_utrs, '#gene_plot_container');
-            refresh_links();
-        }, 10);
+    $('#over_x_select, #include_utrs_checkbox, .display_coverage_metric_buttons').change(function () {
+        setTimeout(change_coverage_chart_with_values_from_page, 0);
     });
 
-// Change exon diagram
+    // Change exon diagram
     $('#inverted_checkbox').change(function () {
         setTimeout(function () {
             var v = $('#inverted_checkbox').is(':checked');
             change_track_chart_variant_size(window.variants_in_transcript, v, '#gene_plot_container');
             refresh_links();
-        }, 10);
+        }, 0);
     });
 
     $(document).on("just_updated_variants", function () {
-        setTimeout(refresh_links, 10);
+        setTimeout(refresh_links, 0);
     });
-
-    $('.display_coverage_metric_buttons').change(function () {
-        var detail = $(this).attr('id').replace('display_coverage_', '').replace('_button', '');
-        var v = $('.coverage_metric_buttons.active').attr('id').replace('_covmet_button', '');
-        if (v == 'covered') {
-            $('#over_x_select_container').show();
-            v = $('#over_x_select').val().replace('X', '');
-        } else {
-            $('#average_select_container').show();
-            v = $("#average_select").val();
-        }
-        var include_utrs = $('#include_utrs_checkbox').is(':checked');
-        var plot_data = include_utrs ? new_data : new_data_skip_utr;
-        change_coverage_chart(window.coverage_stats, plot_data, window.variants_in_transcript, window.transcript, detail, v, !include_utrs, '#gene_plot_container');
-        refresh_links();
-    });
-    refresh_links();
 }
 </script>
