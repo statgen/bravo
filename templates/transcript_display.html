@@ -421,7 +421,11 @@ function change_coverage_chart_with_values_from_page() {
         metric = $("#average_select").val();
     }
     change_coverage_chart(scale_type, metric, skip_utrs);
-    refresh_links();
+    $("#coverage_plot_download, #exon_plot_download").attr('disabled', 'disabled');
+    setTimeout(function() {
+        refresh_links();
+        $("#coverage_plot_download, #exon_plot_download").removeAttr('disabled');
+    }, 1000); //Give the transitions time to happen.
 }
 
 function coverage_sum(key) {
