@@ -39,21 +39,27 @@
 </div>
 <br/>
 <script>
-function gene_chart(new_data) {
-    // This draws the coverage graph and the exons beneath it exactly once, using 'pos_coding_noutr', no details view, and 'mean'.
+function gene_chart() {
     // Could half of this be replaced by a call to change_coverage_chart() or change_coverage_chart_with_values_from_page()?
+    var scale_type = 'overview';
+    var metric = 'mean';
+    var skip_utrs = true;
 
     var coords = 'pos_coding_noutr';
     var coords_end = coords.replace('pos_', 'bin_end_');
-    var coding_coordinate_params = get_coding_coordinate_params(window.transcript, true);
-    var chart_width = gene_chart_width;
-    var metric = 'mean';
+    var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
+    var coding_coordinate_params = get_coding_coordinate_params(window.transcript, skip_utrs);
+    var chart_width;
+    if (scale_type == 'overview') {
+        chart_width = gene_chart_width;
+    } else {
+        chart_width = coding_coordinate_params.size*2;
+    }
 
     var exon_x_scale = d3.scale.linear()
         .domain([0, coding_coordinate_params.size])
         .range([0, chart_width]);
 
-    var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
     var y = d3.scale.linear()
         .domain([0, max_cov])
         .range([gene_chart_height, 0]);
@@ -268,8 +274,7 @@ function variant_colors(d) {
     }
 }
 
-function change_coverage_chart(new_data, scale_type, metric, skip_utrs) {
-    //plot_data is either new_data or new_data_skip_utr
+function change_coverage_chart(scale_type, metric, skip_utrs) {
     //scale_type is either "detail" or "overview" (or later "linear_overview")
     //metric is one of "mean", "median", "1", "5", "10", ... "50", "100"
     //skip_utrs is boolean
@@ -321,7 +326,6 @@ function change_coverage_chart(new_data, scale_type, metric, skip_utrs) {
     });
 
     var path = svg.selectAll("path")
-        //.datum(new_data)
         .datum(my_datum)
         .transition()
         .duration(500)
@@ -388,40 +392,6 @@ function change_coverage_chart(new_data, scale_type, metric, skip_utrs) {
         .call(yAxis);
 }
 
-function create_new_data(data, coords) {
-    //Mostly, new_data contains an object for every position in its range, with not much info for the intronic positions.
-    //However, the first and last positions of each consecutive group are included twice, to get a straight vertical.
-    //The exon-focus here doesn't work, because we now have data for every base.
-
-    //Seems like `coords` should be renamed `position_key`
-    var data_object = {};
-    $.each(data, function(i, d) {
-        data_object[d[coords]] = d;
-    });
-    var new_data = [];
-    var max_coord = d3.max(data, function(d) { return d[coords] });
-    for (var i = d3.min(data, function(d) { return d[coords] }); i < max_coord; i++) {
-        //Seems like `i` should be renamed `current_pos`, with a note that it is `pos_coding` or `pos_coding_noutr`.
-        var x = {'has_coverage': false};
-        x[coords] = i;
-        //Check the previous base to see if this is the beginning of an exon
-        if (i in data_object && !(i-1 in data_object)) {
-            new_data.push(x);
-        }
-        //Check the previous base to see if this is the end of an exon
-        if (!(i in data_object) && i-1 in data_object) {
-            x[coords] = i-1;
-            new_data.push(x);
-        }
-        if (i in data_object) {
-            new_data.push(data_object[i]);
-        } else {
-            new_data.push(x);
-        }
-    }
-    return new_data;
-}
-
 function coverage_sum(key) {
     var total = 0;
     $.map(window.coverage_stats, function(entry) {
@@ -460,11 +430,8 @@ function build_the_graph () {
     $('#avg_coverage').html(coverage_sum('mean'));
     $('#avg_coverage_x').html(coverage_sum('30')*100 + '%');
 
-    //TODO: compute `new_data` before `document.ready`
-    var new_data = create_new_data(window.coverage_stats, 'pos_coding');
-    var new_data_skip_utr = create_new_data(window.coverage_stats, 'pos_coding_noutr');
     if (window.coverage_stats != null) {
-        gene_chart(new_data_skip_utr);
+        gene_chart();
         if (window.variants_in_transcript.length) {
             update_variants();
         }
@@ -479,7 +446,6 @@ function build_the_graph () {
     function change_coverage_chart_with_values_from_page() {
         // Note: if this function runs immediately after a button is pressed, Bootstrap might not have toggled '.active' yet, so the results will be bad. Use setTimeout(..., 0)
         var skip_utrs = ! $('#include_utrs_checkbox').is(':checked');
-        var plot_data = skip_utrs ? new_data_skip_utr : new_data;
         var scale_type = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
         var metric;
         if ($('.coverage_metric_buttons.active').attr('id') === 'covered_covmet_button') {
@@ -487,7 +453,7 @@ function build_the_graph () {
         } else {
             metric = $("#average_select").val();
         }
-        change_coverage_chart(plot_data, scale_type, metric, skip_utrs);
+        change_coverage_chart(scale_type, metric, skip_utrs);
         refresh_links();
     }
 
