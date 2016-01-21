@@ -1,9 +1,6 @@
 {% extends "layout.html" %}
+{% block navbar_left %}{% endblock %}
 {% block body %}
-    <script>
-        $('#navbar_form_container').hide();
-    </script>
-    <br>
     <div class="container">
         {% with messages = get_flashed_messages() %}
           {% if messages %}
@@ -19,8 +16,6 @@
           <br>
           <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('login_with_google') }}">Click here to login with Google</a><p>
         </div>
-        {% else %}
-        <p><a class="btn btn-primary" role="button" href="{{ url_for('logout') }}" style="float:right">Logout as {{ current_user.email }}</a><p>
         {% endif %}
         <h1 id="home-title">OWL Variant Browser</h1>
         <div class="row">
