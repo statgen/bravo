@@ -30,8 +30,8 @@
         </div>
         <span id="gene_plot_axis_container" class="hidden-xs" style="width:50px; display: inline-block;"></span>
         <span id="gene_plot_container" style="overflow-x:scroll; display: inline-block;"></span>
-        <a class="btn btn-success" id="coverage_plot_download" target="_blank" download="{{ plot_id }}_coverage">Save coverage plot</a>
-        <a class="btn btn-success" id="exon_plot_download" target="_blank" download="{{ plot_id }}_exon">Save exon image</a>
+        <a class="btn btn-success" id="coverage_plot_download" download="{{ plot_id }}_coverage">Save coverage plot</a>
+        <a class="btn btn-success" id="exon_plot_download" download="{{ plot_id }}_exon">Save exon image</a>
     </div>
 </div>
 <div id="not_covered" style="display: none;">
@@ -434,13 +434,23 @@ function coverage_sum(key) {
 $(document).ready(function() {
     build_the_graph();
     $("#coverage_plot_download").on('click', function() {
-        //Note: window.open() opens a new tab.  `window.location.href=` allows the back button.
-        window.location.href = set_plot_image('gene_plot_container', 0);
+        download(set_plot_image('gene_plot_container', 0), $(this).attr('download'));
     });
     $("#exon_plot_download").on('click', function() {
-        window.location.href = set_plot_image('gene_plot_container', 1);
+        download(set_plot_image('gene_plot_container', 1), $(this).attr('download'));
     });
 });
+
+function download(data_uri, filename) {
+    //This works in Chrome and Firefox and probably IE but not Safari.
+    var link = document.createElement("a");
+    link.download = filename;
+    link.href = data_uri;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    delete link;
+}
 
 function build_the_graph () {
     if ($(window).width() < 768) {
