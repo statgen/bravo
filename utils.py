@@ -106,68 +106,54 @@ def get_proper_hgvs(csq):
             print 'Could not create HGVS for: %s' % csq
     return csq['HGVSp'].split(':')[-1]
 
-# This is a slightly modified version of snpEff's recommendations - see http://snpeff.sourceforge.net/VCFannotationformat_v1.0.pdf
-# ExAC's ordering was based on VEP annotations - see http://useast.ensembl.org/info/genome/variation/predicted_data.html#consequences
+# This is a slightly modified version of VEP's recommendations - see http://useast.ensembl.org/info/genome/variation/predicted_data.html#consequences
+# The ordering of the LoF variants is from snpEff's recommendations - see http://snpeff.sourceforge.net/VCFannotationformat_v1.0.pdf
 # To find all variants that are used, run:
-# mongo --host topmed --eval 'db.variants.distinct("vep_annotations.Consequence").forEach(printjson)' topmed | tr -d '",' | tr "&" "\n" | sort | uniq
+# mongo --eval 'db.variants.distinct("vep_annotations.Consequence").forEach(printjson)' topmed | tr -d '",' | tr "&" "\n" | sort -u
 csq_order = [
-"chromosome_number_variation",
-"exon_loss_variant",
-"frameshift_variant",
-"stop_gained",
-"stop_lost",
-"start_lost",
-"splice_acceptor_variant",
-"splice_donor_variant",
-"rare_amino_acid_variant",
-"LOF_THRESHOLD",
-"missense_variant",
-"disruptive_inframe_insertion", # Note: I changed these at Hyun's suggestion. snpEff's dev agreed.
-"inframe_insertion",
-"disruptive_inframe_deletion",
-"inframe_deletion",
-"protein_altering_variant", # added for VEP-compatibility, but I'm not sure if this is the correct place
-"5_prime_UTR_truncation+exon_loss_variant",
-"3_prime_UTR_truncation+exon_loss",
-"MISSENSE_THRESHOLD",
-"splice_branch_variant",
-"splice_region_variant",
-"splice_branch_variant",
-"stop_retained_variant",
-"initiator_codon_variant",
-"synonymous_variant",
-"SYNONYMOUS_THRESHOLD",
-"initiator_codon_variant+non_canonical_start_codon",
-"stop_retained_variant",
-"coding_sequence_variant",
-"mature_miRNA_variant", # added for VEP-compatibility
-"5_prime_UTR_variant",
-"3_prime_UTR_variant",
-"5_prime_UTR_premature_start_codon_gain_variant",
-"upstream_gene_variant",
-"downstream_gene_variant",
-"TFBS_ablation", # added for VEP-compatibility
-"TF_binding_site_variant",
-"regulatory_region_ablation", # added for VEP-compatibility
-"regulatory_region_variant",
-"miRNA",
-"custom",
-"sequence_feature",
-"conserved_intron_variant",
-"intron_variant",
-"NMD_transcript_variant", # added for VEP-compatibility
-"intragenic_variant",
-"conserved_intergenic_variant",
-"intergenic_region",
-"intergenic_variant", # added for VEP-compatibility
-"coding_sequence_variant",
-"non_coding_exon_variant",
-"non_coding_transcript_exon_variant", # added for VEP-compatibility
-"non_coding_transcript_variant", # added for VEP-compatibility
-"nc_transcript_variant",
-"gene_variant",
-"chromosome",
+    "transcript_ablation",
+    "frameshift_variant",
+    "stop_gained",
+    "stop_lost",
+    "start_lost",
+    "splice_acceptor_variant",
+    "splice_donor_variant",
+    "transcript_amplification",
+    "LOF_THRESHOLD",
+
+    "inframe_insertion",
+    "inframe_deletion",
+    "missense_variant",
+    "protein_altering_variant",
+    "MISSENSE_THRESHOLD",
+
+    "splice_region_variant",
+    "incomplete_terminal_codon_variant",
+    "stop_retained_variant",
+    "synonymous_variant",
+    "SYNONYMOUS_THRESHOLD",
+
+    "coding_sequence_variant",
+    "mature_miRNA_variant",
+    "5_prime_UTR_variant",
+    "3_prime_UTR_variant",
+    "non_coding_transcript_exon_variant",
+    "intron_variant",
+    "NMD_transcript_variant",
+    "non_coding_transcript_variant",
+    "upstream_gene_variant",
+    "downstream_gene_variant",
+    "TFBS_ablation",
+    "TFBS_amplification",
+    "TF_binding_site_variant",
+    "regulatory_region_ablation",
+    "regulatory_region_amplification",
+    "feature_elongation",
+    "regulatory_region_variant",
+    "feature_truncation",
+    "intergenic_variant",
 ]
+assert len(csq_order) == len(set(csq_order)) # No dupes!
 
 csq_order_dict = dict(zip(csq_order, range(len(csq_order))))
 rev_csq_order_dict = dict(zip(range(len(csq_order)), csq_order))
