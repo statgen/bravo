@@ -38,9 +38,9 @@ class GoogleSignIn(object):
                       'redirect_uri': self.get_callback_url()
                      },
                 decoder = json.loads,
-                verify = '/etc/ssl/certs'
+                verify = False
         )
-        me = oauth_session.get('', verify='/etc/ssl/certs').json()
+        me = oauth_session.get('', verify=False).json()
         return (me['name'],
                 me['email'])
 
