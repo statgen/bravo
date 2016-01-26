@@ -194,6 +194,7 @@ function create_coverage_chart() {
                 output += '<br/>' + d.HGVSp;
             }
             output += '<br/>Frequency: ' + d.allele_freq.toPrecision(3);
+            output += '<br/>Pos: ' + d.pos;
             return output;
         } else {
             return 'None';
@@ -263,7 +264,7 @@ function create_variants_plot(svg_outer, exon_x_scale, coords) {
 }
 
 function add_variants_to_variants_plot() {
-    var svg_outer = d3.select('#gene_plot_container').select('#track_svg');
+    var svg_outer = d3.select('#gene_plot_container').select('#track');
     var skip_utrs = ! $('#include_utrs_checkbox').is(':checked');
     var coding_coordinate_params = get_coding_coordinate_params(window.transcript, skip_utrs);
     var scale_type = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
