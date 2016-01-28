@@ -213,8 +213,8 @@ function create_variants_plot(svg_outer, exon_x_scale, coords) {
         .domain([min_af, max_af])
         .range([2, lower_gene_chart_height/3]);
 
-    svg_outer.selectAll('this text doesnt matter')
-        .data(window.variants_in_transcript)
+    svg_outer.selectAll('a.track_variant_link') //Somehow, adding the right selector magically fixed everything.
+        .data(window.variants_in_transcript) //, function(d) {return d.variant_id;})
         .enter()
         .append("a")
         .attr('class', 'track_variant_link')
