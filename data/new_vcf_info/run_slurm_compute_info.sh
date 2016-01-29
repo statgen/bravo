@@ -2,6 +2,7 @@
 
 compute_script=compute_info.py
 merge_script=merge_gzvcfs_by_pos.py
+partition=topmed
 
 vcf=$1
 samples=$2
@@ -65,12 +66,12 @@ echo "rm ${output}.*.temp.gz ${output}.list.temp" >> ${output}.merge.sbatch
 echo "SBATCH merge job file ${output}.merge.sbatch is ready."
 
 echo "#!/bin/bash" > ${output}.run.sh
-echo -e "message=\$(sbatch -p nomosix --mem=8000 --time=14-0 ${output}.compute.sbatch)" >> ${output}.run.sh
+echo -e "message=\$(sbatch -p ${partition} --mem=8000 --time=14-0 ${output}.compute.sbatch)" >> ${output}.run.sh
 echo -e "if ! echo \${message} | grep -q \"[1-9][0-9]*\$\"; then echo \"Compute job(s) submission failed.\"; exit 1; fi" >> ${output}.run.sh
 echo -e "job=\$(echo \${message} | grep -oh  \"[1-9][0-9]*\$\")" >> ${output}.run.sh
 echo -e "echo \"$(( ${#starts[@]} - 1 )) compute job(s) submitted in \${job} job array.\"" >> ${output}.run.sh
 
-echo -e "message=\$(sbatch -p nomosix --mem=8000 --time=14-0 --depend=afterok:\${job} ${output}.merge.sbatch)" >> ${output}.run.sh
+echo -e "message=\$(sbatch -p ${partition} --mem=8000 --time=14-0 --depend=afterok:\${job} ${output}.merge.sbatch)" >> ${output}.run.sh
 echo -e "if ! echo \${message} | grep -q \"[1-9][0-9]*\$\"; then echo \"Merge job submission failed.\"; exit 1; fi" >> ${output}.run.sh
 echo -e "job=\$(echo \${message} | grep -oh  \"[1-9][0-9]*\$\")" >> ${output}.run.sh
 echo -e "echo \"Merge job \${job} submitted.\"" >> ${output}.run.sh
