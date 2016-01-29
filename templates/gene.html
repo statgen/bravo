@@ -47,9 +47,11 @@
         });
     </script>
     <div class="container-fluid">
-        <div class="col-xs-11 col-xs-offset-1">
-            <h1>Gene: {{ gene.gene_name }}</h1>
-            <hr/>
+        <div class="row">
+            <div class="col-xs-11 col-xs-offset-1">
+                <h1>Gene: {{ gene.gene_name }}</h1>
+                <hr/>
+            </div>
         </div>
         <div class="row">
             <div class="col-md-6 col-xs-10 col-xs-offset-1 col-md-offset-0">
@@ -171,22 +173,26 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-md-10 col-md-offset-1">
+            <div class="col-xs-12 col-md-10 col-md-offset-1">
                 <h3>Gene summary</h3>
                 <h4>(<span class="hidden-xs">Coverage shown for </span><a href="http://www.ensembl.org/Help/Glossary?id=346" target="_blank">canonical transcript</a>: {{ transcript.transcript_id }})</h4>
-                <div class="row">
-                    {% with plot_id = gene.gene_name %}
-                        {% include 'transcript_display.html' %}
-                    {% endwith %}
-                </div>
-                <div class="row">
-                    {% if variants_in_gene %}
-                        {% set chrom = variants_in_transcript[0].chrom %}
-                        {% include 'variant_table.html' %}
-                    {% else %}
-                        No variants in this gene.
-                    {% endif %}
-                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-md-10 col-md-offset-1">
+                {% with plot_id = gene.gene_name %}
+                    {% include 'transcript_display.html' %}
+                {% endwith %}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xs-12 col-md-10 col-md-offset-1">
+                {% if variants_in_gene %}
+                    {% set chrom = variants_in_transcript[0].chrom %}
+                    {% include 'variant_table.html' %}
+                {% else %}
+                    No variants in this gene.
+                {% endif %}
             </div>
         </div>
     </div>
