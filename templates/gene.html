@@ -17,24 +17,25 @@
         });
 
         $.when($.getJSON("/api/variants_in_gene/" + window.gene.gene_id),
-               $.getJSON("/api/variants_in_transcript/" + window.transcript.transcript_id))
+               $.getJSON("/api/variants_in_transcript/" + window.transcript.transcript_id),
+               $.Deferred(function() { $(this.resolve); })) //document.ready
         .done(function(gene_data, transcript_data) {
             // Somehow these arguments get wrapped up, so we want gene_data[0] and transcript_data[0].
-            $(document).ready(function() {
-                $('#consequence_other_variant_button')
-                .removeClass('disabled')
-                .removeAttr('disabled')
-                .removeAttr('data-tooltip')
-                .one('click', function() {
-                    window.table_variants = gene_data[0];
-                    build_variant_table();
+            $('#consequence_other_variant_button')
+            .removeClass('disabled')
+            .removeAttr('disabled')
+            .removeAttr('data-tooltip')
+            .one('click', function() {
+                //add variants to the variant_table
+                window.table_variants = gene_data[0];
+                build_variant_table();
 
-                    // Note: I'm just copying what happens in build_the_graph()
-                    window.variants_in_transcript = transcript_data[0];
-                    window.precalc_coding_coordinates(window.transcript, window.variants_in_transcript, false);
-                    add_variants_to_variants_plot();
-                    update_variants();
-                });
+                //add variants to the variant graph
+                // Note: I'm just copying what happens in build_the_graph()
+                window.variants_in_transcript = transcript_data[0];
+                window.precalc_coding_coordinates(window.transcript, window.variants_in_transcript, false);
+                add_variants_to_variants_plot();
+                update_variants();
             });
         })
         .fail(function() {
