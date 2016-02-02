@@ -94,17 +94,17 @@ protein_letters_1to3 = {
 }
 
 
-def get_proper_hgvs(csq):
+def get_proper_hgvs(annotation):
     """
     Takes consequence dictionary, returns proper variant formatting for synonymous variants
     """
-    if '%3D' in csq['HGVSp']: # "%3D" is "="
+    if '%3D' in annotation['HGVSp']: # "%3D" is "="
         try:
-            amino_acids = ''.join([protein_letters_1to3[x] for x in csq['Amino_acids']])
-            return "p." + amino_acids + csq['Protein_position'] + amino_acids
+            amino_acids = ''.join([protein_letters_1to3[x] for x in annotation['Amino_acids']])
+            return "p." + amino_acids + annotation['Protein_position'] + amino_acids
         except Exception, e:
-            print 'Could not create HGVS for: %s' % csq
-    return csq['HGVSp'].split(':')[-1]
+            print 'Could not create HGVS for: %s' % annotation
+    return annotation['HGVSp'].split(':')[-1]
 
 # This is a slightly modified version of VEP's recommendations - see http://useast.ensembl.org/info/genome/variation/predicted_data.html#consequences
 # The ordering of the LoF variants is from snpEff's recommendations - see http://snpeff.sourceforge.net/VCFannotationformat_v1.0.pdf
@@ -163,15 +163,12 @@ rev_csq_order_dict = dict(enumerate(csq_order))
 def worst_csq_index(csq_list):
     """
     Input list of consequences (e.g. ['frameshift_variant', 'missense_variant'])
-    Return index of the worst annotation (In this case, index of 'frameshift_variant', so 4)
-    Works well with csqs = 'non_coding_exon_variant&nc_transcript_variant' by worst_csq_index(csqs.split('&'))
-
-    :param annnotation:
-    :return most_severe_consequence_index:
+    Return index of the worst consequence (In this case, index of 'frameshift_variant', so 4)
+    Works well with worst_csq_index('non_coding_exon_variant&nc_transcript_variant'.split('&'))
     """
     # Note: this is the first place that an unknown csq will fail.
     try:
-        return min([csq_order_dict[ann] for ann in csq_list])
+        return min([csq_order_dict[csq] for csq in csq_list])
     except KeyError as exc:
         print("failed on csq_list {!r} with error: {}".format(csq_list, traceback.format_exc()))
         return -9999
@@ -179,11 +176,8 @@ def worst_csq_index(csq_list):
 def worst_csq_from_list(csq_list):
     """
     Input list of consequences (e.g. ['frameshift_variant', 'missense_variant'])
-    Return the worst annotation (In this case, 'frameshift_variant')
-    Works well with csqs = 'non_coding_exon_variant&nc_transcript_variant' by worst_csq_from_list(csqs.split('&'))
-
-    :param annnotation:
-    :return most_severe_consequence:
+    Return the worst consequence (In this case, 'frameshift_variant')
+    Works well with worst_csq_from_list('non_coding_exon_variant&nc_transcript_variant'.split('&'))
     """
     return rev_csq_order_dict[worst_csq_index(csq_list)]
 
@@ -191,15 +185,16 @@ def worst_csq_from_list(csq_list):
 def worst_csq_from_csq(csq):
     """
     Input possibly &-filled csq string (e.g. 'non_coding_exon_variant&nc_transcript_variant')
-    Return the worst annotation (In this case, 'non_coding_exon_variant')
-
-    :param consequence:
-    :return most_severe_consequence:
+    Return the worst consequence (In this case, 'non_coding_exon_variant')
     """
     return rev_csq_order_dict[worst_csq_index(csq.split('&'))]
 
 
 def order_vep_by_csq(annotation_list):
+    """
+    Adds "major_consequence" to each annotation.
+    Returns them ordered from most deleterious to least.
+    """
     for ann in annotation_list:
         ann['major_consequence'] = worst_csq_from_csq(ann['Consequence'])
     return sorted(annotation_list, key=(lambda ann:-csq_order_dict[ann['major_consequence']]))
@@ -209,9 +204,7 @@ def worst_csq_with_vep(annotation_list):
     """
     Takes list of VEP annotations [{'Consequence': 'frameshift', Feature: 'ENST'}, ...]
     Returns most severe annotation (as full VEP annotation [{'Consequence': 'frameshift', Feature: 'ENST'}])
-    Also tacks on worst consequence for that annotation (i.e. worst_csq_from_csq)
-    :param annotation_list:
-    :return worst_annotation:
+    Also tacks on "major_consequence" for that annotation (i.e. worst_csq_from_csq)
     """
     if len(annotation_list) == 0:
         return None
@@ -219,10 +212,10 @@ def worst_csq_with_vep(annotation_list):
     worst['major_consequence'] = worst_csq_from_csq(worst['Consequence'])
     return worst
 
-def annotation_severity(ann):
+def annotation_severity(annotation):
     "Bigger is more important."
-    rv = -csq_order_dict[worst_csq_from_csq(ann['Consequence'])]
-    if ann['CANONICAL'] == 'YES':
+    rv = -csq_order_dict[worst_csq_from_csq(annotation['Consequence'])]
+    if annotation['CANONICAL'] == 'YES':
         rv += 0.1
     return rv
 
