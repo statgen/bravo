@@ -197,7 +197,7 @@ def order_vep_by_csq(annotation_list):
     """
     for ann in annotation_list:
         ann['major_consequence'] = worst_csq_from_csq(ann['Consequence'])
-    return sorted(annotation_list, key=(lambda ann:-csq_order_dict[ann['major_consequence']]))
+    return sorted(annotation_list, key=(lambda ann:csq_order_dict[ann['major_consequence']]))
 
 
 def worst_csq_with_vep(annotation_list):
