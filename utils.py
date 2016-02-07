@@ -168,9 +168,9 @@ csq_order = [
 ]
 assert len(csq_order) == len(set(csq_order)) # No dupes!
 
-
 csq_order_dict = {csq:i for i,csq in enumerate(csq_order)}
 rev_csq_order_dict = dict(enumerate(csq_order))
+assert all(csq == rev_csq_order_dict[csq_order_dict[csq]] for csq in csq_order)
 
 
 def worst_csq_index(csq_list):
