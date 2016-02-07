@@ -18,7 +18,7 @@ from flask import Flask, Response, request, session, g, redirect, url_for, abort
 from flask.ext.compress import Compress
 from flask_errormail import mail_on_500
 from flask.ext.login import LoginManager, UserMixin, login_user, logout_user, current_user
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from werkzeug.contrib.cache import NullCache # TODO: for production, use FileSystemCache
 
 from multiprocessing import Process
@@ -541,19 +541,14 @@ def variant_page(variant_str):
                 'ref': ref,
                 'alt': alt
             }
-        consequences = None
-        ordered_csqs = None
+
+        consequences = OrderedDict()
         if 'vep_annotations' in variant:
             variant['vep_annotations'] = order_vep_by_csq(variant['vep_annotations'])  # Adds major_consequence
-            ordered_major_csqs = [x['major_consequence'] for x in variant['vep_annotations']]
-            unique_ordered_major_csqs = []
-            for major_csq in ordered_major_csqs:
-                if major_csq not in unique_ordered_major_csqs:
-                    unique_ordered_major_csqs.append(major_csq)
-            consequences = defaultdict(lambda: defaultdict(list))
             for annotation in variant['vep_annotations']:
                 annotation['HGVS'] = get_proper_hgvs(annotation)
-                consequences[annotation['major_consequence']][annotation['Gene']].append(annotation)
+                consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
+
         # DT: get coverage from tabix
         base_coverage = lookups.get_coverage_for_bases(coverages, xpos, xpos + len(ref) - 1)
         #base_coverage = lookups.get_coverage_for_bases(db, xpos, xpos + len(ref) - 1)
@@ -567,7 +562,6 @@ def variant_page(variant_str):
             base_coverage=base_coverage,
             consequences=consequences,
             any_covered=any_covered,
-            ordered_csqs=unique_ordered_major_csqs,
             metrics=metrics
         )
     except Exception, e:
