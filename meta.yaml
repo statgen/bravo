@@ -1,0 +1,65 @@
+---
+dataset: TOPMED
+release: freeze2
+samples: 6015
+pass-only-variants: False
+example:
+   gene: APOL1
+   transcript: ENST00000407236
+   variant: 22-46615880-T-C
+   multi-allelic-variant: rs1800234
+   region: 22:46615715-46615880
+base-coverage:
+   - set:
+        min-length-bp: 0
+        max-length-bp: 5000
+        path:
+           '1': '/var/browser_coverage/topmed_freeze2_random1000/full/1.topmed_freeze2.coverage.full.json.gz'
+           '2': '/var/browser_coverage/topmed_freeze2_random1000/full/2.topmed_freeze2.coverage.full.json.gz'
+           '3': '/var/browser_coverage/topmed_freeze2_random1000/full/3.topmed_freeze2.coverage.full.json.gz'
+           '4': '/var/browser_coverage/topmed_freeze2_random1000/full/4.topmed_freeze2.coverage.full.json.gz'
+           '5': '/var/browser_coverage/topmed_freeze2_random1000/full/5.topmed_freeze2.coverage.full.json.gz'
+           '6': '/var/browser_coverage/topmed_freeze2_random1000/full/6.topmed_freeze2.coverage.full.json.gz'
+           '7': '/var/browser_coverage/topmed_freeze2_random1000/full/7.topmed_freeze2.coverage.full.json.gz'
+           '8': '/var/browser_coverage/topmed_freeze2_random1000/full/8.topmed_freeze2.coverage.full.json.gz'
+           '9': '/var/browser_coverage/topmed_freeze2_random1000/full/9.topmed_freeze2.coverage.full.json.gz'
+           '10': '/var/browser_coverage/topmed_freeze2_random1000/full/10.topmed_freeze2.coverage.full.json.gz'
+           '11': '/var/browser_coverage/topmed_freeze2_random1000/full/11.topmed_freeze2.coverage.full.json.gz'
+           '12': '/var/browser_coverage/topmed_freeze2_random1000/full/12.topmed_freeze2.coverage.full.json.gz'
+           '13': '/var/browser_coverage/topmed_freeze2_random1000/full/13.topmed_freeze2.coverage.full.json.gz'
+           '14': '/var/browser_coverage/topmed_freeze2_random1000/full/14.topmed_freeze2.coverage.full.json.gz'
+           '15': '/var/browser_coverage/topmed_freeze2_random1000/full/15.topmed_freeze2.coverage.full.json.gz'
+           '16': '/var/browser_coverage/topmed_freeze2_random1000/full/16.topmed_freeze2.coverage.full.json.gz'
+           '17': '/var/browser_coverage/topmed_freeze2_random1000/full/17.topmed_freeze2.coverage.full.json.gz'
+           '18': '/var/browser_coverage/topmed_freeze2_random1000/full/18.topmed_freeze2.coverage.full.json.gz'
+           '19': '/var/browser_coverage/topmed_freeze2_random1000/full/19.topmed_freeze2.coverage.full.json.gz'
+           '20': '/var/browser_coverage/topmed_freeze2_random1000/full/20.topmed_freeze2.coverage.full.json.gz'
+           '21': '/var/browser_coverage/topmed_freeze2_random1000/full/21.topmed_freeze2.coverage.full.json.gz'
+           '22': '/var/browser_coverage/topmed_freeze2_random1000/full/22.topmed_freeze2.coverage.full.json.gz'
+   - set:
+        min-length-bp: 5000
+        max-length-bp: !!python/name:sys.maxint
+        path:
+           '1': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/1.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '2': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/2.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '3': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/3.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '4': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/4.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '5': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/5.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '6': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/6.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '7': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/7.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '8': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/8.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '9': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/9.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '10': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/10.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '11': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/11.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '12': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/12.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '13': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/13.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '14': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/14.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '15': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/15.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '16': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/16.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '17': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/17.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '18': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/18.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '19': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/19.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '20': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/20.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '21': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/21.topmed_freeze2.coverage.bin_25e-2.json.gz'
+           '22': '/var/browser_coverage/topmed_freeze2_random1000/bin_25e-2/22.topmed_freeze2.coverage.bin_25e-2.json.gz'
+...

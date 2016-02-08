@@ -12,6 +12,7 @@ import random
 from utils import *
 from pycoverage import *
 import auth
+import yaml
 
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
 from flask.ext.compress import Compress
@@ -40,18 +41,18 @@ app.config['COMPRESS_DEBUG'] = True
 cache = NullCache()
 
 #EXAC_FILES_DIRECTORY = '../exac_data/'
-EXAC_FILES_DIRECTORY = '/net/inpsyght/mongo/orig_data/'
+EXAC_FILES_DIRECTORY = '/var/imported/topmed_freeze2'
 REGION_LIMIT = 1E5
 EXON_PADDING = 50
 # Load default config and override config from an environment variable
 app.config.update(dict(
-    DB_HOST='topmed.sph.umich.edu', 
+    DB_HOST='browser.sph.umich.edu', 
     DB_PORT=27017,
-    DB_NAME='topmed',
+    DB_NAME='topmed_freeze2',
     DEBUG=True,
-    LOAD_DB_PARALLEL_PROCESSES = 2,  # contigs assigned to threads, so good to make this a factor of 24 (eg. 2,3,4,6,8)
+    LOAD_DB_PARALLEL_PROCESSES = 8,  # contigs assigned to threads, so good to make this a factor of 24 (eg. 2,3,4,6,8)
     #SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ALL.chr22.*.VEP.vcf.gz')),
-    SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'topmed_freeze1b_20151105_4317_snps_indels.chr22.sites.anno.vcf.gz')),
+    SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ALL.polymorphic.topmed_freeze2.vcf.gz')),
     GENCODE_GTF=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'gencode.gtf.gz'),
     CANONICAL_TRANSCRIPT_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'canonical_transcripts.txt.gz'),
     OMIM_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'omim_info.txt.gz'),
@@ -66,71 +67,8 @@ app.config.update(dict(
     #   wget ftp://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606_b142_GRCh37p13/database/organism_data/b142_SNPChrPosOnRef_105.bcp.gz
     #   zcat b142_SNPChrPosOnRef_105.bcp.gz | awk '$3 != ""' | perl -pi -e 's/ +/\t/g' | sort -k2,2 -k3,3n | bgzip -c > dbsnp142.txt.bgz
     #   tabix -s 2 -b 3 -e 3 dbsnp142.txt.bgz
-    DBSNP_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'dbsnp142.txt.bgz')
+    DBSNP_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'dbsnp144.txt.bgz')
 ))
-
-# DT: load tabix files for base coverage
-FULL_COVERAGE_FILES = {
-   '1' : '/net/topmed/working/mongo/imported_data/coverage/full_json/1.topmed_freeze1c_20151119_4317.coverage.json.gz', 
-   '2' : '/net/topmed/working/mongo/imported_data/coverage/full_json/2.topmed_freeze1c_20151119_4317.coverage.json.gz', 
-   '3' : '/net/topmed/working/mongo/imported_data/coverage/full_json/3.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '4' : '/net/topmed/working/mongo/imported_data/coverage/full_json/4.topmed_freeze1c_20151119_4317.coverage.json.gz', 
-   '5' : '/net/topmed/working/mongo/imported_data/coverage/full_json/5.topmed_freeze1c_20151119_4317.coverage.json.gz', 
-   '6' : '/net/topmed/working/mongo/imported_data/coverage/full_json/6.topmed_freeze1c_20151119_4317.coverage.json.gz', 
-   '7' : '/net/topmed/working/mongo/imported_data/coverage/full_json/7.topmed_freeze1c_20151119_4317.coverage.json.gz', 
-   '8' : '/net/topmed/working/mongo/imported_data/coverage/full_json/8.topmed_freeze1c_20151119_4317.coverage.json.gz', 
-   '9' : '/net/topmed/working/mongo/imported_data/coverage/full_json/9.topmed_freeze1c_20151119_4317.coverage.json.gz', 
-   '10' : '/net/topmed/working/mongo/imported_data/coverage/full_json/10.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '11' : '/net/topmed/working/mongo/imported_data/coverage/full_json/11.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '12' : '/net/topmed/working/mongo/imported_data/coverage/full_json/12.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '13' : '/net/topmed/working/mongo/imported_data/coverage/full_json/13.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '14' : '/net/topmed/working/mongo/imported_data/coverage/full_json/14.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '15' : '/net/topmed/working/mongo/imported_data/coverage/full_json/15.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '16' : '/net/topmed/working/mongo/imported_data/coverage/full_json/16.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '17' : '/net/topmed/working/mongo/imported_data/coverage/full_json/17.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '18' : '/net/topmed/working/mongo/imported_data/coverage/full_json/18.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '19' : '/net/topmed/working/mongo/imported_data/coverage/full_json/19.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '20' : '/net/topmed/working/mongo/imported_data/coverage/full_json/20.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '21' : '/net/topmed/working/mongo/imported_data/coverage/full_json/21.topmed_freeze1c_20151119_4317.coverage.json.gz',
-   '22' : '/net/topmed/working/mongo/imported_data/coverage/full_json/22.topmed_freeze1c_20151119_4317.coverage.json.gz'
-}
-
-BINNED_COVERAGE_FILES = {
-   '1' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/1.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-   '2' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/2.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-   '3' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/3.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '4' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/4.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-   '5' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/5.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-   '6' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/6.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-   '7' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/7.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-   '8' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/8.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-   '9' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/9.topmed_freeze1c_20151119_4317.coverage.bins.json.gz', 
-   '10' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/10.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '11' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/11.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '12' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/12.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '13' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/13.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '14' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/14.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '15' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/15.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '16' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/16.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '17' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/17.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '18' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/18.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '19' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/19.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '20' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/20.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '21' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/21.topmed_freeze1c_20151119_4317.coverage.bins.json.gz',
-   '22' : '/net/topmed/working/mongo/imported_data/coverage/bins_json/22.topmed_freeze1c_20151119_4317.coverage.bins.json.gz'
-}
-
-coverages = CoverageCollection()
-
-region_size_bin_threshold = 5000
-for contig, file in FULL_COVERAGE_FILES.iteritems():
-    coverages.setTabixPath(0, region_size_bin_threshold, contig, file)
-#    coverages.setTabixPath(0, sys.maxint, contig, file)
-
-for contig, file in BINNED_COVERAGE_FILES.iteritems():
-    coverages.setTabixPath(region_size_bin_threshold, sys.maxint, contig, file)
-
-coverages.openAll()
 
 def connect_db():
     """
@@ -491,6 +429,15 @@ def create_users():
     db.users.ensure_index('user_id')
     print 'Created new users database.'
     
+def create_meta(yamlConfigFile):
+    db = get_db()
+    with open(yamlConfigFile) as f:
+       meta = yaml.load(f)
+    db.meta.drop()
+    print 'Dropped meta database.'
+    db.meta.insert(meta)
+    print 'Created new meta database.'
+
 
 def get_db():
     """
@@ -501,7 +448,14 @@ def get_db():
         g.db_conn = connect_db()
     return g.db_conn
 
-
+with app.app_context():
+    coverages = CoverageCollection()
+    meta = get_db().meta.find_one()
+    for coverage in meta['base-coverage']:
+        for contig, path in coverage['set']['path'].iteritems():
+            coverages.setTabixPath(coverage['set']['min-length-bp'], coverage['set']['max-length-bp'], contig, path)
+    coverages.openAll()
+                    
 # @app.teardown_appcontext
 # def close_db(error):
 #     """Closes the database again at the end of the request."""
@@ -958,4 +912,4 @@ def oauth_callback_google():
     return redirect(url_for('get_authorized'))
 
 if __name__ == "__main__":
-    app.run(host='gvs.sph.umich.edu', port=5000, threaded=True)
+    app.run(host='browser.sph.umich.edu', port=5000, threaded=True)

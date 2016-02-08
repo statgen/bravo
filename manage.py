@@ -54,6 +54,11 @@ def precalculate_variant_consqequence_category():
 def create_users():
     exac.create_users()
 
+@manager.command
+@manager.option('-y', '--yaml', dest = 'yamlConfigFile', help = 'YAML configuration file with meta-information.')
+def create_meta(yamlConfigFile):
+    exac.create_meta(yamlConfigFile)
+
 if __name__ == "__main__":
     manager.run()
 
