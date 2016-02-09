@@ -12,7 +12,6 @@ import random
 from utils import *
 from pycoverage import *
 import auth
-import yaml
 
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
 from flask.ext.compress import Compress
@@ -28,54 +27,23 @@ import time
 import sys
 import functools
 
-ADMINISTRATORS = (
-    'pjvh@umich.edu',
-)
-
 app = Flask(__name__)
-app.config.from_object('flask_config') # contains `SECRET_KEY`.
-mail_on_500(app, ADMINISTRATORS)
+app.config.from_object('flask_config.BravoConfig')
+mail_on_500(app, app.config['administrators'])
 Compress(app)
-app.config['COMPRESS_DEBUG'] = True
+
 #cache = FileSystemCache('cache_dir', default_timeout=60*60*24*31)
 cache = NullCache()
 
-#EXAC_FILES_DIRECTORY = '../exac_data/'
-EXAC_FILES_DIRECTORY = '/var/imported/topmed_freeze2'
 REGION_LIMIT = 1E5
 EXON_PADDING = 50
-# Load default config and override config from an environment variable
-app.config.update(dict(
-    DB_HOST='browser.sph.umich.edu', 
-    DB_PORT=27017,
-    DB_NAME='topmed_freeze2',
-    DEBUG=True,
-    LOAD_DB_PARALLEL_PROCESSES = 8,  # contigs assigned to threads, so good to make this a factor of 24 (eg. 2,3,4,6,8)
-    #SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ALL.chr22.*.VEP.vcf.gz')),
-    SITES_VCFS=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'ALL.polymorphic.topmed_freeze2.vcf.gz')),
-    GENCODE_GTF=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'gencode.gtf.gz'),
-    CANONICAL_TRANSCRIPT_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'canonical_transcripts.txt.gz'),
-    OMIM_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'omim_info.txt.gz'),
-    BASE_COVERAGE_FILES=glob.glob(os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'coverage', 'Panel.*.coverage.txt.gz')),
-    DBNSFP_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'dbNSFP2.6_gene.gz'),
-
-    # How to get a snp141.txt.bgz file:
-    #   wget http://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/snp141.txt.gz
-    #   zcat snp141.txt.gz | cut -f 1-5 | bgzip -c > snp141.txt.bgz
-    #   tabix -0 -s 2 -b 3 -e 4 snp141.txt.bgz
-
-    #   wget ftp://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606_b142_GRCh37p13/database/organism_data/b142_SNPChrPosOnRef_105.bcp.gz
-    #   zcat b142_SNPChrPosOnRef_105.bcp.gz | awk '$3 != ""' | perl -pi -e 's/ +/\t/g' | sort -k2,2 -k3,3n | bgzip -c > dbsnp142.txt.bgz
-    #   tabix -s 2 -b 3 -e 3 dbsnp142.txt.bgz
-    DBSNP_FILE=os.path.join(os.path.dirname(__file__), EXAC_FILES_DIRECTORY, 'dbsnp144.txt.bgz')
-))
 
 def connect_db():
     """
     Connects to the specific database.
     """
-    client = pymongo.MongoClient(host=app.config['DB_HOST'], port=app.config['DB_PORT'])
-    return client[app.config['DB_NAME']]
+    client = pymongo.MongoClient(host=app.config['mongo']['host'], port=app.config['mongo']['port'])
+    return client[app.config['mongo']['name']]
 
 
 def parse_tabix_file_subset(tabix_filenames, subset_i, subset_n, record_parser):
@@ -428,16 +396,6 @@ def create_users():
     print 'Dropped users database.'
     db.users.ensure_index('user_id')
     print 'Created new users database.'
-    
-def create_meta(yamlConfigFile):
-    db = get_db()
-    with open(yamlConfigFile) as f:
-       meta = yaml.load(f)
-    db.meta.drop()
-    print 'Dropped meta database.'
-    db.meta.insert(meta)
-    print 'Created new meta database.'
-
 
 def get_db():
     """
@@ -450,12 +408,11 @@ def get_db():
 
 with app.app_context():
     coverages = CoverageCollection()
-    meta = get_db().meta.find_one()
-    for coverage in meta['base-coverage']:
-        for contig, path in coverage['set']['path'].iteritems():
-            coverages.setTabixPath(coverage['set']['min-length-bp'], coverage['set']['max-length-bp'], contig, path)
+    for coverage in app.config['base_coverage']:
+        for contig, path in coverage['path'].iteritems():
+            coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], contig, path)
     coverages.openAll()
-                    
+
 # @app.teardown_appcontext
 # def close_db(error):
 #     """Closes the database again at the end of the request."""
