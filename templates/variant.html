@@ -182,7 +182,7 @@
         <hr/>
 {#      Upper display #}
         {% if variant.variant_id %}
-            {% if variant.allele_num < 6907.2 %}
+            {% if variant.allele_num < 0.8 * 2 * config['NUM_SAMPLES']  %}
                 <p><span class="label label-warning">Warning!</span> This variant is only covered in {{ (variant.allele_num/2)|int }} individuals (adjusted allele number = {{ variant.allele_num }}).<br/>
                 This means that the site is covered in fewer than 80% of the individuals in TOPMED, which may indicate a low-quality site.</p>
                 <hr/>
