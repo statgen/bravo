@@ -85,7 +85,7 @@ def get_coverage_for_bases(coverages, xstart, xstop=None):
 
     coverages = {
         #doc['xpos']: doc for doc in coverages_json
-        long(get_single_location('chr' + doc['chrom'], doc['pos'])): doc for doc in coverages_json
+        long(get_single_location('chr' + doc['chrom'], doc['start'])): doc for doc in coverages_json
     }
 
     ret = []

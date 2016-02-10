@@ -46,7 +46,8 @@ function create_coverage_chart() {
     var skip_utrs = true;
 
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
-    var coords_end = coords.replace('pos_', 'bin_end_');
+    var coords_start = coords.replace('pos_', 'start_');
+    var coords_end = coords.replace('pos_', 'end_');
     var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
     var coding_coordinate_params = get_coding_coordinate_params(window.transcript, skip_utrs);
     var chart_width;
@@ -79,21 +80,23 @@ function create_coverage_chart() {
 
     var area = d3.svg.area()
         .x( function(d) {
-            return exon_x_scale(d[coords]);
+            return exon_x_scale(d['pos']);
         }).y0( function(d) {
             return gene_chart_height;
         }).y1( function(d) {
             return (metric in d) ? y(d[metric]) : gene_chart_height;
         });
 
-    //This is a hack, revealing that I don't understand the surrounding code.
+    //This is a hack, revealing that the surrounding code needs changes.
     var my_datum = [];
     _.each(window.coverage_stats, function(d) {
-        if (d['pos_coding_noutr'] && d['bin_end_coding_noutr']) {
-            my_datum.push({pos_coding_noutr: d['pos_coding_noutr'], mean: 0});
-            my_datum.push({pos_coding_noutr: d['pos_coding_noutr'], mean: d['mean'] || 0});
-            my_datum.push({pos_coding_noutr: d['bin_end_coding_noutr']+1, mean: d['mean'] || 0});
-            my_datum.push({pos_coding_noutr: d['bin_end_coding_noutr']+1, mean: 0});
+        if (d[coords_start] && d[coords_end]) {
+            var o = [{}, {}, {}, {}];
+            o[0]['pos'] = o[1]['pos'] = d[coords_start];
+            o[2]['pos'] = o[3]['pos'] = 1 + d[coords_end];
+            o[1][metric] = o[2][metric] = d[metric] || 0;
+            o[0][metric] = o[3][metric] = 0;
+            my_datum.push.apply(my_datum, o); //concatenate o to my_datum
         }
     });
 
@@ -106,17 +109,6 @@ function create_coverage_chart() {
     svg.append("g")
         .attr("class", "y axis")
         .call(yAxis);
-
-    svg.selectAll("line")
-        .data(window.coverage_stats)
-        .enter()
-        .append("line")
-        .attr("y1", gene_chart_height + 3)
-        .attr("y2", gene_chart_height + 3)
-        .attr("x1", function(d) { return exon_x_scale(d['pos_coding_noutr']) || exon_x_scale(d['bin_end_coding_noutr']) || -100; })
-        .attr("x2", function(d) { return exon_x_scale(d['bin_end_coding_noutr'])+1 || exon_x_scale(d['pos_coding_noutr']) || -100; })
-        .style("stroke", "black")
-        .style("stroke-width", "3");
 
     d3.select('#gene_plot_container').append("br"); //make sure track_svg is below graph and not to the right of it
 
@@ -299,7 +291,8 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
     //skip_utrs is boolean
 
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
-    var coords_end = coords.replace('pos_', 'bin_end_');
+    var coords_start = coords.replace('pos_', 'start_');
+    var coords_end = coords.replace('pos_', 'end_');
     var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
     var coding_coordinate_params = get_coding_coordinate_params(window.transcript, skip_utrs);
     var chart_width;
@@ -324,7 +317,7 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
 
     var area = d3.svg.area()
         .x( function(d) { // Is .x() necessary?
-            return exon_x_scale(d[coords]);
+            return exon_x_scale(d['pos']);
         }).y0( function(d) {
             return gene_chart_height;
         }).y1( function(d) {
@@ -334,10 +327,10 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
     //This is a hack, revealing that the surrounding code needs changes.
     var my_datum = [];
     _.each(window.coverage_stats, function(d) {
-        if (d[coords] && d[coords_end]) {
+        if (d[coords_start] && d[coords_end]) {
             var o = [{}, {}, {}, {}];
-            o[0][coords] = o[1][coords] = d[coords];
-            o[2][coords] = o[3][coords] = 1 + d[coords_end];
+            o[0]['pos'] = o[1]['pos'] = d[coords_start];
+            o[2]['pos'] = o[3]['pos'] = 1 + d[coords_end];
             o[1][metric] = o[2][metric] = d[metric] || 0;
             o[0][metric] = o[3][metric] = 0;
             my_datum.push.apply(my_datum, o); //concatenate o to my_datum
@@ -351,13 +344,6 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .attr("d", area)
         .style("fill", "steelblue")
         .attr('class', 'area');
-
-    svg.selectAll("line")
-        .data(window.coverage_stats)
-        .transition()
-        .duration(500)
-        .attr("x1", function(d) { return exon_x_scale(d[coords]) || exon_x_scale(d[coords_end]) || -100; })
-        .attr("x2", function(d) { return 1 + exon_x_scale(d[coords_end]) || exon_x_scale(d[coords]) || -100; });
 
     // plot exons
     var svg_outer = d3.select('#gene_plot_container').select('#track_svg')
@@ -469,7 +455,7 @@ function build_the_graph () {
 
     // only show coding rects that have a coding coordinate
     window.coverage_stats = _.filter(window.coverage_stats, function(d) {
-        return d.pos_coding != undefined;
+        return d.start !== undefined && d.end !== undefined;
     });
     $('#avg_coverage').html(coverage_sum('mean'));
     $('#avg_coverage_x').html(coverage_sum('30')*100 + '%');
