@@ -94,6 +94,11 @@ def get_coverage_for_bases(coverages, xstart, xstop=None):
     for item in ret:
         assert 'mean' in item, item
 
+    assert len(coverages_json) == len(ret)
+    for i in range(len(coverages_json)):
+        assert coverages_json[i] == ret[i], [repr(coverages_json[i]), repr(ret[i])]
+    assert coverages_json == ret
+
     print 'parsed %s base(s) from %s-%s in %s sec' % (len(ret), xstart, xstop, time.time() - start_time)
 
     return ret
