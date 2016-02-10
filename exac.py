@@ -506,10 +506,7 @@ def variant_page(variant_str):
                 annotation['HGVS'] = get_proper_hgvs(annotation)
                 consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
 
-        # DT: get coverage from tabix
         base_coverage = lookups.get_coverage_for_bases(coverages, xpos, xpos + len(ref) - 1)
-        #base_coverage = lookups.get_coverage_for_bases(db, xpos, xpos + len(ref) - 1)
-        any_covered = any([x['has_coverage'] for x in base_coverage])
         metrics = lookups.get_metrics(db, variant)
 
         print 'Rendering variant: %s' % variant_str
@@ -518,7 +515,7 @@ def variant_page(variant_str):
             variant=variant,
             base_coverage=base_coverage,
             consequences=consequences,
-            any_covered=any_covered,
+            any_covered=bool(base_coverage),
             metrics=metrics
         )
     except Exception, e:
@@ -550,7 +547,7 @@ def get_gene_page_content(gene_id):
             transcript = lookups.get_transcript(db, transcript_id)
             variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
             # DT: get coverage from tabix
-            coverage_stats = lookups.get_coverage_for_transcript(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+            coverage_stats = lookups.get_coverage_for_bases(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
             t = render_template(
@@ -586,9 +583,7 @@ def transcript_page(transcript_id):
             gene = lookups.get_gene(db, transcript['gene_id'])
             gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
             variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
-            # DT: get coverage from tabix
-            coverage_stats = lookups.get_coverage_for_transcript(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
-            #coverage_stats = lookups.get_coverage_for_transcript(db, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+            coverage_stats = lookups.get_coverage_for_bases(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
 
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
