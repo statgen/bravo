@@ -29,7 +29,7 @@ import functools
 
 app = Flask(__name__)
 app.config.from_object('flask_config.BravoConfig')
-mail_on_500(app, app.config['administrators'])
+mail_on_500(app, app.config['ADMINS'])
 Compress(app)
 
 #cache = FileSystemCache('cache_dir', default_timeout=60*60*24*31)
@@ -42,8 +42,8 @@ def connect_db():
     """
     Connects to the specific database.
     """
-    client = pymongo.MongoClient(host=app.config['mongo']['host'], port=app.config['mongo']['port'])
-    return client[app.config['mongo']['name']]
+    client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'])
+    return client[app.config['MONGO']['name']]
 
 
 def parse_tabix_file_subset(tabix_filenames, subset_i, subset_n, record_parser):
@@ -408,7 +408,7 @@ def get_db():
 
 with app.app_context():
     coverages = CoverageCollection()
-    for coverage in app.config['base_coverage']:
+    for coverage in app.config['BASE_COVERAGE']:
         for contig, path in coverage['path'].iteritems():
             coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], contig, path)
     coverages.openAll()
