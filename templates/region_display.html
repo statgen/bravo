@@ -49,24 +49,14 @@ function region_chart(data, variant_data) {
         .attr('class', 'main_plot_bars')
         .style("fill", "steelblue")
         .attr("x", function(d, i) {
-            if (d.has_coverage) {
-                return x(d.pos);
-            }
+            return x(d.pos);
         })
         .attr("width", gene_chart_width/data.length)
         .attr("y", function(d) {
-            if (d['has_coverage']) {
-                return y(d[metric]);
-            } else {
-                return 0;
-            }
+            return y(d[metric]) || 0;
         })
         .attr("height", function(d) {
-            if (d['has_coverage']) {
-                return gene_chart_height - y(d[metric]);
-            } else {
-                return 0;
-            }
+            return (gene_chart_height - y(d[metric])) || 0;
         });
 
     svg.append("g")
