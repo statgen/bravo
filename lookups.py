@@ -70,38 +70,12 @@ def get_coverage_for_bases(coverages, xstart, xstop=None):
     Returns list of coverage dicts sorted by pos
     xstop can be None if just one base, but you'll still get back a list
     """
-
     if xstop is None:
-        xstop = xstart 
-     
+        xstop = xstart
     start_time = time.time()
-
-    coverages_json = coverages.getCoverageX(xstart, xstop)   
-
+    coverages_json = coverages.getCoverageX(xstart, xstop)
     print 'tabix\'ed %s base(s) from %s-%s in %s sec' % (len(coverages_json), xstart, xstop, time.time() - start_time)
-
-    start_time = time.time()
-
-    coverages = {
-        #doc['xpos']: doc for doc in coverages_json
-        long(get_single_location('chr' + doc['chrom'], doc['start'])): doc for doc in coverages_json
-    }
-
-    ret = []
-    for i in range(xstart, xstop+1):
-        if i in coverages:
-            ret.append(coverages[i])
-    for item in ret:
-        assert 'mean' in item, item
-
-    assert len(coverages_json) == len(ret)
-    for i in range(len(coverages_json)):
-        assert coverages_json[i] == ret[i], [repr(coverages_json[i]), repr(ret[i])]
-    assert coverages_json == ret
-
-    print 'parsed %s base(s) from %s-%s in %s sec' % (len(ret), xstart, xstop, time.time() - start_time)
-
-    return ret
+    return coverages_json
 
 
 def get_awesomebar_suggestions(g, query):
