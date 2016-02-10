@@ -201,9 +201,9 @@
                                 </div>
                             </div>
                             <div id="geno_quality_collapse" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="geno_quality_collapse_heading">
-                                <div class="row">
-                                    <div class="col-xs-11 col-xs-offset-1">
-                                        <div id="quality_metrics_container">
+                                <div id="quality_metrics_container">
+                                    <div class="row">
+                                        <div class="col-xs-11 col-xs-offset-1">
                                             <span class="btn-group" data-toggle="buttons" id="quality_full_site_button_group">
                                                 <button class="btn btn-primary btn-sm quality_full_site_buttons" id="variant_carriers_button"
                                                         data-tooltip="Show metric for only individuals with this allele.">
@@ -214,8 +214,16 @@
                                                     <input type="radio"> All individuals
                                                 </button>
                                             </span>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-11 col-xs-offset-1">
                                             <div id="quality_display_container" class="d3_graph"></div>
                                             <small><span class="label label-info">Note:</span> Plot may include low-quality genotypes that were excluded from allele counts in the table above</small>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-11 col-xs-offset-1">
                                             <span class="btn-group" data-toggle="buttons" id="quality_display_button_group" >
                                                 <button class="btn btn-primary btn-sm active quality_display_buttons" id="genotype_depths_button"
                                                         data-tooltip="Per sample depth. Capped at 100X">
