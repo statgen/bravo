@@ -310,7 +310,8 @@
                     {% if variant.variant_id %}
                         <div class="section_header">Annotations</div>
                         {% if variant.vep_annotations %}
-                            <p>This variant falls on {{ variant.transcripts|length }} transcripts in {{ variant.genes|length }} genes:</p>
+                            <p>This variant falls on {{ variant.transcripts|length }} transcript{{ "s" if (variant.transcripts|length) != 1 else "" }}
+                              belonging to {{ variant.genes|length }} gene{{ "s" if (variant.genes|length) != 1 else "" }}:</p>
                             <div class="panel-group" id="annotation_accordion" style="margin-bottom: 0px;">
                                 <div class="row">
                                 {% for consequence_column in consequences.keys()|slice(2) %}
