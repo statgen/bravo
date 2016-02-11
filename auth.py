@@ -43,7 +43,3 @@ class GoogleSignIn(object):
         me = oauth_session.get('', verify=False).json()
         return (me['name'],
                 me['email'])
-
-email_whitelist = [
-    "pjvh@umich.edu",
-]

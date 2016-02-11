@@ -836,7 +836,7 @@ def oauth_callback_google():
         flash('Authentication failed.')
         return redirect(url_for('homepage'))
 
-    if email.lower() not in auth.email_whitelist:
+    if email.lower() not in app.config['EMAIL_WHITELIST']:
         flash('Your email, {}, is not in the list of allowed emails.'.format(email.lower()))
         return redirect(url_for('homepage'))
 
