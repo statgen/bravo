@@ -30,10 +30,12 @@ def get_transcript(db, transcript_id):
 
 def get_variant(db, xpos, ref, alt):
     variant = db.variants.find_one({'xpos': xpos, 'ref': ref, 'alt': alt}, projection={'_id': False})
-    if variant is not None and variant['rsids'] == []:
+    if variant is None: return None
+    if variant['rsids'] == []:
         variant['rsids'] = list('rs{}'.format(r['rsid']) for r in db.dbsnp.find({'xpos': xpos}))
         if variant['rsids']:
             print("apparently the variant [xpos={!r}, ref={!r}, alt={!r}] didn't have any rsids but found some in db.dbsnp")
+    variant['genes'] = [gene for gene in variant['genes'] if gene != '']
     return variant
 
 

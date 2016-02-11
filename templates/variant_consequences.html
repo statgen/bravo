@@ -2,13 +2,15 @@
 <ul>
     {% for gene in consequences[consequence] %}
         <li>
-            <a href="/gene/{{ gene }}">
-            {% if consequences[consequence][gene][0].SYMBOL %}
-                {{ consequences[consequence][gene][0].SYMBOL }}
-            {% else %}
-                {{ gene }}
+            {% if gene %}
+                <a href="/gene/{{ gene }}">
+                {% if consequences[consequence][gene][0].SYMBOL %}
+                    {{ consequences[consequence][gene][0].SYMBOL }}
+                {% else %}
+                    {{ gene }}
+                {% endif %}
+                </a>
             {% endif %}
-            </a>
             {% if consequences[consequence][gene]|length > 1 %}
                 <span class="dropdown">
                     <button class="btn btn-default dropdown-toggle" type="button" id="transcript_dropdown" data-toggle="dropdown">
@@ -30,14 +32,20 @@
                     </ul>
                 </span>
             {% else %}
-                {% set annotation = consequences[consequence][gene][0] %}
-                 - <a href="/transcript/{{ annotation.Feature }}">
+                {% with annotation = consequences[consequence][gene][0] %}
+                    {% if gene %}-{% endif %}
+                    {% if annotation.Feature[:4] == "ENST" %}
+                        <a href="/transcript/{{ annotation.Feature }}">
+                    {% else %}
+                        <a href="http://useast.ensembl.org/Multi/Search/Results?q={{ annotation.Feature }}">
+                    {% endif %}
                     {{ annotation.Feature }}
                     {% if annotation.CANONICAL == 'YES' %}
                         *
                     {% endif %}
-                </a>
-                {% include 'variant_details.html' %}
+                    </a>
+                    {% include 'variant_details.html' %}
+                {% endwith %}
             {% endif %}
         </li>
     {% endfor %}
