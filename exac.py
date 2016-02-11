@@ -38,12 +38,24 @@ cache = NullCache()
 REGION_LIMIT = 1E5
 EXON_PADDING = 50
 
-def connect_db():
-    """
-    Connects to the specific database.
-    """
-    client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'])
-    return client[app.config['MONGO']['name']]
+def get_db():
+    # Only use the database within a request context! Something about threads/forks.
+    # See <https://jira.mongodb.org/browse/PYTHON-961>
+    return get_db._mongo_client[app.config['MONGO']['name']]
+get_db._mongo_client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'])
+
+def get_autocomplete_strings():
+    if not hasattr(get_autocomplete_strings, '_cache'):
+        autocomplete_strings = get_db().genes.distinct('gene_name')
+        autocomplete_strings.extend(get_db().genes.distinct('other_names', {'other_names': {'$ne': None}}))
+        get_autocomplete_strings._cache = sorted(set(autocomplete_strings))
+    return get_autocomplete_strings._cache
+
+coverages = CoverageCollection()
+for coverage in app.config['BASE_COVERAGE']:
+    for contig, path in coverage['path'].iteritems():
+        coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], contig, path)
+coverages.openAll()
 
 
 def parse_tabix_file_subset(tabix_filenames, subset_i, subset_n, record_parser):
@@ -299,27 +311,6 @@ def load_db():
     print('Done!')
 
 
-def create_cache():
-    """
-    This is essentially a compile step that generates all cached resources.
-    Creates files like autocomplete_entries.txt
-    Should be run on every redeploy.
-    """
-    # create autocomplete_entries.txt
-    autocomplete_strings = []
-    print >> sys.stderr, "Getting gene names..."
-    for gene in get_db().genes.find():
-        autocomplete_strings.append(gene['gene_name'])
-        if 'other_names' in gene:
-            autocomplete_strings.extend(gene['other_names'])
-    print >> sys.stderr, "Done! Writing..."
-    f = open(os.path.join(os.path.dirname(__file__), 'autocomplete_strings.txt'), 'w')
-    for s in sorted(autocomplete_strings):
-        f.write(s+'\n')
-    f.close()
-    print >> sys.stderr, "Done!"
-
-
 def precalculate_variant_consqequence_category():
     db = get_db()
     print 'Reading %s variants' % db.variants.count()
@@ -397,27 +388,6 @@ def create_users():
     db.users.ensure_index('user_id')
     print 'Created new users database.'
 
-def get_db():
-    """
-    Opens a new database connection if there is none yet for the
-    current application context.
-    """
-    if not hasattr(g, 'db_conn'):
-        g.db_conn = connect_db()
-    return g.db_conn
-
-with app.app_context():
-    coverages = CoverageCollection()
-    for coverage in app.config['BASE_COVERAGE']:
-        for contig, path in coverage['path'].iteritems():
-            coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], contig, path)
-    coverages.openAll()
-
-# @app.teardown_appcontext
-# def close_db(error):
-#     """Closes the database again at the end of the request."""
-#     if hasattr(g, 'db_conn'):
-#         g.db_conn.close()
 
 def require_agreement_to_terms_and_store_destination(func):
     """
@@ -450,9 +420,7 @@ def homepage():
 
 @app.route('/autocomplete/<query>')
 def awesome_autocomplete(query):
-    if not hasattr(g, 'autocomplete_strings'):
-        g.autocomplete_strings = [s.strip() for s in open(os.path.join(os.path.dirname(__file__), 'autocomplete_strings.txt'))]
-    suggestions = lookups.get_awesomebar_suggestions(g, query)
+    suggestions = lookups.get_awesomebar_suggestions(get_autocomplete_strings(), query)
     return Response(json.dumps([{'value': s} for s in suggestions]),  mimetype='application/json')
 
 

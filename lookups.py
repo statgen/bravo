@@ -78,14 +78,14 @@ def get_coverage_for_bases(coverages, xstart, xstop=None):
     return coverages_json
 
 
-def get_awesomebar_suggestions(g, query):
+def get_awesomebar_suggestions(autocomplete_strings, query):
     """
     This generates autocomplete suggestions when user
     query is the string that user types
     If it is the prefix for a gene, return list of gene names
     """
     regex = re.compile('^' + re.escape(query), re.IGNORECASE)
-    results = (r for r in g.autocomplete_strings if regex.match(r))
+    results = (r for r in autocomplete_strings if regex.match(r))
     results = itertools.islice(results, 0, 20)
     return list(results)
 

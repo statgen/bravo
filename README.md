@@ -72,10 +72,9 @@ Note that this installs xBrowse too.
 At this point, it's probably worth quickly checking out the code structure if you haven't already :)
 
 Now we must load the database from those flat files.
-This is a single command, but it can take a while (can take advantage of parallel loads by modifying LOAD\_DB\_PARALLEL\_PROCESSES in exac.py):
+This is a single command, but it can take a while (can take advantage of parallel loads by modifying `LOAD_DB_PARALLEL_PROCESSES` in `flask_config.py`):
 
     python manage.py load_db
-    # TODO: ./manage.py doesn't work for some reason - I guess numbered args are used somewhere.
 
 You won't have to run this often - most changes won't require rebuilding the database.
 That said, this is (and will remain) idempotent,
@@ -87,10 +86,6 @@ You can also reload parts of the database using any of the following commands:
     python manage.py load_base_coverage
     python manage.py load_gene_models
     python manage.py create_users
-
-Then, you need to create a cache for autocomplete and large gene purposes:
-
-    python manage.py create_cache
 
 ### Running the site
 
