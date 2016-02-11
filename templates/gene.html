@@ -57,23 +57,11 @@
                         <dd>{{ gene.full_gene_name }}</dd>
                     {% endif %}
                     <dt>Number of variants</dt>
-                    <dd><span id="number_of_variants">{{ num_variants_in_gene.pass }}</span> (Including filtered: {{ num_variants_in_gene.total }})</dd>
-{#                    <dt>Number of LoF variants</dt>#}
-{#                    <dd><span id="number_of_lof_variants"></span> (Including filtered: {{ lof_variants_in_gene|length }})</dd>#}
-<!--
-                    <script>
-                        filtered_variants = _.filter(window.table_variants, function(d) {
-                            return d.filter == 'PASS';
-                        });
-                        $('#number_of_variants').replaceWith(filtered_variants.length);
-                        lof_filtered_variants = _.filter(window.table_variants, function(d) {
-                            return d.filter == 'PASS' && d.category == 'lof_variant';
-                        });
-                        $('#number_of_lof_variants').replaceWith(lof_filtered_variants.length);
-                    </script>
--->
-{#                    <dt>LoF rate</dt>#}
-{#                    <dd>{{ '%0.4g' % composite_lof_frequency }}</dd>#}
+                    {% if config['ONLY_PASS_VARIANTS'] %}
+                    <dd>{{ num_variants_in_gene.pass }}</dd>
+                    {% else %}
+                    <dd>{{ num_variants_in_gene.pass }} (Including filtered: {{ num_variants_in_gene.total }})</dd>
+                    {% endif %}
                     <dt class="hidden-xs">UCSC Browser</dt>
                     <dd class="hidden-xs">
                         <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">

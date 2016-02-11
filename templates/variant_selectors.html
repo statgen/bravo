@@ -13,7 +13,8 @@
             </button>
         </span>
     </label>
-    <label class='hidden-xs'>
+    <label class='hidden{{ "" if config['ONLY_PASS_VARIANTS'] else "-xs" }}'>
+           >
         <input type="checkbox" id="filtered_checkbox" value=""> Include filtered (non-PASS) variants
     </label>
 </span>
