@@ -33,9 +33,13 @@
     padding-right: 10px !important;
 }
 
-#home-title {
+#home-titlebox {
     text-align: center;
-    padding: 30px;
+    padding-top: 30px;
+    padding-bottom: 30px;
+}
+#home-titlebox h2 {
+    font-style: italic;
 }
 
 #home-searchbox {

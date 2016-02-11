@@ -24,7 +24,14 @@
           <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('login_with_google') }}">Click here to login with Google</a><p>
         </div>
         {% endif %}
-        <h1 id="home-title">{{ config['BROWSER_NAME'] }}</h1>
+        <div class="row" id="home-titlebox">
+            <div class="col-xs-12">
+                <h1>{{ config['BROWSER_NAME'] }}</h1>
+                {% if config['SHOW_POWERED_BY'] %}
+                <h2>Powered by {{ config['DATASET_NAME'] }}</h1>
+                {% endif %}
+            </div>
+        </div>
         <div class="row">
             <div class="col-md-12">
                 <div id="home-searchbox">
