@@ -19,15 +19,17 @@
             .removeAttr('disabled')
             .removeAttr('data-tooltip')
             .one('click', function() {
-                //add variants to the variant_table
-                window.table_variants = transcript_data[0];
-                build_variant_table()
+                with_waiting_notice(function() {
+                    //add variants to the variant_table
+                    window.table_variants = transcript_data[0];
+                    build_variant_table()
 
-                //add variants to the variant graph
-                window.variants_in_transcript = transcript_data[0];
-                window.precalc_coding_coordinates(window.variants_in_transcript);
-                add_variants_to_variants_plot();
-                update_variants();
+                    //add variants to the variant graph
+                    window.variants_in_transcript = transcript_data[0];
+                    window.precalc_coding_coordinates(window.variants_in_transcript);
+                    add_variants_to_variants_plot();
+                    update_variants();
+                });
             });
         })
         .fail(function() {

@@ -672,3 +672,13 @@ function set_plot_image(container, index) {
     //convert svg source to URI data scheme.
     return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(source);
 }
+
+function with_waiting_notice(f) {
+    $('body').css('cursor', 'progress');
+    $("#wait-modal").modal({"backdrop": "static"});
+    setTimeout(function() {
+        f();
+        $('body').css('cursor', 'default');
+        $("#wait-modal").modal('hide');
+    }, 10);
+}
