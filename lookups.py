@@ -257,7 +257,6 @@ def remove_some_extraneous_information(variant):
     del variant['xstart']
     del variant['xstop']
     del variant['vep_annotations']
-    del variant['sometimes_missense_or_lof']
 
 def remove_extraneous_information(variant):
     """Remove information not needed by gene.html, transcript.html or region.html"""
