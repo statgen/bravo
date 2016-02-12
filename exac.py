@@ -494,9 +494,6 @@ def variant_page(variant_str):
 @app.route('/gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
 def gene_page(gene_id):
-    return get_gene_page_content(gene_id)
-
-def get_gene_page_content(gene_id):
     db = get_db()
     try:
         gene = lookups.get_gene(db, gene_id)
