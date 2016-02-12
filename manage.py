@@ -47,8 +47,8 @@ def precalculate_metrics():
 
 
 @manager.command
-def precalculate_variant_consqequence_category():
-    exac.precalculate_variant_consqequence_category()
+def precalculate_whether_variant_is_ever_missense_or_lof():
+    exac.precalculate_whether_variant_is_ever_missense_or_lof()
 
 @manager.command
 def create_users():

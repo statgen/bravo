@@ -314,13 +314,19 @@ def load_db():
     print('Done!')
 
 
-def precalculate_variant_consqequence_category():
+def precalculate_whether_variant_is_ever_missense_or_lof():
     db = get_db()
     print 'Reading %s variants' % db.variants.count()
-    for variant in db.variants.find(projection=['_id', 'vep_annotations']):
-        add_consequence_to_variant(variant)
-        
-    db.variants.ensure_index('consequence_category')
+    missense_and_lof_csqs = csq_order[:csq_order.index('MISSENSE_THRESHOLD')]
+    missense_and_lof_csqs.remove('LOF_THRESHOLD')
+    for csq in missense_and_lof_csqs:
+        st = time.time()
+        result = db.variants.update_many(
+            {'vep_annotations.Consequence': {'$regex': csq}},
+            {'$set': {'sometimes_missense_or_lof': 1}}
+        )
+        print "done with {}: updated {} documents in {:.2f} seconds".format(csq, result.matched_count, time.time() - st)
+
 
 def precalculate_metrics():
     import numpy

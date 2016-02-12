@@ -87,6 +87,11 @@ You can also reload parts of the database using any of the following commands:
     python manage.py load_gene_models
     python manage.py create_users
 
+Once you've run that, then run:
+
+    python manage.py precalculate_metrics
+    python manage.py precalculate_whether_variant_is_ever_missense_or_lof
+
 ### Running the site
 
 Note that if you are revisiting the site after a break, make sure your virtualenv is `activate`'d.

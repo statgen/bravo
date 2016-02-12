@@ -286,13 +286,12 @@ def get_variants_in_gene(db, gene_id):
 
 def get_most_important_variants_in_gene(db, gene_id):
     variants = []
-    for variant in db.variants.find({'genes': gene_id}, projection={'_id': False}):
+    for variant in db.variants.find({'genes': gene_id, 'filter': 'PASS'}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
-        if variant['filter'] == "PASS":
-            add_consequence_to_variant(variant)
-            if variant['category'] in ['lof_variant', 'missense_variant']:
-                remove_extraneous_information(variant)
-                variants.append(variant)
+        add_consequence_to_variant(variant)
+        if variant['category'] in ['lof_variant', 'missense_variant']:
+            remove_extraneous_information(variant)
+            variants.append(variant)
     return variants
 
 def get_num_variants_in_gene(db, gene_id):
@@ -321,13 +320,12 @@ def get_variants_in_transcript(db, transcript_id):
 
 def get_most_important_variants_in_transcript(db, transcript_id):
     variants = []
-    for variant in db.variants.find({'transcripts': transcript_id}, projection={'_id': False}):
+    for variant in db.variants.find({'transcripts': transcript_id, 'filter': 'PASS'}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Feature'] == transcript_id]
-        if variant['filter'] == "PASS":
-            add_consequence_to_variant(variant)
-            if variant['category'] in ['lof_variant', 'missense_variant']:
-                remove_extraneous_information(variant)
-                variants.append(variant)
+        add_consequence_to_variant(variant)
+        if variant['category'] in ['lof_variant', 'missense_variant']:
+            remove_extraneous_information(variant)
+            variants.append(variant)
     return variants
 
 
