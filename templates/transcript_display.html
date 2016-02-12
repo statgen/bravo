@@ -122,12 +122,23 @@ function create_coverage_chart() {
         .attr("transform", "translate(" + gene_chart_margin_lower.left + "," + 0 + ")");
 
     var exon_color = "lightsteelblue";
-    svg_outer.append("line")
+    svg_outer.selectAll("line.padded_exon")
+        .data(window.transcript.exons)
+        .enter()
+        .append('line')
+        .attr("class", "padded_exon")
         .attr("y1", lower_gene_chart_height/2)
         .attr("y2", lower_gene_chart_height/2)
-        .attr("x1", 0)
-        .attr("x2", exon_x_scale(coding_coordinate_params.size))
-        .attr('id', 'boundary_line')
+        .attr("x1", function(d) { return exon_x_scale(get_coding_coordinate(d.start - EXON_PADDING, skip_utrs)); })
+        .attr("x2", function(d) { return exon_x_scale(get_coding_coordinate(d.stop + EXON_PADDING, skip_utrs)); })
+        .style("visibility", function(d) {
+            // TODO: check that x1 and x2 turned out okay.
+            if (d.feature_type === "CDS" || !skip_utrs) {
+                return "visible";
+            } else {
+                return "hidden";
+            }
+        })
         .attr("stroke-width", 5)
         .attr("stroke", exon_color);
 
@@ -355,8 +366,24 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
         .attr("height", lower_gene_chart_height).select('#track');
 
-    svg_outer.select('#boundary_line')
-        .attr("x2", exon_x_scale(coding_coordinate_params.size));
+    var exon_color = "lightsteelblue";
+    svg_outer.selectAll("line.padded_exon")
+        .data(window.transcript.exons)
+        .transition()
+        .duration(500)
+        .attr("class", "padded_exon")
+        .attr("y1", lower_gene_chart_height/2)
+        .attr("y2", lower_gene_chart_height/2)
+        .attr("x1", function(d) { return exon_x_scale(get_coding_coordinate(d.start - EXON_PADDING, skip_utrs)); })
+        .attr("x2", function(d) { return exon_x_scale(get_coding_coordinate(d.stop + EXON_PADDING, skip_utrs)); })
+        .style("visibility", function(d) {
+            if (d.feature_type === "CDS" || !skip_utrs)
+                return "visible";
+            else
+                return "hidden";
+        })
+        .attr("stroke-width", 5)
+        .attr("stroke", exon_color);
 
     // plot exon rounded rects
     svg_outer.selectAll("rect")
@@ -370,13 +397,6 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
                 return exon_x_scale(0);
             }
             return exon_x_scale(d.stop-d.start+1);
-        })
-        .attr("height", function(d, i) {
-            if (d.feature_type == 'CDS') {
-                return lower_gene_chart_height;
-            } else {
-                return lower_gene_chart_height/2;
-            }
         });
 
     // plot variants

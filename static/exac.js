@@ -6,7 +6,10 @@
  *
  */
 
-var EXON_PADDING = 75;
+// Padding can have variants and coverage.
+// Margin is just blank.
+var EXON_PADDING = 15;
+var EXON_MARGIN = 60;
 
 /*
     The following methods are for working with "Coding Coordinates",
@@ -38,22 +41,31 @@ window.get_position_mapping = _.memoize(function(skip_utrs) {
         return [];
     }
 
-    // overlap b/w parts that touch is fine.
+    // In theory, overlap is fine, so long as both map from the same real coordinates to scaled coordinates.
+    // That is, as long as the difference between read_start is the same as the difference between scaled_start.
+    // In practice, overlap brings out the bugs that I haven't fixed, so I'll unify overlapping sections.
     exons = _.sortBy(exons, "start");
     var pos_mapping = [{
-        real_start: exons[0].start,
-        scaled_start: EXON_PADDING,
-        length: exons[0].stop - exons[0].start
+        real_start: exons[0].start - EXON_PADDING,
+        scaled_start: EXON_MARGIN,
+        length: exons[0].stop - exons[0].start + EXON_PADDING*2,
     }];
     for (var i=1; i<exons.length; i++) {
-        var gap_between_exons = Math.min(exons[i].start - exons[i-1].stop, EXON_PADDING*2);
-        var length_of_previous_exon = pos_mapping[pos_mapping.length-1].length + 1; //Not sure about this +1.
-        var scaled_start_of_previous_exon = pos_mapping[pos_mapping.length-1].scaled_start;
-        pos_mapping.push({
-            real_start: exons[i].start,
-            scaled_start: length_of_previous_exon + gap_between_exons + scaled_start_of_previous_exon,
-            length: exons[i].stop - exons[i].start
-        });
+        var prev_map = pos_mapping[pos_mapping.length-1];
+        var gap_between_padded_exons = Math.min(exons[i].start - exons[i-1].stop - EXON_PADDING*2, EXON_MARGIN*2);
+        var scaled_padded_end_of_previous_exon = prev_map.scaled_start + prev_map.length + 1; // +1 ?
+        var new_map = {
+            real_start: exons[i].start - EXON_PADDING,
+            scaled_start: scaled_padded_end_of_previous_exon + gap_between_padded_exons,
+            length: exons[i].stop - exons[i].start + EXON_PADDING*2
+        };
+        if (gap_between_padded_exons < 0) {
+            console.log(["exon overlap!", prev_map, new_map]);
+            prev_map.length = new_map.scaled_start + new_map.length - prev_map.scaled_start;
+            console.log(["exon overlap!", prev_map]);
+        } else {
+            pos_mapping.push(new_map);
+        }
     }
     console.log(pos_mapping);
     return pos_mapping;
@@ -108,7 +120,7 @@ window.get_coding_coordinate_params = _.memoize(function(skip_utrs) {
         ret.size = 0;
     } else {
         //assume that we start at 0 and go EXON_PADDING beyond the end of the last pos_mapping.
-        ret.size = pos_mapping[pos_mapping.length-1].length + pos_mapping[pos_mapping.length-1].scaled_start + EXON_PADDING;
+        ret.size = pos_mapping[pos_mapping.length-1].length + pos_mapping[pos_mapping.length-1].scaled_start + EXON_PADDING + EXON_MARGIN;
     }
     return ret;
 });
