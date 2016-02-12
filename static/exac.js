@@ -60,26 +60,23 @@ window.get_position_mapping = _.memoize(function(skip_utrs) {
 });
 
 window.get_coding_coordinates = function(positions, skip_utrs) {
-
-    var pos_mapping = window.get_position_mapping(skip_utrs);
-
-    var scaled_positions = positions.map(function() {return null}); // for some reason, null works better than undefined
-    _.each(positions, function(position, i) {
-        _.find(pos_mapping, function(mapping) {
-            if (position < mapping.real_start) {
-                return true; //break
-            }
-            if (position <= mapping.real_start + mapping.length) {
-                scaled_positions[i] = mapping.scaled_start + position - mapping.real_start;
-                return true; //break
-            }
-        });
-    });
-    return scaled_positions;
+    return positions.map(function(pos) {
+        return window.get_coding_coordinate(pos, skip_utrs);
+    })
 };
 
 window.get_coding_coordinate = function(position, skip_utrs) {
-    return get_coding_coordinates([position], skip_utrs)[0];
+    var pos_mapping = window.get_position_mapping(skip_utrs);
+    // TODO: binary search
+    for (var i=0; i<pos_mapping.length; i++) {
+        var m = pos_mapping[i];
+        if (position < m.real_start) {
+            return null;
+        } else if (position <= m.real_start + m.length) {
+            return m.scaled_start + position - m.real_start;
+        }
+    }
+    return null;
 };
 
 window.get_coding_coordinate_params = function(skip_utrs) {
