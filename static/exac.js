@@ -41,18 +41,18 @@ window.get_position_mapping = _.memoize(function(skip_utrs) {
     // overlap b/w parts that touch is fine.
     exons = _.sortBy(exons, "start");
     var pos_mapping = [{
-        real_start: exons[0].start - EXON_PADDING,
-        scaled_start: 0,
-        length: exons[0].stop - exons[0].start + EXON_PADDING*2
+        real_start: exons[0].start,
+        scaled_start: EXON_PADDING,
+        length: exons[0].stop - exons[0].start
     }];
     for (var i=1; i<exons.length; i++) {
         var gap_between_exons = Math.min(exons[i].start - exons[i-1].stop, EXON_PADDING*2);
-        var length_of_previous_exon = exons[i-1].stop - exons[i-1].start + 1; //Not sure about this +1.
+        var length_of_previous_exon = pos_mapping[pos_mapping.length-1].length + 1; //Not sure about this +1.
         var scaled_start_of_previous_exon = pos_mapping[pos_mapping.length-1].scaled_start;
         pos_mapping.push({
-            real_start: exons[i].start - EXON_PADDING,
+            real_start: exons[i].start,
             scaled_start: length_of_previous_exon + gap_between_exons + scaled_start_of_previous_exon,
-            length: exons[i].stop - exons[i].start + EXON_PADDING*2
+            length: exons[i].stop - exons[i].start
         });
     }
     console.log(pos_mapping);
@@ -99,7 +99,7 @@ window.precalc_coding_coordinates_for_bin = function(bin, skip_utrs) {
     }
 };
 
-window.get_coding_coordinate_params = function(skip_utrs) {
+window.get_coding_coordinate_params = _.memoize(function(skip_utrs) {
     var ret = {};
 
     var pos_mapping = window.get_position_mapping(skip_utrs);
@@ -107,10 +107,11 @@ window.get_coding_coordinate_params = function(skip_utrs) {
     if (ret.num_exons === 0) {
         ret.size = 0;
     } else {
-        ret.size = pos_mapping[pos_mapping.length-1].length + pos_mapping[pos_mapping.length-1].scaled_start - pos_mapping[0].scaled_start;
+        //assume that we start at 0 and go EXON_PADDING beyond the end of the last pos_mapping.
+        ret.size = pos_mapping[pos_mapping.length-1].length + pos_mapping[pos_mapping.length-1].scaled_start + EXON_PADDING;
     }
     return ret;
-};
+});
 
 window.precalc_coding_coordinates = function(objects) {
     _.each(objects, function(o) {

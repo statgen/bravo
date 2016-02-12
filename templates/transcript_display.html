@@ -138,7 +138,7 @@ function create_coverage_chart() {
         .append("rect")
         .attr('class', 'track_bar')
         .style("fill", exon_color)
-        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, true)); })
+        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })
         .attr("y", function(d, i) {
             if (d.feature_type == 'CDS') {
                 return 0;
@@ -147,9 +147,9 @@ function create_coverage_chart() {
             }
         })
         .attr("width", function(d, i) {
-            if (get_coding_coordinate(d.start, true) === null) {
+            if (get_coding_coordinate(d.start, skip_utrs) === null) {
                 console.error('(get_coding_coordinate(d.start, skip_utrs) === null) with '+JSON.stringify(d));
-                return exon_x_scale(175);
+                return exon_x_scale(0);
             }
             return exon_x_scale(d.stop-d.start+1);
         })
