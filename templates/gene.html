@@ -24,7 +24,7 @@
             $('#consequence_other_variant_button')
             .removeClass('disabled')
             .removeAttr('disabled')
-            .removeAttr('data-tooltip')
+            .attr('data-tooltip', "Show all variants")
             .one('click', function() {
                 with_waiting_notice(function() {
                     //add variants to the variant_table

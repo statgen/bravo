@@ -5,10 +5,12 @@
                     data-tooltip="Variants are still loading">
                 <input type="radio" >All
             </button>
-            <button class="btn btn-primary consequence_display_buttons active" id="consequence_missense_variant_button">
+            <button class="btn btn-primary consequence_display_buttons active" id="consequence_missense_variant_button"
+                    data-tooltip="Show only variants that have a VEP-annotated &#xa; consequence at least as severe as &#xa; {{ csq_order[csq_order.index('MISSENSE_THRESHOLD')-1] }}">
                 <input type="radio" >Missense + LoF
             </button>
-            <button class="btn btn-primary consequence_display_buttons" id="consequence_lof_variant_button">
+            <button class="btn btn-primary consequence_display_buttons" id="consequence_lof_variant_button"
+                    data-tooltip="Show only variants that have a VEP-annotated &#xa; consequence at least as severe as &#xa; {{ csq_order[csq_order.index('LOF_THRESHOLD')-1] }}">
                 <input type="radio">LoF
             </button>
         </span>
