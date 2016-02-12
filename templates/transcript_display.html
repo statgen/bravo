@@ -147,7 +147,8 @@ function create_coverage_chart() {
             }
         })
         .attr("width", function(d, i) {
-            if (get_coding_coordinate(d.start, true) == -100) {
+            if (get_coding_coordinate(d.start, true) === null) {
+                console.error('(get_coding_coordinate(d.start, skip_utrs) === null) with '+JSON.stringify(d));
                 return exon_x_scale(175);
             }
             return exon_x_scale(d.stop-d.start+1);
@@ -236,6 +237,7 @@ function create_variants_plot(svg_outer, exon_x_scale, coords) {
         .style("opacity", 0.5)
         .attr("cx",  function(d) {
             if (d['pos_coding_noutr'] == undefined) {
+                console.error("(d['pos_coding_noutr'] == undefined) with "+JSON.stringify(d));
                 return -100;
             } else {
                 return exon_x_scale(d[coords]);
@@ -360,7 +362,8 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .duration(500)
         .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })
         .attr("width", function(d, i) {
-            if (get_coding_coordinate(d.start, skip_utrs) == -100) {
+            if (get_coding_coordinate(d.start, skip_utrs) === null) {
+                console.error('(get_coding_coordinate(d.start, skip_utrs) === null) with '+JSON.stringify(d));
                 return exon_x_scale(175);
             }
             return exon_x_scale(d.stop-d.start+1);
@@ -381,6 +384,7 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .selectAll('ellipse')
         .attr("cx", function(d) {
             if (d[coords] == undefined) {
+                console.error("(d[coords] == undefined) with "+JSON.stringify(d));
                 return -100;
             } else {
                 return exon_x_scale(d[coords]);

@@ -80,8 +80,6 @@ window.get_coding_coordinate = function(position, skip_utrs) {
 };
 
 window.get_coding_coordinate_params = function(skip_utrs) {
-    //Seems to calculate the combined length of the exons including the padding between them.
-    //With skip_utrs, each exon has EXON_PADDING on each side, meaning 2*EXON_PADDING between exons
     var ret = {};
 
     var pos_mapping = window.get_position_mapping(skip_utrs);
