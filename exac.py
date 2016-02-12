@@ -473,6 +473,7 @@ def variant_page(variant_str):
             for annotation in variant['vep_annotations']:
                 annotation['HGVS'] = get_proper_hgvs(annotation)
                 consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
+            lookups.remove_some_extraneous_information(variant)
 
         base_coverage = lookups.get_coverage_for_bases(coverages, xpos, xpos + len(ref) - 1)
         metrics = lookups.get_metrics(db, variant)

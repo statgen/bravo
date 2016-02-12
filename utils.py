@@ -62,11 +62,6 @@ def xpos_to_pos(xpos):
     return int(xpos % 1e9)
 
 
-def add_consequence_to_variants(variant_list):
-    for variant in variant_list:
-        add_consequence_to_variant(variant)
-
-
 def add_consequence_to_variant(variant):
     worst_csq = worst_csq_with_vep(variant['vep_annotations'])
     if worst_csq is None: return

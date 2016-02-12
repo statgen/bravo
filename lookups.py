@@ -47,7 +47,9 @@ def get_variants_by_rsid(db, rsid):
     except Exception, e:
         return None
     variants = list(db.variants.find({'rsids': rsid}, projection={'_id': False}))
-    add_consequence_to_variants(variants)
+    for variant in variants:
+        add_consequence_to_variant(variant)
+        remove_some_extraneous_information(variant)
     return variants
 
 
@@ -62,7 +64,9 @@ def get_variants_from_dbsnp(db, rsid):
     if position:
         variants = list(db.variants.find({'xpos': {'$lte': position['xpos'], '$gte': position['xpos']}}, projection={'_id': False}))
         if variants:
-            add_consequence_to_variants(variants)
+            for variant in variants:
+                add_consequence_to_variant(variant)
+                remove_some_extraneous_information(variant)
             return variants
     return []
 
@@ -207,7 +211,9 @@ def get_variants_in_region(db, chrom, start, stop):
     variants = list(db.variants.find({
         'xpos': {'$lte': xstop, '$gte': xstart}
     }, projection={'_id': False}, limit=SEARCH_LIMIT))
-    add_consequence_to_variants(variants)
+    for variant in variants:
+        add_consequence_to_variant(variant)
+        remove_extraneous_information(variant)
     return list(variants)
 
 
@@ -245,17 +251,27 @@ def get_metrics(db, variant):
     return metrics
 
 
+def remove_some_extraneous_information(variant):
+    """Remove information not needed by variant.html"""
+    del variant['xpos']
+    del variant['xstart']
+    del variant['xstop']
+    del variant['vep_annotations']
+    del variant['sometimes_missense_or_lof']
+
 def remove_extraneous_information(variant):
+    """Remove information not needed by gene.html, transcript.html or region.html"""
+    remove_some_extraneous_information(variant)
     del variant['genotype_depths']
     del variant['genotype_qualities']
     del variant['transcripts']
     del variant['genes']
     del variant['orig_alt_alleles']
-    del variant['xpos']
-    del variant['xstart']
-    del variant['xstop']
     del variant['site_quality']
-    del variant['vep_annotations']
+    del variant['pop_acs']
+    del variant['pop_ans']
+    del variant['pop_homs']
+
 
 def get_variants_in_gene(db, gene_id):
     """
@@ -274,8 +290,8 @@ def get_most_important_variants_in_gene(db, gene_id):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
         if variant['filter'] == "PASS":
             add_consequence_to_variant(variant)
-            remove_extraneous_information(variant)
             if variant['category'] in ['lof_variant', 'missense_variant']:
+                remove_extraneous_information(variant)
                 variants.append(variant)
     return variants
 
@@ -309,8 +325,8 @@ def get_most_important_variants_in_transcript(db, transcript_id):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Feature'] == transcript_id]
         if variant['filter'] == "PASS":
             add_consequence_to_variant(variant)
-            remove_extraneous_information(variant)
             if variant['category'] in ['lof_variant', 'missense_variant']:
+                remove_extraneous_information(variant)
                 variants.append(variant)
     return variants
 
