@@ -73,6 +73,32 @@ window.get_coding_coordinate = function(position, skip_utrs) {
     return null;
 };
 
+window.precalc_coding_coordinates_for_bin = function(bin, skip_utrs) {
+    // TODO: if a bin extends across two exons, then it needs to be split.
+    //       to split a bin, this function should be `window.get_bins_with_coding_coordinates = function(bins, skip_utrs)`
+    //       and it should `rv=[]`, `rv.append`, etc.
+
+    // bin is like {start:2162705, end:2162706, ...}
+    // return is like {start:2162705, start_coding_noutr:50, start_coding:50, end:2162706, end_coding_noutr:51, end_coding:51, ...}
+
+    var pos_mapping = window.get_position_mapping(skip_utrs);
+
+    var key_suffix = skip_utrs ? '_coding_noutr' : '_coding';
+    for (var i=0; i<pos_mapping.length; i++) {
+        var m = pos_mapping[i];
+        if (bin.end < m.real_start) {
+            bin['start'+key_suffix] = null;
+            bin['end'+key_suffix] = null;
+            return;
+        } else if (bin.start <= m.real_start + m.length) {
+            // +1 and -1 just help make a little break
+            bin['start'+key_suffix] = Math.max(m.scaled_start + 1, m.scaled_start + bin.start - m.real_start);
+            bin['end'+key_suffix] = Math.min(m.scaled_start + m.length - 1, m.scaled_start + bin.end - m.real_start);
+            return;
+        }
+    }
+};
+
 window.get_coding_coordinate_params = function(skip_utrs) {
     var ret = {};
 
@@ -86,14 +112,17 @@ window.get_coding_coordinate_params = function(skip_utrs) {
     return ret;
 };
 
-window.precalc_coding_coordinates = function(objects, data_is_binned) {
-    //Note: this modifies `objects`.
-    var keys_to_map = data_is_binned ? ['start', 'end'] : ['pos'];
-    keys_to_map.forEach(function(key) {
-        _.each(objects, function(o) {
-            o[key + '_coding'] = get_coding_coordinate(o[key], false)
-            o[key + '_coding_noutr'] = get_coding_coordinate(o[key], true)
-        });
+window.precalc_coding_coordinates = function(objects) {
+    _.each(objects, function(o) {
+        o.pos_coding = get_coding_coordinate(o.pos, false)
+        o.pos_coding_noutr = get_coding_coordinate(o.pos, true)
+    });
+};
+
+window.precalc_coding_coordinates_for_bins = function(bins) {
+    _.each(bins, function(bin) {
+        window.precalc_coding_coordinates_for_bin(bin, false);
+        window.precalc_coding_coordinates_for_bin(bin, true);
     });
 };
 

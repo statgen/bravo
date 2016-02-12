@@ -449,8 +449,8 @@ function build_the_graph () {
     } else {
         $('#gene_plot_container').css('width', $(window).width()*10/12 + "px");
     }
-    precalc_coding_coordinates(window.coverage_stats, true); //Note: This modifies window.coverage_stats
-    precalc_coding_coordinates(window.variants_in_transcript, false); //Likewise for window.variants_in_transcript
+    precalc_coding_coordinates_for_bins(window.coverage_stats); //Note: This modifies window.coverage_stats
+    precalc_coding_coordinates(window.variants_in_transcript); //Likewise for window.variants_in_transcript
 
     // only show variants that have a coding coordinate
     window.variants_in_transcript = _.filter(window.variants_in_transcript, function(variant) {
