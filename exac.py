@@ -51,12 +51,15 @@ def get_autocomplete_strings():
         get_autocomplete_strings._cache = sorted(set(autocomplete_strings))
     return get_autocomplete_strings._cache
 
-coverages = CoverageCollection()
-for coverage in app.config['BASE_COVERAGE']:
-    for contig, path in coverage['path'].iteritems():
-        coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], contig, path)
-coverages.openAll()
-
+def get_coverages():
+    if not hasattr(get_coverages, '_cache'):
+        coverages = CoverageCollection()
+        for coverage in app.config['BASE_COVERAGE']:
+            for contig, path in coverage['path'].iteritems():
+                coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], contig, path)
+        coverages.openAll()
+        get_coverages._cache = coverages
+    return get_coverages._cache
 
 def parse_tabix_file_subset(tabix_filenames, subset_i, subset_n, record_parser):
     """
@@ -475,7 +478,7 @@ def variant_page(variant_str):
                 consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
             lookups.remove_some_extraneous_information(variant)
 
-        base_coverage = lookups.get_coverage_for_bases(coverages, xpos, xpos + len(ref) - 1)
+        base_coverage = lookups.get_coverage_for_bases(get_coverages(), xpos, xpos + len(ref) - 1)
         metrics = lookups.get_metrics(db, variant)
 
         print 'Rendering variant: %s' % variant_str
@@ -513,7 +516,7 @@ def gene_page(gene_id):
             transcript = lookups.get_transcript(db, transcript_id)
             variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
             # DT: get coverage from tabix
-            coverage_stats = lookups.get_coverage_for_bases(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+            coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
             t = render_template(
@@ -549,7 +552,7 @@ def transcript_page(transcript_id):
             gene = lookups.get_gene(db, transcript['gene_id'])
             gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
             variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
-            coverage_stats = lookups.get_coverage_for_bases(coverages, transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+            coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
 
             add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
@@ -647,7 +650,7 @@ def region_page(region_id):
             xstart = get_xpos(chrom, start)
             xstop = get_xpos(chrom, stop)
             # DT: get coverage from tabix
-            coverage_array = lookups.get_coverage_for_bases(coverages, xstart, xstop)
+            coverage_array = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
             #coverage_array = lookups.get_coverage_for_bases(db, xstart, xstop)
             t = render_template(
                 'region.html',
