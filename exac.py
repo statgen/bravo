@@ -517,7 +517,6 @@ def gene_page(gene_id):
             variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
             # DT: get coverage from tabix
             coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
-            add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
             t = render_template(
                 'gene.html',
@@ -553,8 +552,6 @@ def transcript_page(transcript_id):
             gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
             variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
             coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
-
-            add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
 
             t = render_template(
                 'transcript.html',
@@ -594,7 +591,6 @@ def variants_transcript_api(transcript_id):
     db = get_db()
     try:
         variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
-        add_transcript_coordinate_to_variants(db, variants_in_transcript, transcript_id)
         return Response(json.dumps(variants_in_transcript), mimetype='application/json')
     except Exception as e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
