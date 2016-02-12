@@ -147,8 +147,8 @@ function create_coverage_chart() {
             }
         })
         .attr("width", function(d, i) {
+            // TODO: use precalc_coding_coordinates_for_bins() to constrain these to exons
             if (get_coding_coordinate(d.start, skip_utrs) === null) {
-                console.error('(get_coding_coordinate(d.start, skip_utrs) === null) with '+JSON.stringify(d));
                 return exon_x_scale(0);
             }
             return exon_x_scale(d.stop-d.start+1);
@@ -235,9 +235,12 @@ function create_variants_plot(svg_outer, exon_x_scale, coords) {
             return "track_variant " + d.category;
         })
         .style("opacity", 0.5)
+        .style("visibility", function(d) {
+            return (d[coords] == undefined) ? "hidden" : "visible";
+        })
         .attr("cx",  function(d) {
-            if (d['pos_coding_noutr'] == undefined) {
-                console.error("(d['pos_coding_noutr'] == undefined) with "+JSON.stringify(d));
+            if (d[coords] == undefined) {
+                // TODO: put these at the correct position, but hide them.
                 return -100;
             } else {
                 return exon_x_scale(d[coords]);
@@ -362,9 +365,9 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .duration(500)
         .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })
         .attr("width", function(d, i) {
+            // TODO: use precalc_coding_coordinates_for_bins() to constrain these to exons
             if (get_coding_coordinate(d.start, skip_utrs) === null) {
-                console.error('(get_coding_coordinate(d.start, skip_utrs) === null) with '+JSON.stringify(d));
-                return exon_x_scale(175);
+                return exon_x_scale(0);
             }
             return exon_x_scale(d.stop-d.start+1);
         })
@@ -377,14 +380,17 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         });
 
     // plot variants
-    svg_outer.selectAll("a")
+    svg_outer.selectAll("a.track_variant_link")
         .data(window.variants_in_transcript)
         .transition()
         .duration(500)
         .selectAll('ellipse')
+        .style("visibility", function(d) {
+            return (d[coords] == undefined) ? "hidden" : "visible";
+        })
         .attr("cx", function(d) {
             if (d[coords] == undefined) {
-                console.error("(d[coords] == undefined) with "+JSON.stringify(d));
+                // TODO: put these at the correct position, but hide them.
                 return -100;
             } else {
                 return exon_x_scale(d[coords]);
