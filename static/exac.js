@@ -59,12 +59,6 @@ window.get_position_mapping = _.memoize(function(skip_utrs) {
     return pos_mapping;
 });
 
-window.get_coding_coordinates = function(positions, skip_utrs) {
-    return positions.map(function(pos) {
-        return window.get_coding_coordinate(pos, skip_utrs);
-    })
-};
-
 window.get_coding_coordinate = function(position, skip_utrs) {
     var pos_mapping = window.get_position_mapping(skip_utrs);
     // TODO: binary search
@@ -96,14 +90,9 @@ window.precalc_coding_coordinates = function(objects, data_is_binned) {
     //Note: this modifies `objects`.
     var keys_to_map = data_is_binned ? ['start', 'end'] : ['pos'];
     keys_to_map.forEach(function(key) {
-        orig_positions = _.map(objects, function(o) { return o[key] });
-        new_positions = get_coding_coordinates(orig_positions, false);
-        _.each(objects, function(o, i) {
-            o[key + '_coding'] = new_positions[i];
-        });
-        new_positions = get_coding_coordinates(orig_positions, true);
-        _.each(objects, function(o, i) {
-            o[key + '_coding_noutr'] = new_positions[i];
+        _.each(objects, function(o) {
+            o[key + '_coding'] = get_coding_coordinate(o[key], false)
+            o[key + '_coding_noutr'] = get_coding_coordinate(o[key], true)
         });
     });
 };
