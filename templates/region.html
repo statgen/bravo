@@ -7,13 +7,6 @@
         window.table_variants = variants;
         window.start = {{ start|tojson|safe }};
         window.stop = {{ stop|tojson|safe }};
-
-        $(function() {
-            $('#consequence_other_variant_button')
-            .removeClass('disabled')
-            .removeAttr('disabled')
-            .attr('data-tooltip', "Show all variants");
-        });
     </script>
     <div class="container-fluid">
       <div class="row">

@@ -11,9 +11,12 @@
         window.coverage_stats = {{ coverage_stats|tojson|safe }};
         window.page_name = window.gene.gene_id;
 
+
         $(document).ready(function() {
-            $("#variants_loading").hide();
-            $("#variants_table_container").show();
+            $('#consequence_other_variant_button, #filtered_checkbox')
+            .addClass('disabled')
+            .attr('disabled', 'disabled')
+            .attr('data-tooltip', "Loading...");
         });
 
         $.when($.getJSON("/api/variants_in_gene/" + window.gene.gene_id),
@@ -22,10 +25,17 @@
         .done(function(gene_data, transcript_data) {
             // Somehow these arguments get wrapped up, so we want gene_data[0] and transcript_data[0].
             $('#consequence_other_variant_button')
+            .attr('data-tooltip', "Show all variants");
+
+            $('#filtered_checkbox')
+            .removeAttr('data-tooltip');
+
+            $('#consequence_other_variant_button, #filtered_checkbox')
             .removeClass('disabled')
             .removeAttr('disabled')
-            .attr('data-tooltip', "Show all variants")
-            .one('click', function() {
+            .on('change.namespace_for_xhr click.namespace_for_xhr', function() {
+                // When either of these is click, both must remove this function from their listeners
+                $('#consequence_other_variant_button, #filtered_checkbox').off('.namespace_for_xhr');
                 with_waiting_notice(function() {
                     //add variants to the variant_table
                     window.table_variants = gene_data[0];
