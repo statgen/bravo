@@ -49,7 +49,7 @@ function create_coverage_chart() {
     var coords_start = coords.replace('pos_', 'start_');
     var coords_end = coords.replace('pos_', 'end_');
     var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
-    var coding_coordinate_params = get_coding_coordinate_params(window.transcript, skip_utrs);
+    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
     var chart_width;
     if (scale_type == 'overview') {
         chart_width = gene_chart_width;
@@ -88,7 +88,7 @@ function create_coverage_chart() {
         });
 
     //This is a hack, revealing that the surrounding code needs changes.
-    var my_datum = [];
+    my_datum = [];
     _.each(window.coverage_stats, function(d) {
         if (d[coords_start] && d[coords_end]) {
             var o = [{}, {}, {}, {}];
@@ -132,13 +132,13 @@ function create_coverage_chart() {
         .attr("stroke", exon_color);
 
     // plot exon rects
-    svg_outer.selectAll("this text also doesnt matter")
+    svg_outer.selectAll(".track_bar")
         .data(window.transcript.exons)
         .enter()
         .append("rect")
         .attr('class', 'track_bar')
         .style("fill", exon_color)
-        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(window.transcript, d.start, true)); })
+        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, true)); })
         .attr("y", function(d, i) {
             if (d.feature_type == 'CDS') {
                 return 0;
@@ -147,7 +147,7 @@ function create_coverage_chart() {
             }
         })
         .attr("width", function(d, i) {
-            if (get_coding_coordinate(window.transcript, d.start, true) == -100) {
+            if (get_coding_coordinate(d.start, true) == -100) {
                 return exon_x_scale(175);
             }
             return exon_x_scale(d.stop-d.start+1);
@@ -258,7 +258,7 @@ function create_variants_plot(svg_outer, exon_x_scale, coords) {
 function add_variants_to_variants_plot() {
     var svg_outer = d3.select('#gene_plot_container').select('#track');
     var skip_utrs = ! $('#include_utrs_checkbox').is(':checked');
-    var coding_coordinate_params = get_coding_coordinate_params(window.transcript, skip_utrs);
+    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
     var scale_type = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
     var chart_width;
     if (scale_type == 'overview') {
@@ -294,7 +294,7 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
     var coords_start = coords.replace('pos_', 'start_');
     var coords_end = coords.replace('pos_', 'end_');
     var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
-    var coding_coordinate_params = get_coding_coordinate_params(window.transcript, skip_utrs);
+    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
     var chart_width;
     if (scale_type == 'overview') {
         chart_width = gene_chart_width;
@@ -358,9 +358,9 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .data(window.transcript.exons)
         .transition()
         .duration(500)
-        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(window.transcript, d.start, skip_utrs)); })
+        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })
         .attr("width", function(d, i) {
-            if (get_coding_coordinate(window.transcript, d.start, skip_utrs) == -100) {
+            if (get_coding_coordinate(d.start, skip_utrs) == -100) {
                 return exon_x_scale(175);
             }
             return exon_x_scale(d.stop-d.start+1);
@@ -445,8 +445,8 @@ function build_the_graph () {
     } else {
         $('#gene_plot_container').css('width', $(window).width()*10/12 + "px");
     }
-    precalc_coding_coordinates(window.transcript, window.coverage_stats, true); //Note: This modifies window.coverage_stats
-    precalc_coding_coordinates(window.transcript, window.variants_in_transcript, false); //Likewise for window.variants_in_transcript
+    precalc_coding_coordinates(window.coverage_stats, true); //Note: This modifies window.coverage_stats
+    precalc_coding_coordinates(window.variants_in_transcript, false); //Likewise for window.variants_in_transcript
 
     // only show variants that have a coding coordinate
     window.variants_in_transcript = _.filter(window.variants_in_transcript, function(variant) {

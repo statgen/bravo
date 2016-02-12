@@ -6,10 +6,8 @@
  *
  */
 
-// this should be global - should not vary across installation
 var EXON_PADDING = 75;
 
-// todo: move this somewhere else
 /*
     The following methods are for working with "Coding Coordinates",
     a coordinate space that we use to plot data in the coding regions of a transcript.
@@ -21,100 +19,94 @@ var EXON_PADDING = 75;
     Random notes:
         - coding coordinates have no concept of a gene - they are solely a property of a transcript
         - should probably have a map between coding coodinates and protein position
-        - Brett, will you please write some fucking tests for this...
-
  */
-window.get_coding_coordinates = function(_transcript, position_list, skip_utrs) {
-//    console.log(_transcript.exons);
-    var exons;
-    if (skip_utrs) {
-        exons = _.filter(_transcript.exons, function(d) {
-            return d.feature_type == 'CDS';
-        });
-    } else {
-        exons = _.filter(_transcript.exons, function(d) {
-            return d.feature_type == 'CDS' || d.feature_type == 'UTR';
-        });
+window.get_position_mapping = _.memoize(function(skip_utrs) {
+    // Uses window.transcript.exons
+    // Returns like [
+    //    {real_start: 36649935, scaled_start: 0, length: 178},
+    //    {real_start: 36650909, scaled_start: 179, length: 212}
+    // ]
+
+    var good_feature_types = skip_utrs ? ['CDS'] : ['CDS', 'UTR'];
+    var exons = _.filter(window.transcript.exons, function(exon) {
+        return _.contains(good_feature_types, exon.feature_type);
+    });
+    if (exons.length === 0) {
+        exons = window.transcript.exons;
     }
-    if (exons.length == 0) {
-        exons = _transcript.exons;
-    }
-    var num_exons = exons.length;
-    var exon_offsets = [];
-    // initialize with one sided padding
-    for (var i=0; i<num_exons; i++) {
-        exon_offsets.push(EXON_PADDING);
-    }
-    for (var i=0; i<num_exons; i++) {
-        for (var j=i+1; j<num_exons; j++) {
-            exon_offsets[j] += exons[i]['stop'] - exons[i]['start'];
-            if (skip_utrs || (i == num_exons - 1 || exons[i]['stop'] != exons[i+1]['start'] - 1)) {
-                exon_offsets[j] += EXON_PADDING*2;
-            }
-        }
+    if (exons.length === 0) {
+        return [];
     }
 
-    // get each position
-    // todo: optimize by sorting positions
-    var coding_positions = [];
-    for (var i=0; i<num_exons; i++) {  // todo: underscore init method?
-        coding_positions.push(-100);
+    // overlap b/w parts that touch is fine.
+    exons = _.sortBy(exons, "start");
+    var pos_mapping = [{
+        real_start: exons[0].start - EXON_PADDING,
+        scaled_start: 0,
+        length: exons[0].stop - exons[0].start + EXON_PADDING*2
+    }];
+    for (var i=1; i<exons.length; i++) {
+        var gap_between_exons = Math.min(exons[i].start - exons[i-1].stop, EXON_PADDING*2);
+        var length_of_previous_exon = exons[i-1].stop - exons[i-1].start + 1; //Not sure about this +1.
+        var scaled_start_of_previous_exon = pos_mapping[pos_mapping.length-1].scaled_start;
+        pos_mapping.push({
+            real_start: exons[i].start - EXON_PADDING,
+            scaled_start: length_of_previous_exon + gap_between_exons + scaled_start_of_previous_exon,
+            length: exons[i].stop - exons[i].start + EXON_PADDING*2
+        });
     }
-    _.each(position_list, function(position, i) {
-        _.find(exons, function(exon, j) {
-            if (position >= exon.start - EXON_PADDING && position <= exon.stop + EXON_PADDING) {
-                coding_positions[i] = exon_offsets[j] + position - exon.start;
-                return true; //break the loop
+    console.log(pos_mapping);
+    return pos_mapping;
+});
+
+window.get_coding_coordinates = function(positions, skip_utrs) {
+
+    var pos_mapping = window.get_position_mapping(skip_utrs);
+
+    var scaled_positions = positions.map(function() {return null}); // for some reason, null works better than undefined
+    _.each(positions, function(position, i) {
+        _.find(pos_mapping, function(mapping) {
+            if (position < mapping.real_start) {
+                return true; //break
+            }
+            if (position <= mapping.real_start + mapping.length) {
+                scaled_positions[i] = mapping.scaled_start + position - mapping.real_start;
+                return true; //break
             }
         });
     });
-    return coding_positions;
+    return scaled_positions;
 };
 
-window.get_coding_coordinate = function(_transcript, position, skip_utrs) {
-    return get_coding_coordinates(_transcript, [position], skip_utrs)[0];
+window.get_coding_coordinate = function(position, skip_utrs) {
+    return get_coding_coordinates([position], skip_utrs)[0];
 };
 
-
-window.get_coding_coordinate_params = function(_transcript, skip_utrs) {
+window.get_coding_coordinate_params = function(skip_utrs) {
     //Seems to calculate the combined length of the exons including the padding between them.
     //With skip_utrs, each exon has EXON_PADDING on each side, meaning 2*EXON_PADDING between exons
     var ret = {};
-    var exons;
-    if (skip_utrs) {
-        exons = _.filter(_transcript.exons, function(d) {
-            return d.feature_type == 'CDS';
-        });
+
+    var pos_mapping = window.get_position_mapping(skip_utrs);
+    ret.num_exons = pos_mapping.length;
+    if (ret.num_exons === 0) {
+        ret.size = 0;
     } else {
-        exons = _.filter(_transcript.exons, function(d) {
-            return d.feature_type == 'CDS' || d.feature_type == 'UTR';
-        });
+        ret.size = pos_mapping[pos_mapping.length-1].length + pos_mapping[pos_mapping.length-1].scaled_start - pos_mapping[0].scaled_start;
     }
-    if (exons.length == 0) {
-        exons = _transcript.exons;
-    }
-    ret.num_exons = exons.length;
-    ret.size = EXON_PADDING;
-    for (var i=0; i<ret.num_exons; i++) {
-        ret.size += exons[i].stop - exons[i].start;
-        if (skip_utrs || (i == ret.num_exons - 1 || exons[i]['stop'] != exons[i+1]['start'] - 1)) {
-            ret.size += EXON_PADDING*2;
-        }
-    }
-    ret.size -= EXON_PADDING;
     return ret;
 };
 
-window.precalc_coding_coordinates = function(_transcript, objects, data_is_binned) {
+window.precalc_coding_coordinates = function(objects, data_is_binned) {
     //Note: this modifies `objects`.
     var keys_to_map = data_is_binned ? ['start', 'end'] : ['pos'];
     keys_to_map.forEach(function(key) {
         orig_positions = _.map(objects, function(o) { return o[key] });
-        new_positions = get_coding_coordinates(_transcript, orig_positions, false);
+        new_positions = get_coding_coordinates(orig_positions, false);
         _.each(objects, function(o, i) {
             o[key + '_coding'] = new_positions[i];
         });
-        new_positions = get_coding_coordinates(_transcript, orig_positions, true);
+        new_positions = get_coding_coordinates(orig_positions, true);
         _.each(objects, function(o, i) {
             o[key + '_coding_noutr'] = new_positions[i];
         });
