@@ -315,10 +315,11 @@ def load_db():
 
 
 def precalculate_whether_variant_is_ever_missense_or_lof():
-    db = get_db()
-    print 'Reading %s variants' % db.variants.count()
+    # TODO: try this: regex = '(^|&)({})(&|$)'.format('|'.join(missense_and_lof_csqs))
     missense_and_lof_csqs = csq_order[:csq_order.index('MISSENSE_THRESHOLD')]
     missense_and_lof_csqs.remove('LOF_THRESHOLD')
+    db = get_db()
+    print 'Reading %s variants' % db.variants.count()
     for csq in missense_and_lof_csqs:
         st = time.time()
         result = db.variants.update_many(
