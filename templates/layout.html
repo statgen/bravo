@@ -74,7 +74,7 @@
                 <li><a href="/about" style="color: #333; font-weight: bold;">About</a></li>
                 <li><a href="/terms" style="color: #333; font-weight: bold;">Terms</a></li>
                 {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('logout') }}" style="color: #333; font-weight: bold;">Logout</a></li>
+                <li><a href="{{ url_for('logout') }}" style="color: #333; font-weight: bold;">Logout ({{ current_user.email }})</a></li>
                 {% endif %}
             </ul>
         </div><!-- /.navbar-collapse -->
