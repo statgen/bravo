@@ -431,7 +431,7 @@ def homepage():
 @app.route('/autocomplete/<query>')
 def awesome_autocomplete(query):
     suggestions = lookups.get_awesomebar_suggestions(get_autocomplete_strings(), query)
-    return Response(json.dumps([{'value': s} for s in suggestions]),  mimetype='application/json')
+    return jsonify([{'value': s} for s in suggestions])
 
 
 @app.route('/awesome')
@@ -584,7 +584,7 @@ def variants_gene_api(gene_id):
     db = get_db()
     try:
         variants_in_gene = lookups.get_variants_in_gene(db, gene_id)
-        return Response(json.dumps(variants_in_gene), mimetype='application/json')
+        return jsonify(variants_in_gene)
     except Exception as e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
@@ -596,7 +596,7 @@ def variants_transcript_api(transcript_id):
     db = get_db()
     try:
         variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
-        return Response(json.dumps(variants_in_transcript), mimetype='application/json')
+        return jsonify(variants_in_transcript)
     except Exception as e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
@@ -610,7 +610,7 @@ def variants_region_api(region_id):
         chrom, start, stop = region_id.split('-')
         start, stop = int(start), int(stop)
         variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
-        return Response(json.dumps(variants_in_region), mimetype='application/json')
+        return jsonify(variants_in_region)
     except Exception as e:
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
