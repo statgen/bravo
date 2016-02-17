@@ -559,6 +559,7 @@ def transcript_page(transcript_id):
             gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
             variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
             coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+            num_variants_in_transcript = lookups.get_num_variants_in_transcript(db, transcript_id)
 
             t = render_template(
                 'transcript.html',
@@ -566,6 +567,7 @@ def transcript_page(transcript_id):
                 transcript_json=json.dumps(transcript),
                 variants_in_transcript=variants_in_transcript,
                 variants_in_transcript_json=json.dumps(variants_in_transcript),
+                num_variants_in_transcript=num_variants_in_transcript,
                 coverage_stats=coverage_stats,
                 coverage_stats_json=json.dumps(coverage_stats),
                 gene=gene,

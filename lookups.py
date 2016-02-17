@@ -324,6 +324,9 @@ def get_most_important_variants_in_transcript(db, transcript_id):
             variants.append(variant)
     return variants
 
+def get_num_variants_in_transcript(db, transcript_id):
+    return db.variants.find({'transcripts': transcript_id}, projection={'_id': False}).count()
+
 
 def get_exons_in_transcript(db, transcript_id):
     # return sorted(
