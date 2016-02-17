@@ -564,14 +564,10 @@ def transcript_page(transcript_id):
             t = render_template(
                 'transcript.html',
                 transcript=transcript,
-                transcript_json=json.dumps(transcript),
                 variants_in_transcript=variants_in_transcript,
-                variants_in_transcript_json=json.dumps(variants_in_transcript),
                 num_variants_in_transcript=num_variants_in_transcript,
                 coverage_stats=coverage_stats,
-                coverage_stats_json=json.dumps(coverage_stats),
                 gene=gene,
-                gene_json=json.dumps(gene),
                 csq_order=csq_order,
             )
             
