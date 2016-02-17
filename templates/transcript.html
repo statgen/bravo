@@ -51,10 +51,10 @@
                 <h1>{{ gene.gene_name }}</h1>
                 <h3>Transcript: {{ transcript.transcript_id }} (<span id="number_of_exons"></span> coding exons)</h3>
                 <script>
-                  filtered_variants = _.filter(window.transcript.exons, function(d) {
+                  var coding_exons = _.filter(window.transcript.exons, function(d) {
                       return d.feature_type == 'CDS';
                   });
-                  $('#number_of_exons').html(filtered_variants.length);
+                  $('#number_of_exons').html(coding_exons.length);
                 </script>
                 <div class="dropdown">
                     <button class="btn btn-default dropdown-toggle" type="button" id="transcript_dropdown" data-toggle="dropdown">
