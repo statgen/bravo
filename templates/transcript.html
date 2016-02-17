@@ -11,7 +11,7 @@
 
 
         $(document).ready(function() {
-            $('#consequence_other_variant_button, #filtered_checkbox')
+            $('#consequence_other_variant_button')
             .addClass('disabled')
             .attr('disabled', 'disabled')
             .attr('data-tooltip', "Loading...");
@@ -21,18 +21,12 @@
                $.Deferred(function() { $(this.resolve); })) //document.ready
         .done(function(transcript_data) {
             // Somehow these arguments get wrapped up, so we want transcript_data[0].
+
             $('#consequence_other_variant_button')
-            .attr('data-tooltip', "Show all variants");
-
-            $('#filtered_checkbox')
-            .removeAttr('data-tooltip');
-
-            $('#consequence_other_variant_button, #filtered_checkbox')
+            .attr('data-tooltip', "Show all variants")
             .removeClass('disabled')
             .removeAttr('disabled')
-            .on('change.namespace_for_xhr click.namespace_for_xhr', function() {
-                // When either of these is click, both must remove this function from their listeners
-                $('#consequence_other_variant_button, #filtered_checkbox').off('.namespace_for_xhr');
+            .one('change', function() {
                 with_waiting_notice(function() {
                     //add variants to the variant_table
                     window.table_variants = transcript_data[0];

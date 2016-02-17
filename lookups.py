@@ -285,7 +285,7 @@ def get_variants_in_gene(db, gene_id):
 
 def get_most_important_variants_in_gene(db, gene_id):
     variants = []
-    for variant in db.variants.find({'genes': gene_id, 'filter': 'PASS', 'sometimes_missense_or_lof':1}, projection={'_id': False}):
+    for variant in db.variants.find({'genes': gene_id, 'sometimes_missense_or_lof':1}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
         add_consequence_to_variant(variant)
         if variant['category'] in ['lof_variant', 'missense_variant']:
@@ -294,10 +294,7 @@ def get_most_important_variants_in_gene(db, gene_id):
     return variants
 
 def get_num_variants_in_gene(db, gene_id):
-    return {
-        'total': db.variants.find({'genes': gene_id}, projection={'_id': False}).count(),
-        'pass': db.variants.find({'genes': gene_id, 'filter': 'PASS'}, projection={'_id': False}).count()
-    }
+    return db.variants.find({'genes': gene_id}, projection={'_id': False}).count()
 
 
 def get_transcripts_in_gene(db, gene_id):
@@ -319,7 +316,7 @@ def get_variants_in_transcript(db, transcript_id):
 
 def get_most_important_variants_in_transcript(db, transcript_id):
     variants = []
-    for variant in db.variants.find({'transcripts': transcript_id, 'filter': 'PASS', 'sometimes_missense_or_lof': 1}, projection={'_id': False}):
+    for variant in db.variants.find({'transcripts': transcript_id, 'sometimes_missense_or_lof': 1}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Feature'] == transcript_id]
         add_consequence_to_variant(variant)
         if variant['category'] in ['lof_variant', 'missense_variant']:

@@ -4,7 +4,6 @@
     <script type="text/javascript">
         window.gene = {{ gene|tojson|safe }};
         window.transcript = {{ transcript|tojson|safe }};
-        window.num_variants_in_gene = {{ num_variants_in_gene|tojson|safe }};
         window.table_variants = {{ variants_in_gene|tojson|safe }};
         window.variants_in_transcript = {{ variants_in_transcript|tojson|safe }};
         window.transcripts_in_gene = {{ transcripts_in_gene|tojson|safe }};
@@ -13,7 +12,7 @@
 
 
         $(document).ready(function() {
-            $('#consequence_other_variant_button, #filtered_checkbox')
+            $('#consequence_other_variant_button')
             .addClass('disabled')
             .attr('disabled', 'disabled')
             .attr('data-tooltip', "Loading...");
@@ -24,18 +23,12 @@
                $.Deferred(function() { $(this.resolve); })) //document.ready
         .done(function(gene_data, transcript_data) {
             // Somehow these arguments get wrapped up, so we want gene_data[0] and transcript_data[0].
+
             $('#consequence_other_variant_button')
-            .attr('data-tooltip', "Show all variants");
-
-            $('#filtered_checkbox')
-            .removeAttr('data-tooltip');
-
-            $('#consequence_other_variant_button, #filtered_checkbox')
+            .attr('data-tooltip', "Show all variants")
             .removeClass('disabled')
             .removeAttr('disabled')
-            .on('change.namespace_for_xhr click.namespace_for_xhr', function() {
-                // When either of these is click, both must remove this function from their listeners
-                $('#consequence_other_variant_button, #filtered_checkbox').off('.namespace_for_xhr');
+            .one('change', function() {
                 with_waiting_notice(function() {
                     //add variants to the variant_table
                     window.table_variants = gene_data[0];
@@ -69,11 +62,7 @@
                         <dd>{{ gene.full_gene_name }}</dd>
                     {% endif %}
                     <dt>Number of variants</dt>
-                    {% if config['ONLY_PASS_VARIANTS'] %}
-                    <dd>{{ num_variants_in_gene.pass }}</dd>
-                    {% else %}
-                    <dd>{{ num_variants_in_gene.pass }} (Including filtered: {{ num_variants_in_gene.total }})</dd>
-                    {% endif %}
+                    <dd>{{ num_variants_in_gene }}</dd>
                     <dt class="hidden-xs">UCSC Browser</dt>
                     <dd class="hidden-xs">
                         <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">

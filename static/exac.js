@@ -498,14 +498,13 @@ function update_variants() {
     var category_buttons = $('.consequence_display_buttons.active');
     if (category_buttons.length === 1) {
         var category = category_buttons.attr('id').replace('consequence_', '').replace('_variant_button', '');
-        var filter = $('#filtered_checkbox').is(":checked") ? '[filter_status]' : '[filter_status="PASS"]';
         $('[category]').hide();
         if (category == 'other') {
-            $('[category]' + filter).show();
+            $('[category]').show();
         } else if (category == 'missense') {
-            $('[category=missense_variant]' + filter).show();
+            $('[category=missense_variant]').show();
         }
-        $('[category=lof_variant]' + filter).show();
+        $('[category=lof_variant]').show();
         if ($('tr[style!="display: none;"]').length == 1) {
             $('#variants_table_empty').show();
             $('#variants_table_container').hide();
