@@ -640,7 +640,7 @@ def region_page(region_id):
                     chrom=chrom,
                     start=start,
                     stop=stop,
-                    coverage=None,
+                    coverage_stats=None,
                     csq_order=csq_order,
                 )
             if start == stop:
@@ -650,9 +650,7 @@ def region_page(region_id):
             variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
             xstart = get_xpos(chrom, start)
             xstop = get_xpos(chrom, stop)
-            # DT: get coverage from tabix
-            coverage_array = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
-            #coverage_array = lookups.get_coverage_for_bases(db, xstart, xstop)
+            coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
             t = render_template(
                 'region.html',
                 genes_in_region=genes_in_region,
@@ -660,7 +658,7 @@ def region_page(region_id):
                 chrom=chrom,
                 start=start,
                 stop=stop,
-                coverage=coverage_array,
+                coverage_stats=coverage_stats,
                 csq_order=csq_order,
             )
             cache.set(cache_key, t)

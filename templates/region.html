@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
     <script type="text/javascript">
-        window.coverage_stats = {{ coverage|tojson(separators=(',',':'))|safe }};
+        window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
         window.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
         window.variants = {{ variants_in_region|tojson(separators=(',',':'))|safe }};
         window.table_variants = variants;
