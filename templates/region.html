@@ -1,12 +1,12 @@
 {% extends "layout.html" %}
 {% block body %}
     <script type="text/javascript">
-        window.coverage_stats = {{ coverage|tojson|safe }};
-        window.genes = {{ genes_in_region|tojson|safe }};
-        window.variants = {{ variants_in_region|tojson|safe }};
+        window.coverage_stats = {{ coverage|tojson(separators=(',',':'))|safe }};
+        window.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
+        window.variants = {{ variants_in_region|tojson(separators=(',',':'))|safe }};
         window.table_variants = variants;
-        window.start = {{ start|tojson|safe }};
-        window.stop = {{ stop|tojson|safe }};
+        window.start = {{ start|tojson(separators=(',',':'))|safe }};
+        window.stop = {{ stop|tojson(separators=(',',':'))|safe }};
     </script>
     <div class="container-fluid">
       <div class="row">

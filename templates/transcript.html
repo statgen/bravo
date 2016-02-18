@@ -2,11 +2,11 @@
 {% block body %}
     <!-- Render context vars in JS here -->
     <script type="text/javascript">
-        window.transcript = {{ transcript|tojson|safe }};
-        window.table_variants = {{ variants_in_transcript|tojson|safe }};
+        window.transcript = {{ transcript|tojson(separators=(',',':'))|safe }};
+        window.table_variants = {{ variants_in_transcript|tojson(separators=(',',':'))|safe }};
         window.variants_in_transcript = window.table_variants;
-        window.coverage_stats = {{ coverage_stats|tojson|safe }};
-        window.gene = {{ gene|tojson|safe }};
+        window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
+        window.gene = {{ gene|tojson(separators=(',',':'))|safe }};
         window.page_name = window.gene.symbol + '_' + window.transcript.transcript_id;
 
 

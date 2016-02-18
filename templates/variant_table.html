@@ -10,7 +10,7 @@
     });
 
     function add_tablesorter_csq_parser() {
-        var csq_order = {{ csq_order|tojson|safe }};
+        var csq_order = {{ csq_order|tojson(separators=(',',':'))|safe }};
 
         // Make a map of consequence -> index
         // That'll be the actual sort key, so lower i => more severe consequence
