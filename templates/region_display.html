@@ -6,7 +6,7 @@
 <div id="not_covered" style="display: none;">
     No coverage for this region.
 </div>
-<script>
+<script type="text/javascript">
 
 gene_chart_margin = {top: 10, right: 30, bottom: 30, left: 80},
     gene_chart_margin_lower = {top: 5, right: gene_chart_margin.right, bottom: 5, left: gene_chart_margin.left},
@@ -18,8 +18,10 @@ lower_gene_chart_height = 50 - gene_chart_margin_lower.top - gene_chart_margin_l
 function region_chart(data, variant_data) {
     var metric = 'mean';
 
+    console.log(data);
+
     var x = d3.scale.linear()
-        .domain([d3.min(data, function(d) { return d.pos; }), d3.max(data, function(d) { return d.pos; })])
+        .domain([d3.min(data, function(d) { return d.start; }), d3.max(data, function(d) { return d.end; })])
         .range([0, gene_chart_width]);
 
     var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
@@ -48,10 +50,14 @@ function region_chart(data, variant_data) {
         .append("rect")
         .attr('class', 'main_plot_bars')
         .style("fill", "steelblue")
-        .attr("x", function(d, i) {
-            return x(d.pos);
+        .attr("x", function(d) {
+            return x(d.start);
         })
-        .attr("width", gene_chart_width/data.length)
+        .attr("width", function(d) {
+            var length_in_bases = d.end - d.start + 1;
+            var width_of_base = gene_chart_width/data.length;
+            return length_in_bases * width_of_base;
+        })
         .attr("y", function(d) {
             return y(d[metric]) || 0;
         })
@@ -80,7 +86,7 @@ function region_chart(data, variant_data) {
         .attr("y1", lower_gene_chart_height/2)
         .attr("y2", lower_gene_chart_height/2)
         .attr("x1", 0)
-        .attr("x2", x(d3.max(data, function(d) { return d.pos; })))
+        .attr("x2", x(d3.max(data, function(d) { return d.start; })))
         .attr("stroke-width", 1)
         .attr("stroke", exon_color);
 
@@ -140,6 +146,7 @@ function region_chart(data, variant_data) {
                 return variant_size_scale(d.allele_freq);
             }
         });
+}
 
 function change_region_chart_metric(data, metric, container) {
     var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
