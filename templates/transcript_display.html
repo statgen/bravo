@@ -48,7 +48,6 @@ function create_coverage_chart() {
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
     var coords_start = coords.replace('pos_', 'start_');
     var coords_end = coords.replace('pos_', 'end_');
-    var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
     var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
     var chart_width;
     if (scale_type == 'overview') {
@@ -56,6 +55,11 @@ function create_coverage_chart() {
     } else {
         chart_width = coding_coordinate_params.size*2;
     }
+    var max_cov = 1;
+    if (metric == 'mean' || metric == 'median') {
+        max_cov = d3.max(window.coverage_stats, function(d) { return d[metric]; });
+    }
+
 
     var exon_x_scale = d3.scale.linear()
         .domain([0, coding_coordinate_params.size])
@@ -306,13 +310,16 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
     var coords_start = coords.replace('pos_', 'start_');
     var coords_end = coords.replace('pos_', 'end_');
-    var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
     var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
     var chart_width;
     if (scale_type == 'overview') {
         chart_width = gene_chart_width;
     } else {
         chart_width = coding_coordinate_params.size*2;
+    }
+    var max_cov = 1;
+    if (metric == 'mean' || metric == 'median') {
+        max_cov = d3.max(window.coverage_stats, function(d) { return d[metric]; });
     }
 
     var exon_x_scale = d3.scale.linear()

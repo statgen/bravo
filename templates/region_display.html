@@ -18,13 +18,15 @@ lower_gene_chart_height = 50 - gene_chart_margin_lower.top - gene_chart_margin_l
 function region_chart(data, variant_data) {
     var metric = 'mean';
 
-    console.log(data);
-
     var x = d3.scale.linear()
         .domain([d3.min(data, function(d) { return d.start; }), d3.max(data, function(d) { return d.end; })])
         .range([0, gene_chart_width]);
 
-    var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
+    var max_cov = 1;
+    if (metric === 'mean' || metric === 'median') {
+        max_cov = d3.max(data, function(d) { return d[metric]; });
+    }
+
     var y = d3.scale.linear()
         .domain([0, max_cov])
         .range([gene_chart_height, 0]);
@@ -149,7 +151,12 @@ function region_chart(data, variant_data) {
 }
 
 function change_region_chart_metric(data, metric, container) {
-    var max_cov = (metric == 'mean' || metric == 'median') ? 100 : 1;
+
+    var max_cov = 1;
+    if (metric === 'mean' || metric === 'median') {
+        max_cov = d3.max(data, function(d) { return d[metric]; });
+    }
+    console.log(max_cov);
 
     var y = d3.scale.linear()
         .domain([0, max_cov])
