@@ -615,6 +615,20 @@ def variants_region_api(region_id):
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
 
+@app.route('/api/coverage/region/<region_id>')
+@require_agreement_to_terms_and_store_destination
+def region_coverage_api(region_id):
+    db = get_db()
+    try:
+        chrom, start, stop = region_id.split('-')
+        start, stop = int(start), int(stop)
+        xstart, xstop = get_xpos(chrom, start), get_xpos(chrom, stop)
+        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
+        return jsonify(coverage_stats)
+    except Exception as e:
+        print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
+        abort(404)
+
 @app.route('/region/<region_id>')
 @require_agreement_to_terms_and_store_destination
 def region_page(region_id):
