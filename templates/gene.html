@@ -63,6 +63,12 @@
                     {% endif %}
                     <dt>Number of variants</dt>
                     <dd>{{ num_variants_in_gene }}</dd>
+                    <dt class="hidden-xs">Region</dt>
+                    <dd class="hidden-xs">
+                        <a href="/region/{{ gene.chrom }}-{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
+                            {{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }}
+                        </a>
+                    </dd>
                     <dt class="hidden-xs">UCSC Browser</dt>
                     <dd class="hidden-xs">
                         <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
