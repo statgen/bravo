@@ -101,8 +101,8 @@ function region_chart(data, variant_data) {
         .range([2, lower_gene_chart_height/3]);
 
     var tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
-        if (d.category) {
-            return d.category;
+        if (d.major_consequence) {
+            return d.major_consequence.replace('_variant', '').replace(/_/g, ' ');
         } else {
             return 'None';
         }
@@ -117,7 +117,7 @@ function region_chart(data, variant_data) {
         .attr("xlink:href", function(d, i) { return "/variant/" + d.chrom + "-" + d.pos + "-" + d.ref + "-" + d.alt; })
         .attr("data-toggle", "tooltip")
         .attr('category', function(d) {
-            return " " + d.category;
+            return d.category;
         })
         .on('mouseover', function(d) {
             $('#variant_' + d.variant_id).find('td').addClass('table_hover');
