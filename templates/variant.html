@@ -111,20 +111,16 @@
             });
 
             if (window.variant != null && 'genotype_depths' in window.variant) {
-                draw_quality_histogram(window.variant.genotype_depths[0], '#quality_display_container', false, true, 'Depth', 'Individuals');
-                $('.quality_display_buttons').change(function() {
-                    var v = $(this).attr('id').replace('_button', '');
-                    var f = $('.quality_full_site_buttons.active').attr('id') == 'variant_site_button' ? 0 : 1;
-                    var ylab = f ? 'Variant Carriers' : 'Individuals';
-                    var xlab = $(this).text().replace(/^\s+|\s+$/g, '');
-                    draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, xlab === 'Depth', xlab, ylab);
-                });
-                $('.quality_full_site_buttons').change(function() {
-                    var v = $('.quality_display_buttons.active').attr('id').replace('_button', '');
-                    var f = $(this).attr('id') == 'variant_site_button' ? 0 : 1;
-                    var ylab = f ? 'Variant Carriers' : 'Individuals';
-                    var xlab = $('.quality_display_buttons.active').text().replace(/^\s+|\s+$/g, '');
-                    draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, xlab === 'Depth', xlab, ylab);
+                draw_quality_histogram(window.variant.genotype_depths[0], '#quality_display_container', false, true, 'Depth', 'Number of Individuals');
+
+                $('.quality_display_buttons, .quality_full_site_buttons').change(function() {
+                    setTimeout(function() {
+                        var v = $('.quality_display_buttons.active').attr('id').replace('_button', '');
+                        var f = $('.quality_full_site_buttons.active').attr('id') == 'variant_site_button' ? 0 : 1;
+                        var ylab = 'Number of ' + (f ? 'Variant Carriers' : 'Individuals');
+                        var xlab = $('.quality_display_buttons.active').text().replace(/^\s+|\s+$/g, '');
+                        draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, xlab === 'Depth', xlab, ylab);
+                    }, 0);
                 });
 
                 // Quality metric histograms
@@ -227,7 +223,7 @@
                                             <span class="btn-group" data-toggle="buttons" id="quality_display_button_group" >
                                                 <button class="btn btn-primary btn-sm active quality_display_buttons" id="genotype_depths_button"
                                                         data-tooltip="Per sample depth. Capped at 100X">
-                                                    <input type="radio"> Depth
+                                                    <input type="radio"> Sequence Depth
                                                 </button>
                                                 <button class="btn btn-primary btn-sm quality_display_buttons" id="genotype_qualities_button"
                                                         data-tooltip="Per sample genotype quality.">
