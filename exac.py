@@ -721,7 +721,7 @@ def error_page(query):
     return render_template(
         'error.html',
         query=query
-    )
+    ), 404
 
 @app.route('/about')
 def about_page():
