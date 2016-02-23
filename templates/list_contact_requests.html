@@ -1,0 +1,165 @@
+{% extends "layout.html" %}
+
+{% block title %}
+<title>{{ config['BROWSER_NAME'] }} - Contact Requests</title>
+{% endblock %}
+
+{% block body %}
+<script type="text/javascript">
+$(function() {
+    $(".tablesorter").tablesorter({
+        sortList: [[0,0]]
+    });
+});
+</script>
+<div class="container-fluid" style="margin-top: 3em">
+
+    {% if requests_for_study %}
+    <div class="row" style="font-size: 16px;">
+      <div class="col-xs-12">
+        {% for study_name, requests in requests_for_study.items() %}
+          {% if requests %}
+            <h1 style="margin-bottom:1em;margin-top:1em">Contact Requests for {{ study_name }}</h1>
+            <table class="tablesorter">
+              <thead>
+                <tr>
+                  <th>Date Submitted</th>
+                  <th>Respond</th>
+                  <th>Variant</th>
+                  <th>AC</th>
+                  <th>#hom</th>
+                  <th>Information Requested</th>
+                  <th>NWD_IDs in {{ study_name }} with minor allele</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for request in requests %}
+                <tr>
+                  <td>{{ request.request_date.strftime("%Y-%m-%d") }}</td>
+                  <td>
+                    {% if 'decision' not in request['studies'][study_name]: %}
+                      <a class="btn btn-primary" href="{{ url_for('decide_on_request', study_name=study_name, request_id=request['_id'], decision='accept') }}">Accept</a>
+                      <a class="btn btn-primary" href="{{ url_for('decide_on_request', study_name=study_name, request_id=request['_id'], decision='decline') }}">Decline</a>
+                    {% elif request['studies'][study_name]['decision'] == 'accept' %}
+                      <b>Accepted.</b>  Contact <a href="mailto:{{ request['requester'] }}?subject={{ request.variant_id }}">{{ request['requester'] }}</a>
+                    {% elif request['studies'][study_name]['decision'] == 'decline' %}
+                      Declined.
+                    {% else %}
+                      Error.
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="{{ url_for('variant_page', variant_str=request.variant_id) }}">
+                      {{ request.variant_id if (request.variant_id|length < 20) else request.variant_id[:20] + '...' }}
+                    </a>
+                  </td>
+                  <td>{{ request.allele_count }}</td>
+                  <td>{{ request.hom_count }}</td>
+                  <td>{{ request.info_requested|nl2br }}</td>
+                  <td>
+                    {% with nwds = request['studies'][study_name]['nwds'] %}
+                      {{ ', '.join(nwds[:5]) -}}
+                      {% if nwds|length > 5 %}, ... ({{ nwds|length - 5 }} more){% endif %}
+                    {% endwith %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p>The study {{ study_name }} hasn't received any contact requests.</p>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="row" style="font-size: 16px;">
+      <div class="col-xs-12">
+        {% if my_requests %}
+        <h1 style="margin-bottom:1em;margin-top:3em">My Contact Requests</h1>
+        <table class="tablesorter" id="my_contact_requests_table">
+          <thead>
+            <tr>
+              <th>Date Submitted</th>
+              <th>Status</th>
+              <th>Variant</th>
+              <td>AC</th>
+              <td>#hom</th>
+              <th>Information Requested</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for request in my_requests %}
+            <tr>
+              <td>{{ request.request_date.strftime("%Y-%m-%d") }}</td>
+              <td>
+                {% if request.is_finished %}
+                  All studies have responded.
+                {% else %}
+                  Some studies have not responded.
+                {% endif %}
+                {% if request.accepts %}
+                  Accepted by: {{ ', '.join(request.accepts) }}
+                {% endif %}
+              </td>
+              <td>
+                <a href="{{ url_for('variant_page', variant_str=request.variant_id) }}">
+                  {{ request.variant_id if (request.variant_id|length < 20) else request.variant_id[:20] + '...' }}
+                </a>
+              </td>
+              <td>{{ request.allele_count }}</td>
+              <td>{{ request.hom_count }}</td>
+              <td>{{ request.info_requested|nl2br }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p>You haven't made any contact requests</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if all_requests %}
+    <div class="row" style="font-size: 16px;">
+      <div class="col-xs-12">
+        <h1 style="margin-bottom:1em;margin-top:3em">All Contact Requests</h1>
+        <table class="tablesorter" id="all_requests_table">
+          <thead>
+            <tr>
+              <th>Date Submitted</th>
+              <th>Requester</th>
+              <th>Variant</th>
+              <th>AC</th>
+              <th>#hom</th>
+              <th>Information Requested</th>
+              <td>Responses</td>
+            </tr>
+          </thead>
+          <tbody>
+            {% for request in all_requests %}
+            <tr>
+              <td>{{ request.request_date.strftime("%Y-%m-%d") }}</td>
+              <td>{{ request.requester_username }} ({{ request.requester_email }})</td>
+              <td><a href="{{ url_for('variant_page', variant_str=request.variant_id) }}">
+                  {{ request.variant_id if (request.variant_id|length < 16) else request.variant_id[:16] + '...' }}
+              </a></td>
+              <td>{{ request.allele_count }}</td>
+              <td>{{ request.hom_count }}</td>
+              <td>{{ request.info_requested|nl2br }}</td>
+              <td>
+                {% for study_name in request.studies|sort %}
+                  {{ study_name }}: {{ request.studies[study_name].get('decision', 'no response') }} <br>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

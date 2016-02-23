@@ -1,14 +1,13 @@
 {% extends "layout.html" %}
 {% block body %}
-    <div class="container" id="contact_about_variant" style="margin-top: 3em">
+    <div class="container" id="contact_request" style="margin-top: 3em">
         <div class="row" style="font-size: 16px;">
           {% if success %}
             <p>Thank you for your request.</p>
-            <p>We'll talk to the studies that found this variant and email you back.</p>
-
+            <p>We'll talk to the studies that found this variant and email you at {{ current_user.email }} with their responses.</p>
           {% else %}
             <h1 style="margin-bottom: 1em">Request information about the variant {{ variant_id }}</h1>
-            <form action="{{ url_for('contact_about_variant', variant_id=variant_id) }}" method="POST">
+            <form action="{{ url_for('contact_request_page', variant_id=variant_id) }}" method="POST">
               {{ form.hidden_tag() }}
 
               <p>{{ form.info_requested.label }}:</p>

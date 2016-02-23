@@ -1,0 +1,15 @@
+Barnes        Asthma_Afr   kathleen.barnes@ucdenver.edu
+Blangero      SAFHS        john.blangero@utrgv.edu
+Burchard      Asthma_PGx   esteban.burchard@ucsf.edu
+Correa        Jackson      acorrea@umc.edu
+Ellinor       Atrial_Fib   ellinor@mgh.harvard.edu
+McGarvey      Samoan       stephen_mcgarvey@brown.edu
+Mitchell      Amish        bmitchel@medicine.umaryland.edu
+Montgomery    Sarcoidosis  courtney-montgomery@omrf.org
+NA12878       HapMap       HAPMAP
+NA19238       HapMap       HAPMAP
+Ramachandran  Framingham   vasan@bu.edu
+Redline       Sleep        sredline1@rics.bwh.harvard.edu
+Silverman     COPD         ed.silverman@channing.harvard.edu
+Trio          Framingham   vasan@bu.edu
+Weiss         Asthma_CR    scott.weiss@channing.harvard.edu

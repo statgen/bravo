@@ -57,6 +57,9 @@
         <!-- Collect the nav links, forms, and other content for toggling -->
         <div class="collapse navbar-collapse" id="navbar-collapse">
             <ul class="nav navbar-nav navbar-right">
+                {% if current_user_has_made_study_contact_requests or current_user.email in config['WHITELIST_FOR_REQUESTS'] %}
+                <li><a href="{{ url_for('list_contact_requests_page') }}" style="color: #333; font-weight: bold;">Contact Requests</a></li>
+                {% endif %}
                 <li><a href="/about" style="color: #333; font-weight: bold;">About</a></li>
                 <li><a href="/terms" style="color: #333; font-weight: bold;">Terms</a></li>
                 {% if current_user.is_authenticated %}

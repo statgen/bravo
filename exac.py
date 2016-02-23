@@ -4,8 +4,11 @@ import itertools
 import json
 import os
 import pymongo
+from bson.objectid import ObjectId
 import pysam
 import gzip
+import datetime
+
 from parsing import *
 import lookups
 import random
@@ -13,6 +16,10 @@ from utils import *
 from pycoverage import *
 import auth
 import forms
+from contact_request.get_studies_with_variant import get_studies_with_variant
+
+import re
+from jinja2 import evalcontextfilter, Markup, escape
 
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
 from flask_compress import Compress
@@ -31,7 +38,7 @@ import contextlib
 
 app = Flask(__name__)
 app.config.from_object('flask_config.BravoFreeze3PublicConfig')
-mail_on_500(app, app.config['ADMINS'])
+mail_on_500(app, app.config['EMAILS_FOR_ERRORS'])
 Compress(app)
 
 REGION_LIMIT = int(1e5)
@@ -346,7 +353,6 @@ def require_agreement_to_terms_and_store_destination(func):
             print('unauthorized user {!r} visited the url [{!r}]'.format(current_user, request.path))
             session['original_destination'] = request.path
             return redirect(url_for('get_authorized'))
-        return func(*args, **kwargs)
     return decorated_view
 
 
@@ -619,17 +625,101 @@ def about_page():
 def terms_page():
     return render_template('terms.html')
 
-@app.route('/contact_about_variant/<variant_id>', methods=['GET', 'POST'])
-def contact_about_variant(variant_id):
-    # TODO: check that variant_id is valid. If not, send to some kind of error page?
+@app.route('/contact_request/<variant_id>', methods=['GET', 'POST'])
+@require_agreement_to_terms_and_store_destination
+def contact_request_page(variant_id):
+
+    variant = lookups.get_variant_by_variant_id(get_db(), variant_id)
+    if variant is None:
+        return error_page('The variant {} is not found in our dataset'.format(variant_id))
+
     form = forms.RequestStudyContactForm()
     if request.method == 'POST' and form.validate():
         print("Request to contact study submitted with data {!r}".format(form.info_requested.data))
-        get_db().requests_for_contact.insert_one({"user_id": current_user.get_id(), "info_requested": form.info_requested.data})
-        # TODO: notify me of a new request by email
+
+        studies = get_studies_with_variant(variant)
+
+        get_db().contact_requests.insert_one({
+            "requester": current_user.get_id(),
+            "variant_id": variant_id,
+            "info_requested": form.info_requested.data,
+            "request_date": datetime.datetime.utcnow(),
+            "studies": studies,
+        })
         return render_template('request_study_contact.html', variant_id=variant_id, success=True)
     else:
         return render_template('request_study_contact.html', variant_id=variant_id, form=form)
+
+
+@app.route('/decide_on_request/<study_name>/<request_id>/<decision>')
+@require_agreement_to_terms_and_store_destination
+def decide_on_request(study_name, request_id, decision):
+    contact_request = get_db().contact_requests.find_one({"_id": ObjectId(request_id)})
+
+    try:
+        assert decision in ['accept', 'decline']
+        assert study_name in get_my_studies()
+        assert study_name in contact_request['studies'].keys()
+        assert 'decision' not in contact_request['studies'][study_name]
+    except AssertionError:
+        abort(404, message='Something went wrong with your attempt to respond to a contact request')
+
+    rv = get_db().contact_requests.update_one({"_id": ObjectId(request_id)},
+                                              {"$set": {"studies.{}.decision".format(study_name): decision}})
+    try:
+        assert rv.modified_count == 1, (repr(rv), rv.modified_count)
+    except AssertionError:
+        abort(404, message='Something went wrong with your attempt to respond to a contact request.')
+
+    return redirect(url_for('list_contact_requests_page'))
+
+def augment_request(request, include_requester=False):
+    variant =  lookups.get_variant_by_variant_id(get_db(), request['variant_id'])
+    if variant is None:
+        print("ERROR {!r}".format(request))
+    else:
+        request['allele_count'] = variant['allele_count']
+        request['hom_count'] = variant['hom_count']
+
+    if include_requester:
+        u = get_db().users.find_one({"user_id": request['requester']})
+        request['requester_email'] = u['email']
+        request['requester_username'] = u['username']
+
+def get_my_studies():
+    # return [study['study_name'] for study in db.studies.find({"member_emails": current_user.get_id()})]
+    return [study['study_name'] for study in get_db().studies.find({"member_emails": 'kathleen.barnes@ucdenver.edu'})] # For testing
+
+@app.route('/list_contact_requests')
+@require_agreement_to_terms_and_store_destination
+def list_contact_requests_page():
+    db = get_db()
+
+    requests_for_study = {}
+    for study_name in get_my_studies():
+        assert re.match(r'^[A-Za-z0-9_]+$', study_name)
+        requests_for_study[study_name] = list(db.contact_requests.find({'studies.{}'.format(study_name): {'$exists': True}}))
+        for request in requests_for_study[study_name]:
+            augment_request(request)
+
+    my_requests = list(db.contact_requests.find({"requester": current_user.get_id()}))
+    for request in my_requests:
+        augment_request(request)
+        request['is_finished'] = all(study.get('decision') is not None for study in request['studies'].values())
+        request['accepts'] = [study_name for study_name,study in request['studies'].items() if study.get('decision') == 'accept']
+
+    if current_user.get_id() in app.config['WHITELIST_FOR_REQUESTS']:
+        all_requests = list(get_db().contact_requests.find())
+        for request in all_requests:
+            augment_request(request, include_requester=True)
+    else:
+        all_requests = None
+
+    return render_template('list_contact_requests.html',
+                           my_requests=my_requests,
+                           all_requests=all_requests,
+                           requests_for_study=requests_for_study,
+    )
 
 
 # OAuth2
@@ -748,6 +838,21 @@ def apply_caching(response):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
+
+# From <http://flask.pocoo.org/snippets/28/>
+_paragraph_re = re.compile(r'(?:\r\n|\r|\n){2,}')
+@app.template_filter()
+@evalcontextfilter
+def nl2br(eval_ctx, value):
+    result = u'\n<br>\n'.join(_paragraph_re.split(escape(value)))
+    if eval_ctx.autoescape:
+        result = Markup(result)
+    return result
+
+@app.context_processor
+def current_user_has_made_study_contact_requests():
+    num_contact_requests = get_db().requests_for_contact.find({"user_id": current_user.get_id()}).count()
+    return dict(current_user_has_made_study_contact_requests=bool(num_contact_requests))
 
 if __name__ == "__main__":
     import argparse

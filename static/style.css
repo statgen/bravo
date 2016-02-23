@@ -192,7 +192,7 @@ TODO: come up with a better way to position tooltip
     font-style: italic;
 }
 
-#contact_about_variant #info_requested {
+#contact_request #info_requested {
     width: 50%;
     max-width: 50em;
     height: 8em;
