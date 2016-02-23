@@ -12,6 +12,7 @@ import random
 from utils import *
 from pycoverage import *
 import auth
+import forms
 
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
 from flask_compress import Compress
@@ -617,6 +618,18 @@ def about_page():
 @app.route('/terms')
 def terms_page():
     return render_template('terms.html')
+
+@app.route('/contact_about_variant/<variant_id>', methods=['GET', 'POST'])
+def contact_about_variant(variant_id):
+    # TODO: check that variant_id is valid. If not, send to some kind of error page?
+    form = forms.RequestStudyContactForm()
+    if request.method == 'POST' and form.validate():
+        print("Request to contact study submitted with data {!r}".format(form.info_requested.data))
+        get_db().requests_for_contact.insert_one({"user_id": current_user.get_id(), "info_requested": form.info_requested.data})
+        # TODO: notify me of a new request by email
+        return render_template('request_study_contact.html', variant_id=variant_id, success=True)
+    else:
+        return render_template('request_study_contact.html', variant_id=variant_id, form=form)
 
 
 # OAuth2

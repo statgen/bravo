@@ -71,6 +71,13 @@
                 <hr/>
             {% endif %}
             <div class="row">
+                <div class="col-sm-6 col-md-5 col-lg-4">
+                    <div>
+                      <p><a href="{{ url_for('contact_about_variant', variant_id=variant.variant_id) }}" class="btn btn-primary btn-sm">Request more information about this variant</a></p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
                 <div class="col-xs-12 col-sm-6">
                     <div class="section_header">Variant Summary</div>
                     {% include 'variant_definition_list.html' %}
