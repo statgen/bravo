@@ -1,4 +1,9 @@
 {% extends "layout.html" %}
+
+{% block title %}
+<title>{{ config['BROWSER_NAME'] }} - {{ gene.gene_name }}</title>
+{% endblock %}
+
 {% block body %}
     <!-- Render context vars in JS here -->
     <script type="text/javascript">

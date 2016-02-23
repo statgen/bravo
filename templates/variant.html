@@ -1,4 +1,9 @@
 {% extends "layout.html" %}
+
+{% block title %}
+<title>{{ config['BROWSER_NAME'] }} - {{ variant.variant_id }}</title>
+{% endblock %}
+
 {% block body %}
     <!-- Render context vars in JS here -->
     <script type="text/javascript">
