@@ -232,9 +232,8 @@ def get_metrics(db, variant):
             del metrics[old_name]
             variant['quality_metrics'][new_name] = variant['quality_metrics'][old_name]
             del variant['quality_metrics'][old_name]
-        else:
-            if 'variant_id' in variant:
-                print('ERROR: failed to find {} in metrics for variant {}'.format(old_name, variant['variant_id']))
+        elif old_name in metrics != old_name in variant['quality_metrics']:
+            print('ERROR: problems with {!r} in metrics for variant {!r}'.format(old_name, variant.get('variant_id')))
 
     metric = None
     if variant['allele_count'] == 1:
