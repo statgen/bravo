@@ -470,6 +470,10 @@ def variant_page(variant_str):
             for annotation in variant['vep_annotations']:
                 annotation['HGVS'] = get_proper_hgvs(annotation)
                 consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
+        # Sort the consequences
+        for csq in consequences:
+            for gene in consequences[csq]:
+                consequences[csq][gene] = sorted(consequences[csq][gene], key=lambda ann: (ann.get('HGVS'), ann.get('Feature')))
 
         top_HGVSs = set()
         if consequences:

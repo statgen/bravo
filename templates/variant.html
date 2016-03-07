@@ -312,11 +312,15 @@
                             <div class="panel-group" id="annotation_accordion" style="margin-bottom: 0px;">
                                 <div class="row">
                                 {% for consequence_column in consequences.keys()|slice(2) %}
+                                  {% with first_csq_col = loop.first %}
                                     <div class="col-md-6">
                                     {% for consequence in consequence_column %}
+                                      {% with first_csq = loop.first and first_csq_col %}
                                         {% include 'variant_consequences.html' %}
+                                      {% endwith %}
                                     {% endfor %}
                                     </div>
+                                  {% endwith %}
                                 {% endfor %}
                                 </div>
                             </div>

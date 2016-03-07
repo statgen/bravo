@@ -11,10 +11,39 @@
                 {% endif %}
                 </a>
             {% endif %}
-            {% if consequences[consequence][gene]|length > 1 %}
+            {% if consequences[consequence][gene]|length == 1 %}
+                {% with annotation = consequences[consequence][gene][0] %}
+                    {% if gene %}-{% endif %}
+                    {% if annotation.Feature[:4] == "ENST" %}
+                        <a href="/transcript/{{ annotation.Feature }}">
+                    {% else %}
+                        <a href="http://useast.ensembl.org/Multi/Search/Results?q={{ annotation.Feature }}">
+                    {% endif %}
+                    {{ annotation.Feature }}
+                    {% if annotation.CANONICAL == 'YES' %}
+                        *
+                    {% endif %}
+                    </a>
+                    {% include 'variant_details.html' %}
+                {% endwith %}
+            {% elif first_csq %}
+                <ul>
+                    {% for annotation in consequences[consequence][gene] %}
+                        <li>
+                            <a href="/transcript/{{ annotation.Feature }}">
+                                {{ annotation.Feature }}
+                                {% if annotation.CANONICAL == 'YES' %}
+                                    *
+                                {% endif %}
+                            </a>
+                            {% include 'variant_details.html' %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
                 <span class="dropdown">
                     <button class="btn btn-default dropdown-toggle" type="button" id="transcript_dropdown" data-toggle="dropdown">
-                        Transcripts
+                        Show all
                         <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" role="menu" aria-labelledby="transcript_dropdown">
@@ -31,21 +60,6 @@
                         {% endfor %}
                     </ul>
                 </span>
-            {% else %}
-                {% with annotation = consequences[consequence][gene][0] %}
-                    {% if gene %}-{% endif %}
-                    {% if annotation.Feature[:4] == "ENST" %}
-                        <a href="/transcript/{{ annotation.Feature }}">
-                    {% else %}
-                        <a href="http://useast.ensembl.org/Multi/Search/Results?q={{ annotation.Feature }}">
-                    {% endif %}
-                    {{ annotation.Feature }}
-                    {% if annotation.CANONICAL == 'YES' %}
-                        *
-                    {% endif %}
-                    </a>
-                    {% include 'variant_details.html' %}
-                {% endwith %}
             {% endif %}
         </li>
     {% endfor %}
