@@ -41,15 +41,11 @@
                     {% endfor %}
                 </ul>
             {% else %}
-                <span class="dropdown">
-                    <button class="btn btn-default dropdown-toggle" type="button" id="transcript_dropdown" data-toggle="dropdown">
-                        Show all
-                        <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu" aria-labelledby="transcript_dropdown">
+                <span class="collapse-group">
+                    <ul class="collapse">
                         {% for annotation in consequences[consequence][gene] %}
-                            <li role="presentation">
-                                <a role="menuitem" tabindex="-1" href="/transcript/{{ annotation.Feature }}">
+                            <li>
+                                <a href="/transcript/{{ annotation.Feature }}">
                                     {{ annotation.Feature }}
                                     {% if annotation.CANONICAL == 'YES' %}
                                         *
@@ -59,6 +55,10 @@
                             </li>
                         {% endfor %}
                     </ul>
+                    <button class="btn btn-default transcript_toggle">
+                        <span class="transcript-toggle-text">Show all <span class="caret"></span></span>
+                        <span class="transcript-toggle-text hidden">Hide <span class="dropup"><span class="caret"></span></span></span>
+                    </button>
                 </span>
             {% endif %}
         </li>

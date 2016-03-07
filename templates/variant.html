@@ -66,6 +66,17 @@
             });
         });
 
+        $(function() {
+            $('.transcript_toggle').on('click', function(e) {
+                e.preventDefault();
+                var $collapse = $(this).closest('.collapse-group').find('.collapse');
+                $collapse.collapse('toggle');
+
+                //change text
+                $(this).find('.transcript-toggle-text.hidden').removeClass('hidden').hide();
+                $(this).find('.transcript-toggle-text').each(function() { $(this).toggle(); });
+            });
+        });
     </script>
     <style>
     .d3_graph {
