@@ -471,6 +471,14 @@ def variant_page(variant_str):
                 annotation['HGVS'] = get_proper_hgvs(annotation)
                 consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
 
+        top_HGVSs = set()
+        if consequences:
+            top_csq = consequences.values()[0]
+            if len(top_csq) == 1: # one gene
+                for annotation in top_csq.values()[0]:
+                    if annotation.get('HGVS'):
+                        top_HGVSs.add(annotation['HGVS'])
+
         base_coverage = lookups.get_coverage_for_bases(get_coverages(), variant['xpos'], variant['xpos'] + len(variant['ref']) - 1)
         metrics = lookups.get_metrics(db, variant)
 
@@ -482,7 +490,8 @@ def variant_page(variant_str):
             base_coverage=base_coverage,
             consequences=consequences,
             any_covered=bool(base_coverage),
-            metrics=metrics
+            metrics=metrics,
+            top_HGVSs=top_HGVSs,
         )
     except Exception, e:
         print 'Failed on variant:', variant_str, '; Error=', traceback.format_exc()
