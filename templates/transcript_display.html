@@ -523,13 +523,5 @@ function build_the_graph () {
     $('#over_x_select, #include_utrs_checkbox, .display_coverage_metric_buttons').change(function () {
         setTimeout(change_coverage_chart_with_values_from_page, 0);
     });
-
-    // Change exon diagram
-    $('#inverted_checkbox').change(function () {
-        setTimeout(function () {
-            var v = $('#inverted_checkbox').is(':checked');
-            change_track_chart_variant_size(window.variants_in_transcript, v, '#gene_plot_container');
-        }, 0);
-    });
 }
 </script>

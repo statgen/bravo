@@ -542,34 +542,6 @@ gene_chart_margin_lower = {top: 5, right: gene_chart_margin.right, bottom: 5, le
 lower_gene_chart_height = 50 - gene_chart_margin_lower.top - gene_chart_margin_lower.bottom,
     gene_chart_height = 300 - gene_chart_margin.top - gene_chart_margin.bottom - lower_gene_chart_height - gene_chart_margin_lower.top - gene_chart_margin_lower.bottom;
 
-function change_track_chart_variant_size(variant_data, change_to, container) {
-    var svg_outer = d3.select(container).select('#track');
-
-    var variant_size_scale;
-    var bounds = get_af_bounds(variant_data);
-    var min_af = bounds[0];
-    var max_af = bounds[1];
-    if (change_to) {
-        variant_size_scale = d3.scale.log()
-            .domain([min_af, max_af])
-            .range([lower_gene_chart_height / 3, 2]);
-    } else {
-        variant_size_scale = d3.scale.log()
-            .domain([min_af, max_af])
-            .range([2, lower_gene_chart_height / 3]);
-    }
-    svg_outer.selectAll("a")
-        .selectAll("ellipse")
-        .transition()
-        .duration(500)
-        .attr("ry", function(d, i) {
-            if (!d.allele_freq) {
-                return 0;
-            } else {
-                return variant_size_scale(d.allele_freq);
-            }
-        });
-}
 
 function memorySizeOf(obj) {
     var bytes = 0;
