@@ -3,7 +3,7 @@
     {% for gene in consequences[consequence] %}
         <li>
             {% if gene %}
-                <a href="/gene/{{ gene }}">
+                <a class="gene-name" href="/gene/{{ gene }}">
                 {% if consequences[consequence][gene][0].SYMBOL %}
                     {{ consequences[consequence][gene][0].SYMBOL }}
                 {% else %}
