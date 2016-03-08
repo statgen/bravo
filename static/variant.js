@@ -426,20 +426,8 @@ function get_af_bucket_text(bin) {
 }
 
 $(document).ready(function() {
-    $('.frequency_display_buttons').change(function() {
-        $('.frequency_displays').hide();
-        var v = $(this).attr('id').replace('_button', '');
-        $('#' + v + '_container').show();
-    });
-
-    $('#frequency_table').tablesorter({
-        stringTo: 'bottom',
-        sortList: [[4,1], [0,0]],
-        headers: {
-            4: {
-                sorter: 'digit'
-            }
-        }
+    $('#pop_afs_table').tablesorter({
+        sortList: [[0,0]],
     });
 
     if (window.variant != null && 'genotype_depths' in window.variant) {
