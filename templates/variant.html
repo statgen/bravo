@@ -7,77 +7,14 @@
 {% block body %}
     <!-- Render context vars in JS here -->
     <script type="text/javascript">
-        window.variant = {{ variant|tojson(separators=(',',':'))|safe }};
-        window.base_coverage = {{ base_coverage|tojson(separators=(',',':'))|safe }};
-        window.any_covered = {{ any_covered|tojson(separators=(',',':'))|safe }};
-        window.consequence = {{ consequences|tojson(separators=(',',':'))|safe }};
-        window.metrics = {{ metrics|tojson(separators=(',',':'))|safe }};
-
-        $(document).ready(function() {
-            draw_region_coverage(window.base_coverage, 'mean', window.variant.ref);
-            $('.coverage_metric_buttons').change(function () {
-                var v = $(this).attr('id').replace('_covmet_button', '');
-                $('.coverage_subcat_selectors').hide();
-                if (v == 'covered') {
-                    $('#over_x_select_container').show();
-                    v = $('#over_x_select').val();
-                } else {
-                    $('#average_select_container').show();
-                    v = $("#average_select").val();
-                }
-                draw_region_coverage(window.base_coverage, v, window.variant.ref);
-            });
-            $('#over_x_select').change(function () {
-                draw_region_coverage(window.base_coverage, $(this).val(), window.variant.ref);
-            });
-            $('#average_select').change(function () {
-                draw_region_coverage(window.base_coverage, $(this).val(), window.variant.ref);
-            });
-        });
-
-        var clinvar_searches = _.map(variant.rsids, function(rsid) {
-            var clinvar_query = 'term={RSID}[Variant%20ID]&retmode=json'.replace('{RSID}', rsid);
-            return {
-                xhr_url: 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&' + clinvar_query,
-                name: rsid,
-                webpage_url: 'http://www.ncbi.nlm.nih.gov/clinvar?' + clinvar_query
-            };
-        });
-        var clinvar_query = 'term={CHROM}[Chromosome]%20AND%20{POS}[Base%20Position%20for%20Assembly%20GRCh37]&retmode=json'
-            .replace('{CHROM}', variant.chrom).replace('{POS}', variant.pos);
-        clinvar_searches.push({
-            xhr_url: 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&' + clinvar_query,
-            name: variant.chrom + ':' + variant.pos,
-            webpage_url: 'http://www.ncbi.nlm.nih.gov/clinvar?' + clinvar_query
-        });
-
-        _.each(clinvar_searches, function(clinvar_search) {
-            $.getJSON(clinvar_search.xhr_url)
-            .done(function(data) {
-                var link_text = (data.esearchresult.count !== "0") ? 'Open <%= name %> in ClinVar' : '<%= name %> is not in ClinVar';
-                var link_style = 'style="float:left; clear:both"';
-                if ($('#clinvar_loading').length !== 0) {
-                    $('#clinvar_loading').remove();
-                    link_style = ''; // One of the links must not float or clear, so that it can sit next to <dt>ClinVar</dt>
-                }
-                $('#clinvar').append(_.template(
-                    '<a href="<%= url %>" target="_blank" <%= style %>>' + link_text + ' <i class="fa fa-external-link"></i> </a> '
-                )({name: clinvar_search.name, url: clinvar_search.webpage_url, style: link_style}));
-            });
-        });
-
-        $(function() {
-            $('.transcript_toggle').on('click', function(e) {
-                e.preventDefault();
-                var $collapse = $(this).closest('.collapse-group').find('.collapse');
-                $collapse.collapse('toggle');
-
-                //change text
-                $(this).find('.transcript-toggle-text.hidden').removeClass('hidden').hide();
-                $(this).find('.transcript-toggle-text').each(function() { $(this).toggle(); });
-            });
-        });
+      window.variant = {{ variant|tojson(separators=(',',':'))|safe }};
+      window.base_coverage = {{ base_coverage|tojson(separators=(',',':'))|safe }};
+      window.any_covered = {{ any_covered|tojson(separators=(',',':'))|safe }};
+      window.consequence = {{ consequences|tojson(separators=(',',':'))|safe }};
+      window.metrics = {{ metrics|tojson(separators=(',',':'))|safe }};
+      window.dataset_name = "{{ config['DATASET_NAME'] }}";
     </script>
+    <script type="text/javascript" src="{{ url_for('static', filename='variant.js') }}"></script>
     <style>
     .d3_graph {
         font: 10px sans-serif;
@@ -98,79 +35,6 @@
         shape-rendering: crispEdges;
     }
     </style>
-    <script>
-        var af_buckets = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1];
-        function get_af_bucket_text(bin) {
-            if (bin == 'singleton' || bin == 'doubleton') {
-                return 'This is the site quality distribution for all ' + bin + 's in {{ config['DATASET_NAME'] }}.';
-            } else if (bin == '0.0001') {
-                return 'This is the site quality distribution for all variants with AF < ' + bin + ' in {{ config['DATASET_NAME'] }}.';
-            } else {
-                return 'This is the site quality distribution for all variants with ' + af_buckets[af_buckets.indexOf(parseFloat(bin)) - 1] + ' < AF < ' + bin + ' in {{ config['DATASET_NAME'] }}.';
-            }
-        }
-        $(document).ready(function() {
-            $('.frequency_display_buttons').change(function() {
-                $('.frequency_displays').hide();
-                var v = $(this).attr('id').replace('_button', '');
-                $('#' + v + '_container').show();
-            });
-
-            $('#frequency_table').tablesorter({
-                stringTo: 'bottom',
-                sortList: [[4,1], [0,0]],
-                headers: {
-                    4: {
-                        sorter: 'digit'
-                    }
-                }
-            });
-
-            if (window.variant != null && 'genotype_depths' in window.variant) {
-                draw_quality_histogram(window.variant.genotype_depths[0], '#quality_display_container', false, true, 'Depth', 'Number of Individuals');
-
-                $('.quality_display_buttons, .quality_full_site_buttons').change(function() {
-                    setTimeout(function() {
-                        var v = $('.quality_display_buttons.active').attr('id').replace('_button', '');
-                        var f = $('.quality_full_site_buttons.active').attr('id') == 'variant_site_button' ? 0 : 1;
-                        var ylab = 'Number of ' + (f ? 'Variant Carriers' : 'Individuals');
-                        var xlab = $('.quality_display_buttons.active').text().replace(/^\s+|\s+$/g, '');
-                        draw_quality_histogram(window.variant[v][f], '#quality_display_container', false, xlab === 'Depth', xlab, ylab);
-                    }, 0);
-                });
-
-                // Quality metric histograms
-                var data = _.zip(_.map(window.metrics['Site Quality']['mids'], Math.exp), window.metrics['Site Quality']['hist']);
-                draw_quality_histogram(data, '#quality_metric_container', true, false, 'Site Quality', 'Variants');
-                var bin = window.metrics['Site Quality']['metric'].split('_')[1];
-                $('#site_quality_note').html(get_af_bucket_text(bin));
-                var pos = $('#quality_metric_select').val().split(': ')[1];
-                add_line_to_quality_histogram(data, pos, '#quality_metric_container', true);
-                var log_scale_metrics = ['Site Quality', 'Total Depth'];
-                $('#quality_metric_select').change(function() {
-                    var v = $(this).val().split(': ');
-                    var log = false;
-                    $('#site_quality_note').html('');
-                    var data;
-                    if (log_scale_metrics.indexOf(v[0]) > -1) {
-                        data = _.zip(_.map(window.metrics[v[0]]['mids'], Math.exp), window.metrics[v[0]]['hist']);
-                        log = true;
-                    } else {
-                        data = _.zip(window.metrics[v[0]]['mids'], window.metrics[v[0]]['hist']);
-                    }
-                    if (v[0] == 'Site Quality') {
-                        var bin = window.metrics['Site Quality']['metric'].split('_')[1];
-                        $('#site_quality_note').html(get_af_bucket_text(bin));
-                    }
-                    draw_quality_histogram(data, '#quality_metric_container', log, false, v[0], 'Variants');
-                    add_line_to_quality_histogram(data, v[1], '#quality_metric_container', log);
-                });
-            } else {
-                $('#quality_metrics_container').hide();
-{#                $('#frequency_info_container').hide();#}
-            }
-        });
-    </script>
     <div class="container-fluid">
         <div class="row">
             <div class="col-xs-12">
@@ -194,7 +58,7 @@
             </div>
         </div>
         <hr/>
-{#      Upper display #}
+
         {% if variant.variant_id %}
             {% if variant.allele_num < 0.8 * 2 * config['NUM_SAMPLES']  %}
                 <p><span class="label label-warning">Warning!</span> This variant is only covered in {{ (variant.allele_num/2)|int }} individuals (adjusted allele number = {{ variant.allele_num }}).<br/>
@@ -203,147 +67,12 @@
             {% endif %}
             <div class="row">
                 <div class="col-sm-6 col-md-5 col-lg-4">
-                    <div class="panel-group" id="quality_metrics_accordion" role="tablist" aria-multiselectable="true">
-                      {# see http://getbootstrap.com/javascript/#collapse-example-accordion #}
-                        <div class="panel panel-default">
-                            <div class="panel-heading" role="tab" id="geno_quality_collapse_heading">
-                                <div class="panel-title">
-                                    <a data-toggle="collapse" data-parent="#quality_metrics_accordion" href="#geno_quality_collapse"
-                                       aria-expanded="true" aria-controls="geno_quality_collapse">
-                                        <small>Genotype Quality Metrics</small>
-                                    </a>
-                                </div>
-                            </div>
-                            <div id="geno_quality_collapse" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="geno_quality_collapse_heading">
-                                <div id="quality_metrics_container">
-                                    <div class="row">
-                                        <div class="col-xs-11 col-xs-offset-1">
-                                            <span class="btn-group" data-toggle="buttons" id="quality_full_site_button_group">
-                                                <button class="btn btn-primary btn-sm quality_full_site_buttons" id="variant_carriers_button"
-                                                        data-tooltip="Show metric for only individuals with this allele.">
-                                                    <input type="radio"> Variant carriers
-                                                </button>
-                                                <button class="btn btn-primary btn-sm active quality_full_site_buttons" id="variant_site_button"
-                                                        data-tooltip="Show metric for all individuals (at this site, whether or not they have this allele).">
-                                                    <input type="radio"> All individuals
-                                                </button>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-xs-11 col-xs-offset-1">
-                                            <div id="quality_display_container" class="d3_graph"></div>
-                                            <small><span class="label label-info">Note:</span> The plot may include low-quality genotypes that were excluded from this variant's allele count.</small>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-xs-11 col-xs-offset-1">
-                                            <span class="btn-group" data-toggle="buttons" id="quality_display_button_group" >
-                                                <button class="btn btn-primary btn-sm active quality_display_buttons" id="genotype_depths_button"
-                                                        data-tooltip="Per sample depth. Capped at 100X">
-                                                    <input type="radio"> Sequence Depth
-                                                </button>
-                                                <button class="btn btn-primary btn-sm quality_display_buttons" id="genotype_qualities_button"
-                                                        data-tooltip="Per sample genotype quality.">
-                                                    <input type="radio"> Genotype Quality
-                                                </button>
-                                            </span>
-                                        </div>
-                                        <br/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="panel panel-default">
-                            <div class="panel-heading" role="tab" id="site_quality_collapse_heading">
-                                <div class="panel-title">
-                                    <a data-toggle="collapse" data-parent="#quality_metrics_accordion" href="#site_quality_collapse"
-                                       aria-expanded="false" aria-controls="site_quality_collapse">
-                                        <small>Site Quality Metrics</small>
-                                    </a>
-                                </div>
-                            </div>
-                            <div id="site_quality_collapse" class="panel-collapse collapse" role="tabpanel" aria-labelledby="site_quality_collapse_heading">
-                                <div class="row">
-                                    <div class="col-xs-11 col-xs-offset-1">
-                                        <select id="quality_metric_select" class="form-control">
-                                            <option><small>Site Quality: {{ variant.site_quality }}</small></option>
-                                            {% for metric in variant.quality_metrics %}
-                                                <option><small>{{ metric }}: {{ variant.quality_metrics[metric] }}</small></option>
-                                            {% endfor %}
-                                        </select>
-                                        <div id="quality_metric_container"></div>
-                                        <small><div id="site_quality_note"></div></small>
-                                        <small><span class="label label-info">Note:</span> These are site-level quality metrics: they may be unpredictable for multi-allelic sites.</small>
-                                        <br/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                  {% include 'variant_quality_metrics.html' %}
                 </div>
                 <div class="col-sm-6 col-md-6 col-md-offset-1">
-                    <dl class="dl-horizontal" style="margin-bottom: 0px;">
-                        <dt>Filter Status</dt>
-                        <dd>{{ variant.filter }}</dd>
-                        <dt>Existing Variation</dt>
-                        <dd>
-                        {% if variant.rsids == [] %}
-                            None found
-                        {% else %}
-                            {% for _rsid in variant.rsids %}
-                                <a href="http://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs={{ _rsid }}" target="_blank">{{ _rsid }}</a> 
-                            {% endfor %}
-                        {% endif %}
-                        </dd>
-                        <dt>Allele Frequency</dt>
-                        <dd>{{ '%0.4g' % variant.allele_freq }}</dd>
-                        <dt>Allele Count</dt>
-                        <dd>{{ variant.allele_count }} / {{ variant.allele_num }}</dd>
-                        <dt>UCSC</dt>
-                        <dd>
-                            <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&highlight=hg19.chr{{ variant.chrom }}%3A{{ variant.pos }}-{{ variant.pos + variant.ref|length - 1 }}&position=chr{{ variant.chrom }}%3A{{ variant.pos - 25 }}-{{ variant.pos + variant.ref|length - 1 + 25 }}" target="_blank">
-                                {{ variant.variant_id }}
-                                <i class="fa fa-external-link"></i>
-                            </a>
-                        </dd>
-                        <dt>ClinVar</dt>
-                        <dd id='clinvar'>
-                        <span id="clinvar_loading">loading...</span>
-                        </dd>
-                        <div style="clear:both"></div>
-                    </dl>
+                    {% include 'variant_definition_list.html' %}
                     <hr>
-                    <div id="annotation_container">
-                    {% if variant.variant_id %}
-                        <div class="section_header">Annotations</div>
-                        {% if consequences %}
-                            <p>This variant falls on {{ variant.transcripts|length }} transcript{{ "s" if (variant.transcripts|length) != 1 else "" }}
-                              belonging to {{ variant.genes|length }} gene{{ "s" if (variant.genes|length) != 1 else "" }}:</p>
-                            <div class="panel-group" id="annotation_accordion" style="margin-bottom: 0px;">
-                                <div class="row">
-                                {% for consequence_column in consequences.keys()|slice(2) %}
-                                  {% with first_csq_col = loop.first %}
-                                    <div class="col-md-6">
-                                    {% for consequence in consequence_column %}
-                                      {% with first_csq = loop.first and first_csq_col %}
-                                        {% include 'variant_consequences.html' %}
-                                      {% endwith %}
-                                    {% endfor %}
-                                    </div>
-                                  {% endwith %}
-                                {% endfor %}
-                                </div>
-                            </div>
-                            <small><span class="label label-info">Note:</span> This list may not include additional transcripts in the same gene that the variant does not overlap.</small>
-                        {% else %}
-                            No annotations were found for this variant.
-                        {% endif %}
-                    {% else %}
-                        <h3>This variant is not found in {{ config['DATASET_NAME'] }}.</h3>
-                    {% endif %}
-                    </div>
-
+                    {% include 'variant_consequences.html' %}
                 </div>
 
             </div>

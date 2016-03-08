@@ -1,0 +1,30 @@
+<dl class="dl-horizontal" style="margin-bottom: 0px;">
+    <dt>Filter Status</dt>
+    <dd>{{ variant.filter }}</dd>
+    <dt>Existing Variation</dt>
+    <dd>
+    {% if variant.rsids == [] %}
+        None found
+    {% else %}
+        {% for _rsid in variant.rsids %}
+            <a href="http://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs={{ _rsid }}" target="_blank">{{ _rsid }}</a>
+        {% endfor %}
+    {% endif %}
+    </dd>
+    <dt>Allele Frequency</dt>
+    <dd>{{ '%0.4g' % variant.allele_freq }}</dd>
+    <dt>Allele Count</dt>
+    <dd>{{ variant.allele_count }} / {{ variant.allele_num }}</dd>
+    <dt>UCSC</dt>
+    <dd>
+        <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&highlight=hg19.chr{{ variant.chrom }}%3A{{ variant.pos }}-{{ variant.pos + variant.ref|length - 1 }}&position=chr{{ variant.chrom }}%3A{{ variant.pos - 25 }}-{{ variant.pos + variant.ref|length - 1 + 25 }}" target="_blank">
+            {{ variant.variant_id }}
+            <i class="fa fa-external-link"></i>
+        </a>
+    </dd>
+    <dt>ClinVar</dt>
+    <dd id='clinvar'>
+    <span id="clinvar_loading">loading...</span>
+    </dd>
+    <div style="clear:both"></div>
+</dl>

@@ -1,66 +1,25 @@
-<h4>{{ consequence|replace('_variant', '')|replace('_', ' ')|replace('utr', 'UTR')|replace('3 prime', "3'")|replace('5 prime', "5'")|replace('nc ', "non-coding ") }}</h4>
-<ul>
-    {% for gene in consequences[consequence] %}
-        <li>
-            {% if gene %}
-                <a href="/gene/{{ gene }}">
-                {% if consequences[consequence][gene][0].SYMBOL %}
-                    {{ consequences[consequence][gene][0].SYMBOL }}
-                {% else %}
-                    {{ gene }}
-                {% endif %}
-                </a>
-            {% endif %}
-            {% if consequences[consequence][gene]|length == 1 %}
-                {% with annotation = consequences[consequence][gene][0] %}
-                    {% if gene %}-{% endif %}
-                    {% if annotation.Feature[:4] == "ENST" %}
-                        <a href="/transcript/{{ annotation.Feature }}">
-                    {% else %}
-                        <a href="http://useast.ensembl.org/Multi/Search/Results?q={{ annotation.Feature }}">
-                    {% endif %}
-                    {{ annotation.Feature }}
-                    {% if annotation.CANONICAL == 'YES' %}
-                        *
-                    {% endif %}
-                    </a>
-                    {% include 'variant_details.html' %}
-                {% endwith %}
-            {% elif first_csq %}
-                <ul>
-                    {% for annotation in consequences[consequence][gene] %}
-                        <li>
-                            <a href="/transcript/{{ annotation.Feature }}">
-                                {{ annotation.Feature }}
-                                {% if annotation.CANONICAL == 'YES' %}
-                                    *
-                                {% endif %}
-                            </a>
-                            {% include 'variant_details.html' %}
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <span class="collapse-group">
-                    <ul class="collapse">
-                        {% for annotation in consequences[consequence][gene] %}
-                            <li>
-                                <a href="/transcript/{{ annotation.Feature }}">
-                                    {{ annotation.Feature }}
-                                    {% if annotation.CANONICAL == 'YES' %}
-                                        *
-                                    {% endif %}
-                                    {% include 'variant_details.html' %}
-                                </a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                    <button class="btn btn-default transcript_toggle">
-                        <span class="transcript-toggle-text">Show all <span class="caret"></span></span>
-                        <span class="transcript-toggle-text hidden">Hide <span class="dropup"><span class="caret"></span></span></span>
-                    </button>
-                </span>
-            {% endif %}
-        </li>
-    {% endfor %}
-</ul>
+<div id="annotation_container">
+    <div class="section_header">Annotations</div>
+    {% if consequences %}
+        <p>This variant falls on {{ variant.transcripts|length }} transcript{{ "s" if (variant.transcripts|length) != 1 else "" }}
+          belonging to {{ variant.genes|length }} gene{{ "s" if (variant.genes|length) != 1 else "" }}:</p>
+        <div class="panel-group" id="annotation_accordion" style="margin-bottom: 0px;">
+            <div class="row">
+            {% for consequence_column in consequences.keys()|slice(2) %}
+              {% with first_csq_col = loop.first %}
+                <div class="col-md-6">
+                {% for consequence in consequence_column %}
+                  {% with first_csq = loop.first and first_csq_col %}
+                    {% include 'variant_consequence.html' %}
+                  {% endwith %}
+                {% endfor %}
+                </div>
+              {% endwith %}
+            {% endfor %}
+            </div>
+        </div>
+        <small><span class="label label-info">Note:</span> This list may not include additional transcripts in the same gene that the variant does not overlap.</small>
+    {% else %}
+        No annotations were found for this variant.
+    {% endif %}
+</div>
