@@ -3,21 +3,21 @@
 {% endif %}
 
 {% if consequence == 'missense_variant' %}
-    &nbsp; &nbsp; &nbsp; Polyphen:
     {% set polyphen = annotation.PolyPhen.split('(')[0] %}
     {% set pp_label = "bg-success" if polyphen == 'benign' else ("bg-warning" if polyphen == 'possibly_damaging' else "bg-danger") %}
     {% set sift = annotation.SIFT.split('(')[0] %}
     {% set sift_label = "bg-success" if sift == 'tolerated' else "bg-danger" %}
-    <span class={{ pp_label }}>{{ polyphen }}</span>; SIFT:
-    <span class={{ sift_label }}>{{ sift }}</span>
+    <p class="annotation_csq">Polyphen: <span class={{ pp_label }}>{{ polyphen }}</span></p>
+    <p class="annotation_csq">SIFT: <span class={{ sift_label }}>{{ sift }}</span><p>
 {% elif annotation.LoF != '' %}
-    &nbsp; &nbsp; &nbsp; LoF:
-    {% if annotation.LoF == 'HC' %}
-        <span class="bg-success">High-confidence</span>
-    {% else %}
-        <span class="bg-danger">Low-confidence ({{ annotation.LoF_filter }})</span>
-    {% endif %}
+    <p class="annotation_csq">LoF:
+      {% if annotation.LoF == 'HC' %}
+          <span class="bg-success">High-confidence</span>
+      {% else %}
+          <span class="bg-danger">Low-confidence ({{ annotation.LoF_filter }})</span>
+      {% endif %}
+    </p>
     {% if annotation.LoF_flags != '' %}
-        <br/>&nbsp; &nbsp; &nbsp; Flag: <span class="bg-warning">{{ annotation.LoF_flags }}</span>
+       <p class="annotation_csq">Flag: <span class="bg-warning">{{ annotation.LoF_flags }}</span></p>
     {% endif %}
 {% endif %}

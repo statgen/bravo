@@ -1,5 +1,5 @@
 <h4>{{ consequence|replace('_variant', '')|replace('_', ' ')|replace('utr', 'UTR')|replace('3 prime', "3'")|replace('5 prime', "5'")|replace('nc ', "non-coding ") }}</h4>
-<ul>
+<ul class="list_of_genes_in_csq">
     {% for gene in consequences[consequence] %}
         <li>
             {% if gene %}
@@ -27,7 +27,7 @@
                     {% include 'variant_details.html' %}
                 {% endwith %}
             {% elif first_csq %}
-                <ul>
+                <ul class="list_of_transcripts_in_gene_csq">
                     {% for annotation in consequences[consequence][gene] %}
                         <li>
                             <a href="/transcript/{{ annotation.Feature }}">
@@ -42,7 +42,7 @@
                 </ul>
             {% else %}
                 <span class="collapse-group">
-                    <ul class="collapse">
+                    <ul class="collapse list_of_transcripts_in_gene_csq">
                         {% for annotation in consequences[consequence][gene] %}
                             <li>
                                 <a href="/transcript/{{ annotation.Feature }}">
