@@ -486,7 +486,12 @@ def variant_page(variant_str):
         base_coverage = lookups.get_coverage_for_bases(get_coverages(), variant['xpos'], variant['xpos'] + len(variant['ref']) - 1)
         metrics = lookups.get_metrics(db, variant)
 
+        pop_afs = get_pop_afs(variant)
+        if pop_afs:
+            variant['pop_afs'] = pop_afs
+
         lookups.remove_some_extraneous_information(variant)
+
         print 'Rendering variant: %s' % variant_str
         return render_template(
             'variant.html',

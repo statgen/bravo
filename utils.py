@@ -235,4 +235,34 @@ def get_minimal_representation(pos, ref, alt):
             alt = alt[1:]
             ref = ref[1:]
             pos += 1
-        return pos, ref, alt 
+        return pos, ref, alt
+
+POP_MAFS = ["EAS_MAF", "AFR_MAF", "EUR_MAF", "SAS_MAF", "AMR_MAF"]
+def get_pop_afs(variant):
+    """
+    Convert the nasty output of VEP into a decent dictionary of population AFs.
+    """
+    if len(variant['vep_annotations']) == 0:
+        return {}
+
+    pop_strings = {}
+    for pop in POP_MAFS:
+        values = [ann[pop] for ann in variant['vep_annotations']]
+        assert all(value == values[0] for value in values)
+        pop_strings[pop] = values[0]
+
+    if all(pop_string == '' for pop_string in pop_strings.values()):
+        return {}
+
+    pop_acs = {}
+    for pop in POP_MAFS:
+        d = {}
+        for alt_maf in pop_strings[pop].split('&'):
+            k, v = alt_maf.split(':')
+            assert all(letter in 'ACTG-' for letter in k)
+            d[k] = float(v)
+        pop_acs[pop] = d.get(variant['alt'])
+        if pop_acs[pop] is None:
+            pop_acs[pop] = 'ERROR'
+            print('ERROR: pop_maf dictionary {!r} is missing alt allele {!r} for population {!r}'.format(d, variant['alt'], pop))
+    return pop_acs

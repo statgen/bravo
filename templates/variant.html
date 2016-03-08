@@ -350,85 +350,41 @@
             <hr/>
         {% endif %}
 
-{#          Lower display#}
         <div class="row">
-            <div class="col-xs-12">
-                {% if variant.pop_acs and False %}
+            {% if variant.pop_afs %}
+               <div class="col-xs-6 col-md-4"><div class="row"><div class="col-xs-11">
                     <div id="frequency_info_container">
-                        <div class="section_header">Population Frequencies</div>
+                        <div class="section_header">1000G Population Frequencies</div>
                         <div id="frequency_table_container" class="frequency_displays">
-                            {% with chrom = variant.chrom %}
                             <table id="frequency_table">
                                 <thead>
                                     <tr>
                                         <th>Population</th>
-                                        <th>Allele Count</th>
-                                        <th>Allele Number</th>
-                                        {% if chrom != 'Y' %}
-                                            <th>Number of Homozygotes</th>
-                                        {% endif %}
-                                        {% if chrom == 'X' or chrom == 'Y' %}
-                                            <th>Number of Hemizygotes</th>
-                                        {% endif %}
                                         <th>Allele Frequency</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for pop in variant.pop_acs %}
+                                    {% for pop in variant.pop_afs %}
                                         <tr>
                                             <td>{{ pop }}</td>
-                                            <td>{{ variant.pop_acs[pop] }}</td>
-                                            <td>{{ variant.pop_ans[pop] }}</td>
-                                            {% if chrom != 'Y' %}
-                                                <td>{{ variant.pop_homs[pop] }}</td>
-                                            {% endif %}
-                                            {% if chrom == 'X' or chrom == 'Y' %}
-                                                <td>{{ variant.pop_hemis[pop] }}</td>
-                                            {% endif %}
-                                            {% if variant.pop_ans[pop] > 0 %}
-                                                <td>{{ '%0.4g' % (variant.pop_acs[pop]/variant.pop_ans[pop]) }}</td>
-                                            {% else %}
-                                                <td>NA</td>
-                                            {% endif %}
+                                            <td>{{ variant.pop_afs[pop] }}</td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td><b>Total</b></td>
-                                        <td><b>{{ variant.pop_acs.values()|sum }}</b></td>
-                                        <td><b>{{ variant.pop_ans.values()|sum }}</b></td>
-                                        {% if chrom != 'Y' %}
-                                            <td><b>{{ variant.pop_homs.values()|sum }}</b></td>
-                                        {% endif %}
-                                        {% if chrom == 'X' or chrom == 'Y' %}
-                                            <td><b>{{ variant.pop_hemis.values()|sum }}</b></td>
-                                        {% endif %}
-                                        <td><b>
-                                            {% if variant.allele_freq %}
-                                                {{ '%0.4g' % variant.allele_freq }}
-                                            {% else %}
-                                                NA
-                                            {% endif %}
-                                        </b></td>
-                                    </tr>
-                                </tfoot>
                             </table>
-                            {% endwith %}
                         </div>
                     </div>
-                {% else %}
-                    {% if any_covered %}
-                        <div class="row">
-                            <span class="section_header" style="margin-left:1em">Coverage</span>
-                            {% if base_coverage|length > 1 %}
-                                {% include 'coverage_selectors.html' %}
-                            {% endif %}
-                        </div>
-                        <div id="region_coverage"></div>
-                    {% else %}
-                        <h3>This region is not covered in the {{ config['DATASET_NAME'] }} dataset.</h3>
+                </div></div></div>
+            {% endif %}
+            <div class="col-xs-6">
+                {% if any_covered %}
+                    <span class="section_header" style="margin-left:1em">Coverage</span>
+                    {% if base_coverage|length > 1 %}
+                        {% include 'coverage_selectors.html' %}
                     {% endif %}
+                    <div id="region_coverage"></div>
+                {% else %}
+                    <h3>This region is not covered in the {{ config['DATASET_NAME'] }} dataset.</h3>
                 {% endif %}
             </div>
         </div>

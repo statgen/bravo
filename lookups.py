@@ -277,6 +277,9 @@ def remove_some_extraneous_information(variant):
     del variant['xstart']
     del variant['xstop']
     del variant['vep_annotations']
+    del variant['pop_acs']
+    del variant['pop_ans']
+    del variant['pop_homs']
     variant.pop('sometimes_missense_or_lof', None)
 
 def remove_extraneous_information(variant):
@@ -288,9 +291,6 @@ def remove_extraneous_information(variant):
     del variant['genes']
     del variant['orig_alt_alleles']
     del variant['site_quality']
-    del variant['pop_acs']
-    del variant['pop_ans']
-    del variant['pop_homs']
     del variant['quality_metrics']
 
 
