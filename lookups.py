@@ -38,6 +38,27 @@ def get_variant(db, xpos, ref, alt):
     variant['genes'] = [gene for gene in variant['genes'] if gene != '']
     return variant
 
+def get_variant_by_variant_id(db, variant_id, default_to_boring_variant=False):
+    try:
+        chrom, pos, ref, alt = variant_id.split('-')
+        pos = int(pos)
+        xpos = get_xpos(chrom, pos)
+    except:
+        return None
+    v = get_variant(db, xpos, ref, alt)
+    if v is not None:
+        return v
+    elif default_to_boring_variant:
+        return {
+            'chrom': chrom,
+            'pos': pos,
+            'xpos': xpos,
+            'ref': ref,
+            'alt': alt,
+        }
+    else:
+        return None
+
 
 def get_variants_by_rsid(db, rsid):
     if not rsid.startswith('rs'):

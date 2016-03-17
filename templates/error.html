@@ -4,10 +4,13 @@
         <br><br>
         <center>
         <h2>Error</h2>
+        {% if message %}
+        <p>{{ message }}</p>
+        {% else %}
         <h4>This page does not exist.</h4><br>
-        <img class="error_image" src="{{ url_for('static', filename='images/exac_404_ripped_page.jpg') }}" />
+        {% endif %}
         <br><br>
-        To report a bug, please <a href="mailto:pjvh@umich?subject={{ config['DATASET_NAME'] }}">email me</a>.<br>
+        To report a bug, please <a href="mailto:pjvh@umich?subject=bug-variant-browser-{{ config['DATASET_NAME'] }}">email me</a>.<br>
         </center>
     </div>
 

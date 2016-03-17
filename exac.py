@@ -462,20 +462,7 @@ def awesome():
 def variant_page(variant_str):
     db = get_db()
     try:
-        chrom, pos, ref, alt = variant_str.split('-')
-        pos = int(pos)
-        # pos, ref, alt = get_minimal_representation(pos, ref, alt)
-        xpos = get_xpos(chrom, pos)
-        variant = lookups.get_variant(db, xpos, ref, alt)
-
-        if variant is None:
-            variant = {
-                'chrom': chrom,
-                'pos': pos,
-                'xpos': xpos,
-                'ref': ref,
-                'alt': alt
-            }
+        variant = lookups.get_variant_by_variant_id(db, variant_str, default_to_boring_variant=True)
 
         consequences = OrderedDict()
         if 'vep_annotations' in variant:
@@ -483,11 +470,11 @@ def variant_page(variant_str):
             for annotation in variant['vep_annotations']:
                 annotation['HGVS'] = get_proper_hgvs(annotation)
                 consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
-            lookups.remove_some_extraneous_information(variant)
 
-        base_coverage = lookups.get_coverage_for_bases(get_coverages(), xpos, xpos + len(ref) - 1)
+        base_coverage = lookups.get_coverage_for_bases(get_coverages(), variant['xpos'], variant['xpos'] + len(variant['ref']) - 1)
         metrics = lookups.get_metrics(db, variant)
 
+        lookups.remove_some_extraneous_information(variant)
         print 'Rendering variant: %s' % variant_str
         return render_template(
             'variant.html',
@@ -717,10 +704,10 @@ def not_found_page(query):
 
 @app.route('/error/<query>')
 @app.errorhandler(404)
-def error_page(query):
+def error_page(message):
     return render_template(
         'error.html',
-        query=query
+        message=message
     ), 404
 
 @app.route('/about')
