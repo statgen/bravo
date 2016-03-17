@@ -43,7 +43,10 @@
         <div class="row">
             <div class="col-xs-12">
                 <h1><span class="hidden-xs">Variant: </span>{{ variant.chrom }}:{{ variant.pos }} {{ variant.ref }} / {{ variant.alt }}
-                  {% if top_HGVSs %}({{ ', '.join(top_HGVSs) }}){% endif %}
+                  {% if top_HGVSs %}
+                    (<span class="gene-name">{{ gene_for_top_csq }}</span>:
+                     {{ ', '.join(top_HGVSs) }})
+                  {% endif %}
                 </h1>
             </div>
             <div class="col-xs-12">

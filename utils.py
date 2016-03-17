@@ -1,4 +1,6 @@
+from collections import OrderedDict
 from operator import itemgetter
+
 AF_BUCKETS = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
 METRICS = [
     'BaseQRankSum',
@@ -266,3 +268,33 @@ def get_pop_afs(variant):
             pop_acs[pop] = 'ERROR'
             print('ERROR: pop_maf dictionary {!r} is missing alt allele {!r} for population {!r}'.format(d, variant['alt'], pop))
     return pop_acs
+
+def get_consequences_drilldown_for_variant(variant):
+    """
+    Adds 'major_consequence' to each annotation.
+    Returns something like {"frameshift": {"ENSG00001234": [{"SYMBOL": "APOL1", "Gene": "ENSG00001234", "Feature": "ENST00002345", ...}]}}
+    """
+    if 'vep_annotations' not in variant:
+        return {}
+    variant['vep_annotations'] = order_vep_by_csq(variant['vep_annotations'])  # Adds major_consequence
+    consequences = OrderedDict()
+    for annotation in variant['vep_annotations']:
+        annotation['HGVS'] = get_proper_hgvs(annotation)
+        consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
+    # Sort the consequences
+    for csq in consequences:
+        for gene in consequences[csq]:
+            consequences[csq][gene] = sorted(consequences[csq][gene], key=lambda ann: (ann.get('HGVS'), ann.get('Feature')))
+    return consequences
+
+def get_top_gene_and_top_hgvss_for_consequences_drilldown(consequences):
+    """Returns something like ("APOL1", ["Gly70Ter", "Gly88Ter"])"""
+    if not consequences:
+        return None, []
+    top_csq = consequences.values()[0]
+    if len(top_csq) != 1: # we need exactly one gene
+        return None, []
+    annotations_for_top_csq = top_csq.values()[0]
+    gene_for_top_csq = annotations_for_top_csq[0].get('SYMBOL') or top_csq.keys()[0]
+    top_HGVSs = sorted({ann['HGVS'].lstrip('p.') for ann in annotations_for_top_csq if ann.get('HGVS')})
+    return gene_for_top_csq, top_HGVSs

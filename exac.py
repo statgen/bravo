@@ -17,7 +17,7 @@ from flask import Flask, Response, request, session, g, redirect, url_for, abort
 from flask.ext.compress import Compress
 from flask_errormail import mail_on_500
 from flask.ext.login import LoginManager, UserMixin, login_user, logout_user, current_user
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 from werkzeug.contrib.cache import NullCache # TODO: for production, use FileSystemCache
 
 from multiprocessing import Process
@@ -464,24 +464,8 @@ def variant_page(variant_str):
     try:
         variant = lookups.get_variant_by_variant_id(db, variant_str, default_to_boring_variant=True)
 
-        consequences = OrderedDict()
-        if 'vep_annotations' in variant:
-            variant['vep_annotations'] = order_vep_by_csq(variant['vep_annotations'])  # Adds major_consequence
-            for annotation in variant['vep_annotations']:
-                annotation['HGVS'] = get_proper_hgvs(annotation)
-                consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
-        # Sort the consequences
-        for csq in consequences:
-            for gene in consequences[csq]:
-                consequences[csq][gene] = sorted(consequences[csq][gene], key=lambda ann: (ann.get('HGVS'), ann.get('Feature')))
-
-        top_HGVSs = set()
-        if consequences:
-            top_csq = consequences.values()[0]
-            if len(top_csq) == 1: # one gene
-                for annotation in top_csq.values()[0]:
-                    if annotation.get('HGVS'):
-                        top_HGVSs.add(annotation['HGVS'])
+        consequences = get_consequences_drilldown_for_variant(variant)
+        gene_for_top_csq, top_HGVSs = get_top_gene_and_top_hgvss_for_consequences_drilldown(consequences)
 
         base_coverage = lookups.get_coverage_for_bases(get_coverages(), variant['xpos'], variant['xpos'] + len(variant['ref']) - 1)
         metrics = lookups.get_metrics(db, variant)
@@ -501,6 +485,7 @@ def variant_page(variant_str):
             any_covered=bool(base_coverage),
             metrics=metrics,
             top_HGVSs=top_HGVSs,
+            gene_for_top_csq=gene_for_top_csq,
         )
     except Exception, e:
         print 'Failed on variant:', variant_str, '; Error=', traceback.format_exc()
