@@ -265,8 +265,8 @@ def get_pop_afs(variant):
             d[k] = float(v)
         pop_acs[pop] = d.get(variant['alt'])
         if pop_acs[pop] is None:
-            pop_acs[pop] = 'ERROR'
-            print('ERROR: pop_maf dictionary {!r} is missing alt allele {!r} for population {!r}'.format(d, variant['alt'], pop))
+            print('WARNING: pop_maf dictionary {!r} is missing alt allele {!r} for population {!r}'.format(d, variant['alt'], pop))
+            return {}
     return pop_acs
 
 def get_consequences_drilldown_for_variant(variant):
