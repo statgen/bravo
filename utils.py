@@ -239,7 +239,14 @@ def get_minimal_representation(pos, ref, alt):
             pos += 1
         return pos, ref, alt
 
-POP_MAFS = ["EAS_MAF", "AFR_MAF", "EUR_MAF", "SAS_MAF", "AMR_MAF"]
+# Note: I don't know why these are named "MAF".  They are often > 50%.
+POP_AFS_1000G = {
+    "EAS_MAF": "1000G East Asian",
+    "AFR_MAF": "1000G African",
+    "EUR_MAF": "1000G European",
+    "SAS_MAF": "1000G South Asian",
+    "AMR_MAF": "1000G American"
+}
 def get_pop_afs(variant):
     """
     Convert the nasty output of VEP into a decent dictionary of population AFs.
@@ -248,7 +255,7 @@ def get_pop_afs(variant):
         return {}
 
     pop_strings = {}
-    for pop in POP_MAFS:
+    for pop in POP_AFS_1000G:
         values = [ann[pop] for ann in variant['vep_annotations']]
         assert all(value == values[0] for value in values)
         pop_strings[pop] = values[0]
@@ -257,15 +264,15 @@ def get_pop_afs(variant):
         return {}
 
     pop_acs = {}
-    for pop in POP_MAFS:
+    for pop_key, pop_name in POP_AFS_1000G.items():
         d = {}
-        for alt_maf in pop_strings[pop].split('&'):
-            k, v = alt_maf.split(':')
+        for alt_af in pop_strings[pop_key].split('&'):
+            k, v = alt_af.split(':')
             assert all(letter in 'ACTG-' for letter in k)
             d[k] = float(v)
-        pop_acs[pop] = d.get(variant['alt'])
-        if pop_acs[pop] is None:
-            print('WARNING: pop_maf dictionary {!r} is missing alt allele {!r} for population {!r}'.format(d, variant['alt'], pop))
+        pop_acs[pop_name] = d.get(variant['alt'])
+        if pop_acs[pop_name] is None:
+            print('WARNING: pop_af dictionary {!r} is missing alt allele {!r} for population {!r} for variant {}'.format(d, variant['alt'], pop_key, variant['variant_id']))
             return {}
     return pop_acs
 
