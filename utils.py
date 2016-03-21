@@ -251,7 +251,7 @@ def get_pop_afs(variant):
     """
     Convert the nasty output of VEP into a decent dictionary of population AFs.
     """
-    if len(variant['vep_annotations']) == 0:
+    if 'vep_annotations' not in variant or len(variant['vep_annotations']) == 0:
         return {}
 
     pop_strings = {}

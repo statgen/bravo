@@ -273,26 +273,31 @@ def get_metrics(db, variant):
 
 def remove_some_extraneous_information(variant):
     """Remove information not needed by variant.html or any other page"""
-    del variant['xpos']
-    del variant['xstart']
-    del variant['xstop']
-    del variant['vep_annotations']
-    del variant['pop_acs']
-    del variant['pop_ans']
-    del variant['pop_homs']
-    variant.pop('sometimes_missense_or_lof', None)
+    for key in [
+            'xpos',
+            'xstart',
+            'xstop',
+            'vep_annotations',
+            'pop_acs',
+            'pop_ans',
+            'pop_homs',
+            'sometimes_missense_or_lof',
+    ]:
+        variant.pop(key, None)
 
 def remove_extraneous_information(variant):
     """Remove information not needed by gene.html, transcript.html or region.html"""
     remove_some_extraneous_information(variant)
-    del variant['genotype_depths']
-    del variant['genotype_qualities']
-    del variant['transcripts']
-    del variant['genes']
-    del variant['orig_alt_alleles']
-    del variant['site_quality']
-    del variant['quality_metrics']
-
+    for key in [
+            'genotype_depths',
+            'genotype_qualities',
+            'transcripts',
+            'genes',
+            'orig_alt_alleles',
+            'site_quality',
+            'quality_metrics',
+    ]:
+        variant.pop(key, None)
 
 def get_variants_in_gene(db, gene_id):
     """
