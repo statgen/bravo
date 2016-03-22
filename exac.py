@@ -468,6 +468,7 @@ def variant_page(variant_str):
 
         consequences = get_consequences_drilldown_for_variant(variant)
         gene_for_top_csq, top_HGVSs = get_top_gene_and_top_hgvss_for_consequences_drilldown(consequences)
+        consequence_columns = split_consequence_drilldown_into_two_columns(consequences)
 
         base_coverage = lookups.get_coverage_for_bases(get_coverages(), variant['xpos'], variant['xpos'] + len(variant['ref']) - 1)
         metrics = lookups.get_metrics(db, variant)
@@ -485,6 +486,7 @@ def variant_page(variant_str):
             variant=variant,
             base_coverage=base_coverage,
             consequences=consequences,
+            consequence_columns=consequence_columns,
             any_covered=bool(base_coverage),
             metrics=metrics,
             top_HGVSs=top_HGVSs,

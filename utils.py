@@ -294,6 +294,39 @@ def get_consequences_drilldown_for_variant(variant):
             consequences[csq][gene] = sorted(consequences[csq][gene], key=lambda ann: (ann.get('HGVS'), ann.get('Feature')))
     return consequences
 
+def split_consequence_drilldown_into_two_columns(consequences):
+        '''
+        Try to make two columns of similar height, but with the first a little taller.
+        Returns the names of the consequences (ie, the keys), but not the values (because that'd be a pain to use).
+        '''
+        if len(consequences) == 0:
+            return ([], [])
+        elif len(consequences) == 1:
+            return (consequences.keys(), [])
+        consequence_heights = [0]
+        for annotations in consequences.values()[0].values():
+            consequence_heights[0] += len(annotations) # The number of annotations in this gene (because all are shown in the first consequence)
+            # TODO: check for the other things displayed in variant_details.html
+        for csq in consequences.values()[1:]:
+            consequence_heights.append(len(csq)) # The number of genes in this consequence (because annotations are collapsed in these consequences)
+        index = get_midpoint_index(consequence_heights)
+        return (consequences.keys()[:index],
+                consequences.keys()[index:])
+
+def get_midpoint_index(lst):
+    half = sum(lst) / 2.0
+    acc = 0
+    for index, num in enumerate(lst):
+        if acc >= half:
+            return index
+        acc += num
+    return len(lst)
+for test_lst in [[1], [1,2,3], [3,1,1], [3,1,1,1], [3,1,1,1,1]]:
+    index = get_midpoint_index(test_lst)
+    assert 0 < index <= len(test_lst)
+    assert sum(test_lst[:index]) >= sum(test_lst[index:])
+    assert sum(test_lst[:index-1]) < sum(test_lst[index-1:])
+
 def get_top_gene_and_top_hgvss_for_consequences_drilldown(consequences):
     """Returns something like ("APOL1", ["Gly70Ter", "Gly88Ter"])"""
     if not consequences:
