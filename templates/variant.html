@@ -73,46 +73,64 @@
                 <hr/>
             {% endif %}
             <div class="row">
-                <div class="col-xs-12 col-sm-6 col-md-5 col-lg-4">
-                  {% include 'variant_quality_metrics.html' %}
-                </div>
-                <div class="col-xs-12 col-sm-6 col-md-offset-1">
+                <div class="col-xs-12 col-sm-6">
+                    <div class="section_header">Variant Summary</div>
                     {% include 'variant_definition_list.html' %}
-                    <hr>
-                    {% include 'variant_consequences.html' %}
+
+                    <div class="hidden-sm hidden-md hidden-lg">
+                      <hr/>
+                    </div>
                 </div>
+
+                {% if variant.pop_afs %}
+                <div class="col-xs-12 col-sm-6 col-md-5 col-md-offset-1 col-lg-4">
+                   <div class="row">
+                      <div class="col-xs-11">
+                         <div class="section_header">Frequency Table</div>
+                         <table id="pop_afs_table">
+                             <thead>
+                                 <tr>
+                                     <th>Population</th>
+                                     <th>Allele Frequency</th>
+                                 </tr>
+                             </thead>
+                             <tbody>
+                                {% for pop in variant.pop_afs %}
+                                   <tr>
+                                       <td>{{ pop }}</td>
+                                       <td>{{ '%0.4g' % variant.pop_afs[pop] }}</td>
+                                   </tr>
+                                {% endfor %}
+                             </tbody>
+                         </table>
+                      </div>
+                   </div>
+                </div>
+                {% endif %}
 
             </div>
             <hr/>
         {% endif %}
 
+        {% if variant.variant_id %}
         <div class="row">
-            {% if variant.pop_afs %}
-               <div class="col-xs-12 col-sm-6 col-md-5 col-lg-4">
-                  <div class="row">
-                     <div class="col-xs-11">
-                        <div class="section_header">Frequency Table</div>
-                        <table id="pop_afs_table">
-                            <thead>
-                                <tr>
-                                    <th>Population</th>
-                                    <th>Allele Frequency</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                               {% for pop in variant.pop_afs %}
-                                  <tr>
-                                      <td>{{ pop }}</td>
-                                      <td>{{ '%0.4g' % variant.pop_afs[pop] }}</td>
-                                  </tr>
-                               {% endfor %}
-                            </tbody>
-                        </table>
-                     </div>
-                  </div>
-               </div>
-            {% endif %}
-            <div class="col-xs-12 col-sm-6 col-md-offset-1">
+            <div class="col-xs-12 col-sm-6">
+                <div class="section_header">Annotations</div>
+                {% include 'variant_consequences.html' %}
+
+                <div class="hidden-sm hidden-md hidden-lg">
+                  <hr/>
+                </div>
+            </div>
+            <div class="col-xs-12 col-sm-6 col-md-5 col-md-offset-1 col-lg-4">
+                {% include 'variant_quality_metrics.html' %}
+            </div>
+        </div>
+        <hr/>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-xs-12">
                 {% if any_covered %}
                     <span class="section_header" style="margin-left:1em">Coverage</span>
                     {% if base_coverage|length > 1 %}

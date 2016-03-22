@@ -1,5 +1,3 @@
-<div id="annotation_container">
-    <div class="section_header">Annotations</div>
     {% if consequences %}
         <p>This variant falls on {{ variant.transcripts|length }} transcript{{ "s" if (variant.transcripts|length) != 1 else "" }}
           belonging to {{ variant.genes|length }} gene{{ "s" if (variant.genes|length) != 1 else "" }}:</p>
@@ -22,4 +20,3 @@
     {% else %}
         No annotations were found for this variant.
     {% endif %}
-</div>
