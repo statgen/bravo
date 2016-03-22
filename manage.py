@@ -12,16 +12,6 @@ def hello():
 
 
 @manager.command
-def load_db():
-    exac.load_db()
-
-
-@manager.command
-def load_base_coverage():
-    exac.load_base_coverage()
-
-
-@manager.command
 def load_variants_file():
     exac.load_variants_file()
 

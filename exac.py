@@ -93,33 +93,6 @@ def parse_tabix_file_subset(tabix_filenames, subset_i, subset_n, record_parser):
     print("Finished loading subset %(subset_i)s from  %(short_filenames)s (%(counter)s records)" % locals())
 
 
-def load_base_coverage():
-    def load_coverage(coverage_files, i, n, db):
-        coverage_generator = parse_tabix_file_subset(coverage_files, i, n, get_base_coverage_from_file)
-        try:
-            db.base_coverage.insert(coverage_generator, w=0)
-        except pymongo.errors.InvalidOperation:
-            pass  # handle error when coverage_generator is empty
-
-    db = get_db()
-    db.base_coverage.drop()
-    print("Dropped db.base_coverage")
-    # load coverage first; variant info will depend on coverage
-    db.base_coverage.ensure_index('xpos')
-
-    procs = []
-    coverage_files = app.config['BASE_COVERAGE_FILES']
-    num_procs = app.config['LOAD_DB_PARALLEL_PROCESSES']
-    random.shuffle(app.config['BASE_COVERAGE_FILES'])
-    for i in range(num_procs):
-        p = Process(target=load_coverage, args=(coverage_files, i, num_procs, db))
-        p.start()
-        procs.append(p)
-    return procs
-
-    #print 'Done loading coverage. Took %s seconds' % int(time.time() - start_time)
-
-
 def load_variants_file():
     def load_variants(sites_file, i, n, db):
         variants_generator = parse_tabix_file_subset([sites_file], i, n, get_variants_from_sites_vcf)
@@ -288,26 +261,6 @@ def load_dbsnp_file():
     #start_time = time.time()
     #db.dbsnp.ensure_index('rsid')
     #print 'Done indexing dbSNP table. Took %s seconds' % int(time.time() - start_time)
-
-
-def load_db():
-    """
-    Load the database
-    """
-    # Initialize database
-    # Don't need to explicitly create tables with mongo, just indices
-    confirm = raw_input('This will drop the database and reload. Are you sure you want to continue? [no] ')
-    if not confirm.startswith('y'):
-        print('Exiting...')
-        sys.exit(1)
-    all_procs = []
-    for load_function in [load_variants_file, load_dbsnp_file, load_base_coverage, load_gene_models]:
-        procs = load_function()
-        all_procs.extend(procs)
-        print("Started %s processes to run %s" % (len(procs), load_function.__name__))
-
-    [p.join() for p in all_procs]
-    print('Done!')
 
 
 def precalculate_whether_variant_is_ever_missense_or_lof():
