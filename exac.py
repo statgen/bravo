@@ -18,7 +18,6 @@ from flask.ext.compress import Compress
 from flask_errormail import mail_on_500
 from flask.ext.login import LoginManager, UserMixin, login_user, logout_user, current_user
 from collections import defaultdict
-from werkzeug.contrib.cache import NullCache # TODO: for production, use FileSystemCache
 
 from multiprocessing import Process
 import glob
@@ -31,9 +30,6 @@ app = Flask(__name__)
 app.config.from_object('flask_config.BravoTestConfig')
 mail_on_500(app, app.config['ADMINS'])
 Compress(app)
-
-#cache = FileSystemCache('cache_dir', default_timeout=60*60*24*31)
-cache = NullCache()
 
 REGION_LIMIT = 1E5
 EXON_PADDING = 50
@@ -422,12 +418,7 @@ def require_agreement_to_terms_and_store_destination(func):
 
 @app.route('/')
 def homepage():
-    cache_key = 't-homepage'
-    t = cache.get(cache_key)
-    if t is None:
-        t = render_template('homepage.html')
-        cache.set(cache_key, t)
-    return t
+    return render_template('homepage.html')
 
 
 @app.route('/autocomplete/<query>')
@@ -505,34 +496,29 @@ def gene_page(gene_id):
         gene = lookups.get_gene(db, gene_id)
         if gene is None:
             abort(404)
-        cache_key = 't-gene-{}'.format(gene_id)
-        t = cache.get(cache_key)
-        print 'Rendering %sgene: %s' % ('' if t is None else 'cached ', gene_id)
-        if t is None:
-            variants_in_gene = lookups.get_most_important_variants_in_gene(db, gene_id)
-            num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
-            transcripts_in_gene = lookups.get_transcripts_in_gene(db, gene_id)
+        print 'Rendering gene: %s' % gene_id
+        variants_in_gene = lookups.get_most_important_variants_in_gene(db, gene_id)
+        num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
+        transcripts_in_gene = lookups.get_transcripts_in_gene(db, gene_id)
 
-            # Get some canonical transcript and corresponding info
-            transcript_id = gene['canonical_transcript']
-            transcript = lookups.get_transcript(db, transcript_id)
-            variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
-            # DT: get coverage from tabix
-            coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+        # Get some canonical transcript and corresponding info
+        transcript_id = gene['canonical_transcript']
+        transcript = lookups.get_transcript(db, transcript_id)
+        variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
+        # DT: get coverage from tabix
+        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
 
-            t = render_template(
-                'gene.html',
-                gene=gene,
-                transcript=transcript,
-                variants_in_gene=variants_in_gene,
-                num_variants_in_gene=num_variants_in_gene,
-                variants_in_transcript=variants_in_transcript,
-                transcripts_in_gene=transcripts_in_gene,
-                coverage_stats=coverage_stats,
-                csq_order=csq_order,
-            )
-            cache.set(cache_key, t)
-        return t
+        return render_template(
+            'gene.html',
+            gene=gene,
+            transcript=transcript,
+            variants_in_gene=variants_in_gene,
+            num_variants_in_gene=num_variants_in_gene,
+            variants_in_transcript=variants_in_transcript,
+            transcripts_in_gene=transcripts_in_gene,
+            coverage_stats=coverage_stats,
+            csq_order=csq_order,
+        )
     except Exception, e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
@@ -545,29 +531,23 @@ def transcript_page(transcript_id):
     try:
         transcript = lookups.get_transcript(db, transcript_id)
 
-        cache_key = 't-transcript-{}'.format(transcript_id)
-        t = cache.get(cache_key)
-        print 'Rendering %stranscript: %s' % ('' if t is None else 'cached ', transcript_id)
-        if t is None:
+        print 'Rendering transcript: %s' % transcript_id
 
-            gene = lookups.get_gene(db, transcript['gene_id'])
-            gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
-            variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
-            coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
-            num_variants_in_transcript = lookups.get_num_variants_in_transcript(db, transcript_id)
+        gene = lookups.get_gene(db, transcript['gene_id'])
+        gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
+        variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
+        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+        num_variants_in_transcript = lookups.get_num_variants_in_transcript(db, transcript_id)
 
-            t = render_template(
-                'transcript.html',
-                transcript=transcript,
-                variants_in_transcript=variants_in_transcript,
-                num_variants_in_transcript=num_variants_in_transcript,
-                coverage_stats=coverage_stats,
-                gene=gene,
-                csq_order=csq_order,
-            )
-            
-            cache.set(cache_key, t)
-        return t
+        return render_template(
+            'transcript.html',
+            transcript=transcript,
+            variants_in_transcript=variants_in_transcript,
+            num_variants_in_transcript=num_variants_in_transcript,
+            coverage_stats=coverage_stats,
+            gene=gene,
+            csq_order=csq_order,
+        )
     except Exception, e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
@@ -575,7 +555,6 @@ def transcript_page(transcript_id):
 @app.route('/api/variants_in_gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
 def variants_gene_api(gene_id):
-    # TODO use `cache`
     db = get_db()
     try:
         variants_in_gene = lookups.get_variants_in_gene(db, gene_id)
@@ -587,7 +566,6 @@ def variants_gene_api(gene_id):
 @app.route('/api/variants_in_transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def variants_transcript_api(transcript_id):
-    # TODO use `cache`
     db = get_db()
     try:
         variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
@@ -599,7 +577,6 @@ def variants_transcript_api(transcript_id):
 @app.route('/api/variants_in_region/<region_id>')
 @require_agreement_to_terms_and_store_destination
 def variants_region_api(region_id):
-    # TODO use `cache`
     db = get_db()
     try:
         chrom, start, stop = region_id.split('-')
@@ -630,48 +607,44 @@ def region_page(region_id):
     db = get_db()
     try:
         region = region_id.split('-')
-        cache_key = 't-region-{}'.format(region_id)
-        t = cache.get(cache_key)
-        print 'Rendering %sregion: %s' % ('' if t is None else 'cached ', region_id)
-        if t is None:
-            chrom = region[0]
-            start = None
-            stop = None
-            if len(region) == 3:
-                chrom, start, stop = region
-                start = int(start)
-                stop = int(stop)
-            if start is None or stop - start > REGION_LIMIT or stop < start:
-                return render_template(
-                    'region.html',
-                    genes_in_region=None,
-                    variants_in_region=None,
-                    chrom=chrom,
-                    start=start,
-                    stop=stop,
-                    coverage_stats=None,
-                    csq_order=csq_order,
-                )
-            if start == stop:
-                start -= 20
-                stop += 20
-            genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
-            variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
-            xstart = get_xpos(chrom, start)
-            xstop = get_xpos(chrom, stop)
-            coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
-            t = render_template(
+        print 'Rendering region: %s' % region_id
+
+        chrom = region[0]
+        start = None
+        stop = None
+        if len(region) == 3:
+            chrom, start, stop = region
+            start = int(start)
+            stop = int(stop)
+        if start is None or stop - start > REGION_LIMIT or stop < start:
+            return render_template(
                 'region.html',
-                genes_in_region=genes_in_region,
-                variants_in_region=variants_in_region,
+                genes_in_region=None,
+                variants_in_region=None,
                 chrom=chrom,
                 start=start,
                 stop=stop,
-                coverage_stats=coverage_stats,
+                coverage_stats=None,
                 csq_order=csq_order,
             )
-            cache.set(cache_key, t)
-        return t
+        if start == stop:
+            start -= 20
+            stop += 20
+        genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
+        variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
+        xstart = get_xpos(chrom, start)
+        xstop = get_xpos(chrom, stop)
+        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
+        return render_template(
+            'region.html',
+            genes_in_region=genes_in_region,
+            variants_in_region=variants_in_region,
+            chrom=chrom,
+            start=start,
+            stop=stop,
+            coverage_stats=coverage_stats,
+            csq_order=csq_order,
+        )
     except Exception, e:
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
