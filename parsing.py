@@ -60,6 +60,7 @@ def get_variants_from_sites_vcf(sites_vcf):
     #gq_mids = map(float, '2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5'.split('|'))
     #hists_all = ['0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0', '0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0']
 
+    contains_avgdp = False
     vep_field_names = None
     for line in sites_vcf:
         try:
@@ -70,6 +71,8 @@ def get_variants_from_sites_vcf(sites_vcf):
                 dp_mids = map(float, line.split('Mids: ')[-1].strip('">').split('|'))
             if line.startswith('##INFO=<ID=GQ_HIST'):
                 gq_mids = map(float, line.split('Mids: ')[-1].strip('">').split('|'))
+            if line.startswith('##INFO=<ID=AVGDP'):
+                contains_avgdp = True
             if line.startswith('#'):
                 continue
 
@@ -107,16 +110,15 @@ def get_variants_from_sites_vcf(sites_vcf):
 
                 variant['cadd_raw'] = None if not 'CADD_RAW' in info_field else float(info_field['CADD_RAW'].split(',')[i])
                 variant['cadd_phred'] = None if not 'CADD_PHRED' in info_field else float(info_field['CADD_PHRED'].split(',')[i])
+                if contains_avgdp:
+                    variant['avgdp'] = float(info_field['AVGDP'])
+
 
                 if vep_annotations:
                    variant['rsids'] = list(rsid for rsid in vep_annotations[0]['Existing_variation'].split('&') if rsid.startswith("rs"))
-                   #variant['cadd_raw'] = None if not vep_annotations[0]['CADD_RAW'] else float(vep_annotations[0]['CADD_RAW']) 
-                   #variant['cadd_phred'] = None if not vep_annotations[0]['CADD_PHRED'] else float(vep_annotations[0]['CADD_PHRED'])
                 else:
                    variant['rsids'] = []
-                   #variant['cadd_raw'] = None
-                   #variant['cadd_phred'] = None
-                   
+
                 variant['xpos'] = get_xpos(variant['chrom'], variant['pos'])
                 variant['ref'] = ref
                 variant['alt'] = alt
