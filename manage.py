@@ -37,11 +37,6 @@ def load_dbsnp_file():
 
 
 @manager.command
-def create_cache():
-    exac.create_cache()
-
-
-@manager.command
 def precalculate_metrics():
     exac.precalculate_metrics()
 

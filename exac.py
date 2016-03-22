@@ -307,8 +307,6 @@ def load_db():
         print("Started %s processes to run %s" % (len(procs), load_function.__name__))
 
     [p.join() for p in all_procs]
-    print('Done! Creating cache...')
-    create_cache()
     print('Done!')
 
 
