@@ -1,104 +1,92 @@
-Usage
-=======
-
-*If you would like to use the ExAC browser, the most recent stable version is hosted at http://exac.broadinstitute.org*
-
-Advanced: The following instructions are useful for cloning the browser (e.g. to load custom sites/coverage data).
-Most users will not need to go through this process.
-
 Installation
-=======
-
-### Getting the code
-
-Create a directory to put all this stuff in. This will serve as the parent directory of the actual exac_browser repository 
-
-    mkdir exac
-    cd exac
-
-First (as this can run in parallel), get the datasets that the browser uses and put them into an 'exac_data' directory:
-
-    wget http://broadinstitute.org/~konradk/exac_browser/exac_browser.tar.gz .
-    tar zxvf exac_browser.tar.gz
-    cd ..
-
-Now clone the repo: 
-
-    git clone https://github.com/statgen/gvs.git
+============
 
 ### Dependencies
 
-Follow these instructions to get Python and Homebrew installed on your Mac:
-http://docs.python-guide.org/en/latest/starting/install/osx/
+Install MongoDB.  Configure it and make it run all the time.
 
-Install MongoDB:
+Install python packages in a virtualenv.
 
-    brew install mongodb
-    # or
-    sudo port install mongodb
+    virtualenv venv
+    source venv/bin/activate
+    pip2 install -r requirements.txt
 
-Create a directory to hold your mongo database files: 
+Some packages will require Python headers (python-dev on some systems).
 
-    mkdir database
+You probably want to run Flask behind something else, like Apache2.
 
-In a separate tab, start the mongo database server:
 
-    mongod --dbpath database
+### Prepare a VCF
 
-This local server needs to be running at all times when you are working on the site.
-You could do this in the background if you want or set up some startup service,
-but I think it's easier just to open a tab you can monitor.
+Use the scripts in `data/new_vcf_info/` to extract a subset of samples from a vcf file and calculate a few summaries for each variant.
 
-Finally, you may want to keep the system in a virtualenv:
+Use `data/add_cadd_scores.py` to add CADD scores to a vcf.
 
-    sudo port install py27-virtualenv # Or whatever version
+Use `data/remove_ac0.py` to remove variants that never vary.
 
-If so, you can create a python virtual environment where the browser will live:
+Use `data/import_info.py` with some options (I don't know which) to copy some INFO fields from one vcf (eg, your full vcf) into another (eg, your sites vcf)
 
-    mkdir exac_env
-    virtualenv exac_env
-    source exac_env/bin/activate
 
-### Installation
+### Import data into Mongo
 
-Install the python requirements:
+You'll need files like the following:
 
-    pip install -r requirements.txt
+    ALL.polymorphic.vcf.gz (this is the VCF from the section "Prepare a VCF")
+    ALL.polymorphic.vcf.gz.tbi
+    canonical_transcripts.txt.gz
+    dbsnp144.txt.bgz
+    dbsnp144.txt.bgz.tbi
+    gencode.gtf.gz
+    omim_info.txt.gz
+    dbNSFP2.6_gene.gz (used in parsing.py? TODO)
 
-Note that this installs xBrowse too. Some packages will require Python headers (python-dev on some systems).
+Put these in a directory, and store that directory in `_FILES_DIRECTORY` in `flask_config.py`.  As long as the names match our patterns, those files should correctly be stored in:
 
-### Setup
+- `SITES_VCFS`: used by `load_variants_file()`
+- `DBSNP_FILE`: used by `load_dbsnp_file()`
+- `GENCODE_GTF`: used by `load_gene_models()`
+- `CANONICAL_TRANSCRIPT_FILE`: used by used by `load_gene_models()`
+- `OMIM_FILE`: used by `load_gene_models()`
 
-At this point, it's probably worth quickly checking out the code structure if you haven't already :)
+Then run:
 
-Now we must load the database from those flat files.
-This is a single command, but it can take a while (can take advantage of parallel loads by modifying `LOAD_DB_PARALLEL_PROCESSES` in `flask_config.py`):
+    ./manage.py load_variants_file
+    ./manage.py load_dbsnp_file
+    ./manage.py load_gene_models
 
-    python manage.py load_db
 
-You won't have to run this often - most changes won't require rebuilding the database.
-That said, this is (and will remain) idempotent,
-so you can run it again at any time if you think something might be wrong - it will reload the database from scratch.
-You can also reload parts of the database using any of the following commands:
-
-    python manage.py load_variants_file
-    python manage.py load_dbsnp_file
-    python manage.py load_base_coverage
-    python manage.py load_gene_models
-    python manage.py create_users
-
-Once you've run that, then run:
+### Precalculate some things in the database
 
     python manage.py precalculate_metrics
     python manage.py precalculate_whether_variant_is_ever_missense_or_lof
 
-### Running the site
 
-Note that if you are revisiting the site after a break, make sure your virtualenv is `activate`'d.
+### Generate coverage files and configure the browser to use them
+
+1. Use the code in `data/base_coverage/glf2depth/` to create a full coverage file (ie, with coverage for every available base).
+Make one `*.full.json.gz` for each chromosome in some directory.
+
+2. Use the scripts in `data/base_coverage/` to bin the coverage.
+Make a couple directories with different levels of binning (and again, one `.json.gz` file for each chromosome).
+
+3. Tabix them all.
+
+4. Reference all of the coverage files in `BASE_COVERAGE` in `flask_config.py`.
+
+
+### Create the user table:
+
+While the other operations here are all idempotent, this one will wipe your user data, so only run it when you don't yet have user data.
+
+    ./manage.py create_users
+
+
+### Start the server
 
 You can run the development server with:
 
-    python exac.py
+    source venv/bin/activate
+    python2 exac.py
 
 And visit on your browser:
 
@@ -106,8 +94,6 @@ And visit on your browser:
     http://localhost:5000/gene/ENSG00000237683
     http://localhost:5000/variant/20-76735-A-T
 
-
 For testing, you can open up an interactive shell with:
 
     python manage.py shell
-
