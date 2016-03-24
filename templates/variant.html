@@ -11,7 +11,6 @@
       window.base_coverage = {{ base_coverage|tojson(separators=(',',':'))|safe }};
       window.any_covered = {{ any_covered|tojson(separators=(',',':'))|safe }};
       window.metrics = {{ metrics|tojson(separators=(',',':'))|safe }};
-      window.dataset_name = "{{ config['DATASET_NAME'] }}";
     </script>
     <script type="text/javascript" src="{{ url_for('static', filename='variant.js') }}"></script>
     <style>

@@ -28,6 +28,8 @@
         ga('send', 'pageview');
     </script>
     <script type="text/javascript">
+        window.dataset_name = "{{ config['DATASET_NAME'] }}";
+
         $(function() {
             var bestPictures = new Bloodhound({
               datumTokenizer: Bloodhound.tokenizers.obj.whitespace('value'),

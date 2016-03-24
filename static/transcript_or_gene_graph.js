@@ -587,6 +587,28 @@ function download(data_uri, filename) {
     delete link;
 }
 
+function set_plot_image(container, index) {
+    //get svg element.
+    var svg = $('#' + container).find('svg')[index];
+    //get svg source.
+    var serializer = new XMLSerializer();
+    var source = serializer.serializeToString(svg);
+
+    //add name spaces.
+    if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
+        source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    if(!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)){
+        source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    }
+
+    //add xml declaration
+    source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+
+    //convert svg source to URI data scheme.
+    return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(source);
+}
+
 function build_the_graph () {
     if ($(window).width() < 768) {
         $('#gene_plot_container').css('width', $(window).width() + "px");
