@@ -1,0 +1,41 @@
+<dl class="dl-horizontal">
+    <dt><span style="text-transform:capitalize" id="avg_coverage_type">Mean</span> coverage</dt>
+    <dd><span id="avg_coverage"></span></dd>
+</dl>
+<div id="gene_plot">
+    <span class="hidden-xs">
+        <label for="display_coverage_metric_group">
+            Display:
+        </label>
+        <span class="btn-group" data-toggle="buttons" id="display_coverage_metric_group">
+            <button class="btn btn-primary active display_coverage_metric_buttons"
+                    id="display_coverage_overview_button" data-tooltip="Shows all exons">
+                <input type="radio">Overview</input>
+            </button>
+            <button class="btn btn-primary display_coverage_metric_buttons"
+                    id="display_coverage_detail_button" data-tooltip="Zoomed in view (can scroll horizontally if needed)">
+                <input type="radio">Detail</input>
+            </button>
+        </span>
+        <label>
+            <input type="checkbox" id="include_utrs_checkbox" value=""> Include UTRs in plot
+        </label>
+    </span>
+    {% include 'coverage_selectors.html' %}
+    <br/>
+    <div id="gene_plot_container_container">
+        <div id="loading_coverage">
+            Loading coverage...
+            <br/><br/>
+        </div>
+        <span id="gene_plot_axis_container" class="hidden-xs" style="width:50px; display: inline-block;"></span>
+        <span id="gene_plot_container" style="overflow-x:scroll; display: inline-block;"></span>
+        <a class="btn btn-success" id="coverage_plot_download" download="{{ plot_id }}_coverage">Save coverage plot</a>
+        <a class="btn btn-success" id="exon_plot_download" download="{{ plot_id }}_exon">Save exon image</a>
+    </div>
+</div>
+<div id="not_covered" style="display: none;">
+    No coverage for this transcript.
+</div>
+<br/>
+<script type="text/javascript" src="{{ url_for('static', filename='transcript_or_gene_graph.js') }}"></script>
