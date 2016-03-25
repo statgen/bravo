@@ -36,18 +36,20 @@ var EXON_MARGIN = 60;
         - should probably have a map between coding coodinates and protein position
  */
 window.get_position_mapping = _.memoize(function(skip_utrs) {
-    // Uses window.transcript.exons
+    // Uses window.exons_and_utrs
     // Returns like [
     //    {real_start: 36649935, scaled_start: 0, length: 178},
     //    {real_start: 36650909, scaled_start: 179, length: 212}
     // ]
 
-    var good_feature_types = skip_utrs ? ['CDS'] : ['CDS', 'UTR'];
-    var exons = _.filter(window.transcript.exons, function(exon) {
-        return _.contains(good_feature_types, exon.feature_type);
-    });
-    if (exons.length === 0) {
-        exons = window.transcript.exons;
+    var exons = window.exons_and_utrs;
+    if (skip_utrs) {
+        exons = _.filter(exons, function(exon) {
+            return exon.feature_type == "CDS";
+        });
+        if (exons.length === 0) {
+            exons = window.exons_and_utrs;
+        }
     }
     if (exons.length === 0) {
         return [];
@@ -241,7 +243,7 @@ function create_coverage_chart() {
 
     var exon_color = "lightsteelblue";
     svg_outer.selectAll("line.padded_exon")
-        .data(window.transcript.exons)
+        .data(window.exons_and_utrs)
         .enter()
         .append('line')
         .attr("class", "padded_exon")
@@ -262,7 +264,7 @@ function create_coverage_chart() {
 
     // plot exon rects
     svg_outer.selectAll(".track_bar")
-        .data(window.transcript.exons)
+        .data(window.exons_and_utrs)
         .enter()
         .append("rect")
         .attr('class', 'track_bar')
@@ -291,7 +293,7 @@ function create_coverage_chart() {
         });
 
 
-    var a_s = window.transcript.strand == "-"? -1 : 1; //arrow direction
+    var a_s = window.strand == "-"? -1 : 1; //arrow direction
     var a_x = -5;  //arrow position on x-axis
     var a_y = lower_gene_chart_height/2.0; //arrow position on y-axis
     var a_w = 2; //arrow width
@@ -486,7 +488,7 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
 
     var exon_color = "lightsteelblue";
     svg_outer.selectAll("line.padded_exon")
-        .data(window.transcript.exons)
+        .data(window.exons_and_utrs)
         .transition()
         .duration(500)
         .attr("class", "padded_exon")
@@ -505,7 +507,7 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
 
     // plot exon rounded rects
     svg_outer.selectAll("rect")
-        .data(window.transcript.exons)
+        .data(window.exons_and_utrs)
         .transition()
         .duration(500)
         .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })

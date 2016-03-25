@@ -8,7 +8,11 @@
     <!-- Render context vars in JS here -->
     <script type="text/javascript">
         window.gene = {{ gene|tojson(separators=(',',':'))|safe }};
+        window.strand = window.gene.strand;
         window.transcript = {{ transcript|tojson(separators=(',',':'))|safe }};
+        window.exons_and_utrs = _.sortBy(_.filter(window.transcript.exons, function(d) {
+            return _.contains(["CDS", "UTR"], d.feature_type);
+        }), "start");
         window.table_variants = {{ variants_in_gene|tojson(separators=(',',':'))|safe }};
         window.variants_in_transcript = {{ variants_in_transcript|tojson(separators=(',',':'))|safe }};
         window.transcripts_in_gene = {{ transcripts_in_gene|tojson(separators=(',',':'))|safe }};
