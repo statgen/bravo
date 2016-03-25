@@ -10,9 +10,8 @@
         window.gene = {{ gene|tojson(separators=(',',':'))|safe }};
         window.strand = window.gene.strand;
         window.exons_and_utrs = {{ exons_and_utrs|tojson(separators=(',',':'))|safe }};
-        window.transcript = {{ transcript|tojson(separators=(',',':'))|safe }};
         window.table_variants = {{ variants_in_gene|tojson(separators=(',',':'))|safe }};
-        window.variants_for_graph = {{ variants_in_transcript|tojson(separators=(',',':'))|safe }};
+        window.variants_for_graph = window.table_variants;
         window.transcripts_in_gene = {{ transcripts_in_gene|tojson(separators=(',',':'))|safe }};
         window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
         window.page_name = window.gene.gene_id;
@@ -26,10 +25,9 @@
         });
 
         $.when($.getJSON("/api/variants_in_gene/" + window.gene.gene_id),
-               $.getJSON("/api/variants_in_transcript/" + window.transcript.transcript_id),
                $.Deferred(function() { $(this.resolve); })) //document.ready
-        .done(function(gene_data, transcript_data) {
-            // Somehow these arguments get wrapped up, so we want gene_data[0] and transcript_data[0].
+        .done(function(gene_data) {
+            // Somehow these arguments get wrapped up, so we want gene_data[0].
 
             $('#consequence_other_variant_button')
             .attr('data-tooltip', "Show all variants")
@@ -43,7 +41,7 @@
 
                     //add variants to the variant graph
                     // Note: I'm just copying what happens in build_the_graph()
-                    window.variants_for_graph = transcript_data[0];
+                    window.variants_for_graph = gene_data[0];
                     precalc_coding_coordinates(window.variants_for_graph);
                     add_variants_to_variants_plot();
                     update_variants();
@@ -173,7 +171,7 @@
         <div class="row">
             <div class="col-xs-12 col-md-10 col-md-offset-1">
                 <h3>Gene summary</h3>
-                <h4>(<span class="hidden-xs">Coverage shown for </span><a href="http://www.ensembl.org/Help/Glossary?id=346" target="_blank">canonical transcript</a>: {{ transcript.transcript_id }})</h4>
+                <h4>(<span class="hidden-xs">Coverage shown for all transcripts</span>)</h4>
             </div>
         </div>
         <div class="row">
