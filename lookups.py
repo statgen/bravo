@@ -356,11 +356,10 @@ def get_num_variants_in_transcript(db, transcript_id):
 
 
 def get_exons_in_transcript(db, transcript_id):
-    return sorted(list(db.exons.find({'transcript_id': transcript_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])
+    return sorted(list(db.exons.find({'transcript_id': transcript_id, 'feature_type': { "$in": ['CDS', 'UTR'] }}, projection={'_id': False})), key=lambda k: k['start'])
 
 def get_exons_in_gene(db, gene_id):
     """
     Returns CDS and UTR exons, sorted by position.
-    TODO: Overlapping extents are merged within each feature_type.
     """
-    return sorted(list(db.exons.find({'gene_id': gene_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])
+    return sorted(list(db.exons.find({'gene_id': gene_id, 'feature_type': { "$in": ['CDS', 'UTR'] }}, projection={'_id': False})), key=lambda k: k['start'])
