@@ -13,7 +13,7 @@
             return _.contains(["CDS", "UTR"], d.feature_type);
         }), "start");
         window.table_variants = {{ variants_in_transcript|tojson(separators=(',',':'))|safe }};
-        window.variants_in_transcript = window.table_variants;
+        window.variants_for_graph = window.table_variants;
         window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
         window.gene = {{ gene|tojson(separators=(',',':'))|safe }};
         window.page_name = window.gene.symbol + '_' + window.transcript.transcript_id;
@@ -42,8 +42,8 @@
                     build_variant_table()
 
                     //add variants to the variant graph
-                    window.variants_in_transcript = transcript_data[0];
-                    window.precalc_coding_coordinates(window.variants_in_transcript);
+                    window.variants_for_graph = transcript_data[0];
+                    window.precalc_coding_coordinates(window.variants_for_graph);
                     add_variants_to_variants_plot();
                     update_variants();
                 });

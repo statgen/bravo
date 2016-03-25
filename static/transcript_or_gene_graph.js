@@ -330,7 +330,7 @@ function create_coverage_chart() {
 }
 
 function create_variants_plot(svg_outer, exon_x_scale, coords) {
-    var bounds = get_af_bounds(window.variants_in_transcript);
+    var bounds = get_af_bounds(window.variants_for_graph);
     var min_af = bounds[0];
     var max_af = bounds[1];
     var variant_size_scale = d3.scale.log()
@@ -338,7 +338,7 @@ function create_variants_plot(svg_outer, exon_x_scale, coords) {
         .range([2, lower_gene_chart_height/3]);
 
     svg_outer.selectAll('a.track_variant_link') //Somehow, adding the right selector magically fixed everything.
-        .data(window.variants_in_transcript) //, function(d) {return d.variant_id;})
+        .data(window.variants_for_graph) //, function(d) {return d.variant_id;})
         .enter()
         .append("a")
         .attr('class', 'track_variant_link')
@@ -521,7 +521,7 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
 
     // plot variants
     svg_outer.selectAll("a.track_variant_link")
-        .data(window.variants_in_transcript)
+        .data(window.variants_for_graph)
         .transition()
         .duration(500)
         .selectAll('ellipse')
@@ -618,10 +618,10 @@ function build_the_graph () {
         $('#gene_plot_container').css('width', $(window).width()*10/12 + "px");
     }
     precalc_coding_coordinates_for_bins(window.coverage_stats); //Note: This modifies window.coverage_stats
-    precalc_coding_coordinates(window.variants_in_transcript); //Likewise for window.variants_in_transcript
+    precalc_coding_coordinates(window.variants_for_graph); //Likewise for window.variants_for_graph
 
     // only show variants that have a coding coordinate
-    window.variants_in_transcript = _.filter(window.variants_in_transcript, function(variant) {
+    window.variants_for_graph = _.filter(window.variants_for_graph, function(variant) {
         return variant.pos_coding != undefined;
     });
 
@@ -634,7 +634,7 @@ function build_the_graph () {
 
     if (window.coverage_stats != null) {
         create_coverage_chart();
-        if (window.variants_in_transcript.length) {
+        if (window.variants_for_graph.length) {
             update_variants();
         }
         $('#loading_coverage').hide();
