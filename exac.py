@@ -452,16 +452,19 @@ def gene_page(gene_id):
         num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
         transcripts_in_gene = lookups.get_transcripts_in_gene(db, gene_id)
 
+        exons_and_utrs = lookups.get_exons_in_gene(db, gene_id)
+
         # Get some canonical transcript and corresponding info
         transcript_id = gene['canonical_transcript']
         transcript = lookups.get_transcript(db, transcript_id)
         variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
-        # DT: get coverage from tabix
-        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+
+        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), gene['xstart'] - EXON_PADDING, gene['xstop'] + EXON_PADDING)
 
         return render_template(
             'gene.html',
             gene=gene,
+            exons_and_utrs=exons_and_utrs,
             transcript=transcript,
             variants_in_gene=variants_in_gene,
             num_variants_in_gene=num_variants_in_gene,
