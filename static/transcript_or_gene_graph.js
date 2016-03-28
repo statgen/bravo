@@ -333,9 +333,8 @@ function create_variants_plot(svg, exon_x_scale, coords) {
         .domain([min_af, max_af])
         .range([2, lower_gene_chart_height/3]);
 
-    var selection = svg.selectAll('a.track_variant_link').data(window.variants_for_graph);
-    selection.exit().remove();
-    selection.enter()
+    svg.selectAll('a.track_variant_link').data([]).exit().remove();
+    svg.selectAll('a.track_variant_link').data(window.variants_for_graph).enter()
         .append("a")
         .attr('class', 'track_variant_link')
         .attr("xlink:href", function(d, i) { return "/variant/" + d.chrom + "-" + d.pos + "-" + d.ref + "-" + d.alt; })
@@ -470,8 +469,10 @@ function change_coverage_chart(coords, chart_width, exon_x_scale, metric) {
         .call(yAxis);
 }
 
-function change_exon_plot(exon_track, chart_width, skip_utrs, exon_x_scale) {
+function change_exon_plot(skip_utrs, exon_x_scale) {
     var exon_color = "lightsteelblue";
+    var exon_track = d3.select('#exon_track');
+
     exon_track.selectAll("line.padded_exon")
         .data(window.exons_and_utrs)
         .transition()
@@ -504,11 +505,9 @@ function change_exon_plot(exon_track, chart_width, skip_utrs, exon_x_scale) {
         });
 }
 
-function change_variant_plot(exon_track, coords, exon_x_scale) {
-    // plot variants
-    var selection = exon_track.selectAll("a.track_variant_link").data(window.variants_for_graph);
-    selection.exit().remove();
-    selection
+function change_variant_plot(coords, exon_x_scale) {
+    var exon_track = d3.select('#exon_track');
+    exon_track.selectAll("a.track_variant_link")
         .transition()
         .duration(500)
         .selectAll('ellipse')
@@ -542,13 +541,9 @@ function change_plots(scale_type, metric, skip_utrs) {
         .domain([0, coding_coordinate_params.size])
         .range([0, chart_width]);
 
-    var exon_track = d3.select('#gene_plot_container').select('#exon_svg')
-        .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
-        .attr("height", lower_gene_chart_height).select('#exon_track');
-
     change_coverage_chart(coords, chart_width, exon_x_scale, metric);
-    change_exon_plot(exon_track, chart_width, skip_utrs, exon_x_scale);
-    change_variant_plot(exon_track, coords, exon_x_scale);
+    change_exon_plot(skip_utrs, exon_x_scale);
+    change_variant_plot(coords, exon_x_scale);
 }
 
 function change_plots_with_values_from_page() {
