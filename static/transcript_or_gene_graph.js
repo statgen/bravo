@@ -222,10 +222,6 @@ function create_coverage_chart(svg, coords, chart_width, exon_x_scale) {
         .domain([0, max_cov])
         .range([gene_chart_height, 0]);
 
-    var yAxis = d3.svg.axis()
-        .scale(y)
-        .orient("left");
-
     var area = d3.svg.area()
         .x( function(d) {
             return exon_x_scale(d['pos']);
@@ -254,8 +250,12 @@ function create_coverage_chart(svg, coords, chart_width, exon_x_scale) {
         .attr('class', 'area')
         .attr("d", area);
 
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left");
+
     svg.append("g")
-        .attr("class", "y axis") //TODO why is there a space in this?
+        .attr("class", "y axis")
         .call(yAxis);
 }
 
@@ -413,30 +413,13 @@ function variant_colors(d) {
     }
 }
 
-function change_coverage_chart(scale_type, metric, skip_utrs) {
-    // See create_coverage_chart(), which is very similar to this function.
-    //scale_type is either "detail" or "overview" (or someday "linear_overview")
-    //metric is one of "mean", "median", "1", "5", "10", ... "50", "100"
-    //skip_utrs is boolean
-
-    var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
+function change_coverage_chart(coords, chart_width, exon_x_scale, metric) {
     var coords_start = coords.replace('pos_', 'start_');
     var coords_end = coords.replace('pos_', 'end_');
-    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
-    var chart_width;
-    if (scale_type == 'overview') {
-        chart_width = gene_chart_width;
-    } else {
-        chart_width = coding_coordinate_params.size*2;
-    }
     var max_cov = 1;
     if (metric == 'mean' || metric == 'median') {
         max_cov = d3.max(window.coverage_stats, function(d) { return d[metric]; });
     }
-
-    var exon_x_scale = d3.scale.linear()
-        .domain([0, coding_coordinate_params.size])
-        .range([0, chart_width]);
 
     var svg = d3.select('#gene_plot_container').select('#coverage_svg')
         .attr("width", chart_width + gene_chart_margin.left + gene_chart_margin.right)
@@ -477,13 +460,19 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .style("fill", "steelblue")
         .attr('class', 'area');
 
-    // plot exons
-    var svg_outer = d3.select('#gene_plot_container').select('#exon_svg')
-        .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
-        .attr("height", lower_gene_chart_height).select('#exon_track');
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left");
 
+    svg.select(".y.axis")
+        .transition()
+        .duration(200)
+        .call(yAxis);
+}
+
+function change_exon_plot(exon_track, chart_width, skip_utrs, exon_x_scale) {
     var exon_color = "lightsteelblue";
-    svg_outer.selectAll("line.padded_exon")
+    exon_track.selectAll("line.padded_exon")
         .data(window.exons_and_utrs)
         .transition()
         .duration(500)
@@ -502,7 +491,7 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .attr("stroke", exon_color);
 
     // plot exon rounded rects
-    svg_outer.selectAll("rect")
+    exon_track.selectAll("rect")
         .data(window.exons_and_utrs)
         .transition()
         .duration(500)
@@ -513,9 +502,11 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
             }
             return exon_x_scale(d.stop-d.start+1);
         });
+}
 
+function change_variant_plot(exon_track, coords, exon_x_scale) {
     // plot variants
-    var selection = svg_outer.selectAll("a.track_variant_link").data(window.variants_for_graph);
+    var selection = exon_track.selectAll("a.track_variant_link").data(window.variants_for_graph);
     selection.exit().remove();
     selection
         .transition()
@@ -532,18 +523,35 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
                 return exon_x_scale(d[coords]);
             }
         });
-
-    var yAxis = d3.svg.axis()
-        .scale(y)
-        .orient("left");
-
-    svg.select(".y.axis")
-        .transition()
-        .duration(200)
-        .call(yAxis);
 }
 
-function change_coverage_chart_with_values_from_page() {
+function change_plots(scale_type, metric, skip_utrs) {
+    //scale_type is either "detail" or "overview"
+    //metric is one of "mean", "median", "1", "5", "10", ... "50", "100"
+    //skip_utrs is boolean
+
+    var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
+    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
+    var chart_width;
+    if (scale_type == 'overview') {
+        chart_width = gene_chart_width;
+    } else {
+        chart_width = coding_coordinate_params.size*2;
+    }
+    var exon_x_scale = d3.scale.linear()
+        .domain([0, coding_coordinate_params.size])
+        .range([0, chart_width]);
+
+    var exon_track = d3.select('#gene_plot_container').select('#exon_svg')
+        .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
+        .attr("height", lower_gene_chart_height).select('#exon_track');
+
+    change_coverage_chart(coords, chart_width, exon_x_scale, metric);
+    change_exon_plot(exon_track, chart_width, skip_utrs, exon_x_scale);
+    change_variant_plot(exon_track, coords, exon_x_scale);
+}
+
+function change_plots_with_values_from_page() {
     // Note: if this function runs immediately after a button is pressed, Bootstrap might not have toggled '.active' yet, so the results will be bad. Use setTimeout(..., 0)
     var skip_utrs = ! $('#include_utrs_checkbox').is(':checked');
     var scale_type = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
@@ -553,7 +561,7 @@ function change_coverage_chart_with_values_from_page() {
     } else {
         metric = $("#average_select").val();
     }
-    change_coverage_chart(scale_type, metric, skip_utrs);
+    change_plots(scale_type, metric, skip_utrs);
 }
 
 function coverage_sum(key) {
@@ -647,14 +655,14 @@ function build_the_graph () {
         } else {
             $('#average_select_container').show();
         }
-        setTimeout(change_coverage_chart_with_values_from_page, 0);
+        setTimeout(change_plots_with_values_from_page, 0);
     });
     $('#average_select').change(function () {
         $('#avg_coverage_type').html($(this).val());
         $('#avg_coverage').html(coverage_sum($(this).val()));
-        setTimeout(change_coverage_chart_with_values_from_page, 0);
+        setTimeout(change_plots_with_values_from_page, 0);
     });
     $('#over_x_select, #include_utrs_checkbox, .display_coverage_metric_buttons').change(function () {
-        setTimeout(change_coverage_chart_with_values_from_page, 0);
+        setTimeout(change_plots_with_values_from_page, 0);
     });
 }
