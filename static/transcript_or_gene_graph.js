@@ -154,32 +154,69 @@ window.precalc_coding_coordinates_for_bins = function(bins) {
 };
 
 
-
-function create_coverage_chart() {
-    // See change_coverage_chart(), which is very similar to this function.
-    var scale_type = 'overview'; // These are the starting values.
-    var metric = 'mean';
+function create_charts() {
     var skip_utrs = true;
-
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
+    var scale_type = 'overview';
+    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
+    var chart_width = (scale_type == 'overview') ? gene_chart_width : coding_coordinate_params.size*2;
+    var exon_x_scale = d3.scale.linear()
+        .domain([0, coding_coordinate_params.size])
+        .range([0, chart_width]);
+
+    var coverage_track = d3.select('#gene_plot_container').append("svg")
+        .attr("width", chart_width + gene_chart_margin.left + gene_chart_margin.right)
+        .attr("height", gene_chart_height + gene_chart_margin.top + gene_chart_margin.bottom)
+        .attr('id', 'coverage_svg')
+        .attr('class', 'hidden-xs')
+        .append("g")
+        .attr('id', 'coverage_track')
+        .attr("transform", "translate(" + gene_chart_margin.left + "," + gene_chart_margin.top + ")");
+    d3.select('#gene_plot_container').append("br"); //make sure exon_track is below graph and not to the right of it
+    var exon_track = d3.select('#gene_plot_container').append("svg")
+        .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
+        .attr("height", lower_gene_chart_height)
+        .attr('id', 'exon_svg')
+        .append("g")
+        .attr('id', 'exon_track')
+        .attr("transform", "translate(" + gene_chart_margin_lower.left + "," + 0 + ")");
+
+    // show variant category on hover
+    window.variant_plot_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
+        if (d.category) {
+            var csq = d.major_consequence.replace('_variant', '')
+                    .replace('_', ' ')
+                    .replace('utr', 'UTR')
+                    .replace('3 prime', "3'")
+                    .replace('5 prime', "5'")
+                    .replace('nc ', "non-coding ");
+            var output = csq + '<br/>' + d.chrom + ':' + d.pos + ' ' + d.ref + '&#8594;' + d.alt;
+            if (d.major_consequence == 'missense_variant' || d.major_consequence == 'synonymous_variant') {
+                output += '<br/>' + d.HGVSp;
+            }
+            output += '<br/>Frequency: ' + d.allele_freq.toPrecision(3);
+            output += '<br/>Pos: ' + d.pos;
+            return output;
+        } else {
+            return 'None';
+        }
+    });
+    coverage_track.call(window.variant_plot_tip);
+
+    create_coverage_chart(coverage_track, coords, chart_width, exon_x_scale);
+    create_exon_plot(exon_track, exon_x_scale, skip_utrs);
+    create_variants_plot(exon_track, exon_x_scale, coords);
+}
+
+function create_coverage_chart(svg, coords, chart_width, exon_x_scale) {
+    // See change_coverage_chart(), which is very similar to this function.
+    var metric = 'mean';
     var coords_start = coords.replace('pos_', 'start_');
     var coords_end = coords.replace('pos_', 'end_');
-    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
-    var chart_width;
-    if (scale_type == 'overview') {
-        chart_width = gene_chart_width;
-    } else {
-        chart_width = coding_coordinate_params.size*2;
-    }
     var max_cov = 1;
     if (metric == 'mean' || metric == 'median') {
         max_cov = d3.max(window.coverage_stats, function(d) { return d[metric]; });
     }
-
-
-    var exon_x_scale = d3.scale.linear()
-        .domain([0, coding_coordinate_params.size])
-        .range([0, chart_width]);
 
     var y = d3.scale.linear()
         .domain([0, max_cov])
@@ -188,15 +225,6 @@ function create_coverage_chart() {
     var yAxis = d3.svg.axis()
         .scale(y)
         .orient("left");
-
-    var svg = d3.select('#gene_plot_container').append("svg")
-        .attr("width", chart_width + gene_chart_margin.left + gene_chart_margin.right)
-        .attr("height", gene_chart_height + gene_chart_margin.top + gene_chart_margin.bottom)
-        .attr('id', 'inner_svg')
-        .attr('class', 'hidden-xs')
-        .append("g")
-        .attr('id', 'inner_graph')
-        .attr("transform", "translate(" + gene_chart_margin.left + "," + gene_chart_margin.top + ")");
 
     var area = d3.svg.area()
         .x( function(d) {
@@ -227,22 +255,13 @@ function create_coverage_chart() {
         .attr("d", area);
 
     svg.append("g")
-        .attr("class", "y axis")
+        .attr("class", "y axis") //TODO why is there a space in this?
         .call(yAxis);
+}
 
-    d3.select('#gene_plot_container').append("br"); //make sure track_svg is below graph and not to the right of it
-
-    // plot exons
-    var svg_outer = d3.select('#gene_plot_container').append("svg")
-        .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
-        .attr("height", lower_gene_chart_height)
-        .attr('id', 'track_svg')
-        .append("g")
-        .attr('id', 'track')
-        .attr("transform", "translate(" + gene_chart_margin_lower.left + "," + 0 + ")");
-
+function create_exon_plot(svg, exon_x_scale, skip_utrs) {
     var exon_color = "lightsteelblue";
-    svg_outer.selectAll("line.padded_exon")
+    svg.selectAll("line.padded_exon")
         .data(window.exons_and_utrs)
         .enter()
         .append('line')
@@ -263,7 +282,7 @@ function create_coverage_chart() {
         .attr("stroke", exon_color);
 
     // plot exon rects
-    svg_outer.selectAll(".track_bar")
+    svg.selectAll(".track_bar")
         .data(window.exons_and_utrs)
         .enter()
         .append("rect")
@@ -292,44 +311,21 @@ function create_coverage_chart() {
             }
         });
 
-
+    // draw strand-direction arrow
     var a_s = window.strand == "-"? -1 : 1; //arrow direction
     var a_x = -5;  //arrow position on x-axis
     var a_y = lower_gene_chart_height/2.0; //arrow position on y-axis
     var a_w = 2; //arrow width
     var points = [[a_x+a_s*6, a_y], [a_x+a_s*1, a_y+a_w*3], [a_x+a_s*1, a_y+a_w], [a_x-a_s*9, a_y+a_w],
         [a_x-a_s*9, a_y-a_w], [a_x+a_s*1, a_y-a_w], [a_x+a_s*1, a_y-a_w*3]];
-    svg_outer.append("polygon")
+    svg.append("polygon")
             .attr("points", points.join(" "))
             .attr("fill", "steelblue")
             .attr("stroke", "black");
 
-    // show variant category on hover
-    window.variant_plot_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
-        if (d.category) {
-            var csq = d.major_consequence.replace('_variant', '')
-                    .replace('_', ' ')
-                    .replace('utr', 'UTR')
-                    .replace('3 prime', "3'")
-                    .replace('5 prime', "5'")
-                    .replace('nc ', "non-coding ");
-            var output = csq + '<br/>' + d.chrom + ':' + d.pos + ' ' + d.ref + '&#8594;' + d.alt;
-            if (d.major_consequence == 'missense_variant' || d.major_consequence == 'synonymous_variant') {
-                output += '<br/>' + d.HGVSp;
-            }
-            output += '<br/>Frequency: ' + d.allele_freq.toPrecision(3);
-            output += '<br/>Pos: ' + d.pos;
-            return output;
-        } else {
-            return 'None';
-        }
-    });
-    svg.call(window.variant_plot_tip);
-
-    create_variants_plot(svg_outer, exon_x_scale, coords);
 }
 
-function create_variants_plot(svg_outer, exon_x_scale, coords) {
+function create_variants_plot(svg, exon_x_scale, coords) {
     var bounds = get_af_bounds(window.variants_for_graph);
     var min_af = bounds[0];
     var max_af = bounds[1];
@@ -337,9 +333,9 @@ function create_variants_plot(svg_outer, exon_x_scale, coords) {
         .domain([min_af, max_af])
         .range([2, lower_gene_chart_height/3]);
 
-    svg_outer.selectAll('a.track_variant_link') //Somehow, adding the right selector magically fixed everything.
-        .data(window.variants_for_graph) //, function(d) {return d.variant_id;})
-        .enter()
+    var selection = svg.selectAll('a.track_variant_link').data(window.variants_for_graph);
+    selection.exit().remove();
+    selection.enter()
         .append("a")
         .attr('class', 'track_variant_link')
         .attr("xlink:href", function(d, i) { return "/variant/" + d.chrom + "-" + d.pos + "-" + d.ref + "-" + d.alt; })
@@ -389,7 +385,7 @@ function create_variants_plot(svg_outer, exon_x_scale, coords) {
 }
 
 function add_variants_to_variants_plot() {
-    var svg_outer = d3.select('#gene_plot_container').select('#track');
+    var exon_track = d3.select('#gene_plot_container').select('#exon_track');
     var skip_utrs = ! $('#include_utrs_checkbox').is(':checked');
     var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
     var scale_type = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
@@ -404,7 +400,7 @@ function add_variants_to_variants_plot() {
         .range([0, chart_width]);
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
 
-    create_variants_plot(svg_outer, exon_x_scale, coords);
+    create_variants_plot(exon_track, exon_x_scale, coords);
 }
 
 function variant_colors(d) {
@@ -442,10 +438,10 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .domain([0, coding_coordinate_params.size])
         .range([0, chart_width]);
 
-    var svg = d3.select('#gene_plot_container').select('#inner_svg')
+    var svg = d3.select('#gene_plot_container').select('#coverage_svg')
         .attr("width", chart_width + gene_chart_margin.left + gene_chart_margin.right)
         .attr("height", gene_chart_height + gene_chart_margin.top + gene_chart_margin.bottom)
-        .select('#inner_graph');
+        .select('#coverage_track');
 
     var y = d3.scale.linear()
         .domain([0, max_cov])
@@ -482,9 +478,9 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .attr('class', 'area');
 
     // plot exons
-    var svg_outer = d3.select('#gene_plot_container').select('#track_svg')
+    var svg_outer = d3.select('#gene_plot_container').select('#exon_svg')
         .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
-        .attr("height", lower_gene_chart_height).select('#track');
+        .attr("height", lower_gene_chart_height).select('#exon_track');
 
     var exon_color = "lightsteelblue";
     svg_outer.selectAll("line.padded_exon")
@@ -512,7 +508,6 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         .duration(500)
         .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })
         .attr("width", function(d, i) {
-            // TODO: use precalc_coding_coordinates_for_bins() to constrain these to exons
             if (get_coding_coordinate(d.start, skip_utrs) === null) {
                 return exon_x_scale(0);
             }
@@ -520,8 +515,9 @@ function change_coverage_chart(scale_type, metric, skip_utrs) {
         });
 
     // plot variants
-    svg_outer.selectAll("a.track_variant_link")
-        .data(window.variants_for_graph)
+    var selection = svg_outer.selectAll("a.track_variant_link").data(window.variants_for_graph);
+    selection.exit().remove();
+    selection
         .transition()
         .duration(500)
         .selectAll('ellipse')
@@ -633,7 +629,7 @@ function build_the_graph () {
     $('#avg_coverage_x').html(coverage_sum('30')*100 + '%');
 
     if (window.coverage_stats != null) {
-        create_coverage_chart();
+        create_charts();
         if (window.variants_for_graph.length) {
             update_variants();
         }
