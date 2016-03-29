@@ -66,22 +66,22 @@ window.get_position_mapping = _.memoize(function(skip_utrs) {
     }];
     for (var i=1; i<exons.length; i++) {
         var prev_map = pos_mapping[pos_mapping.length-1];
-        var gap_between_padded_exons = Math.min(exons[i].start - exons[i-1].stop - EXON_PADDING*2, EXON_MARGIN*2);
-        var scaled_padded_end_of_previous_exon = prev_map.scaled_start + prev_map.length + 1; // +1 ?
         var new_map = {
-            real_start: exons[i].start - EXON_PADDING,
-            scaled_start: scaled_padded_end_of_previous_exon + gap_between_padded_exons,
+            real_start: exons[i].start-EXON_PADDING,
             length: exons[i].stop - exons[i].start + EXON_PADDING*2
         };
-        if (gap_between_padded_exons < 0) {
-            console.log(["exon overlap!", prev_map, new_map]);
-            prev_map.length = new_map.scaled_start + new_map.length - prev_map.scaled_start;
-            console.log(["exon overlap!", prev_map]);
+        var real_end_of_prev_map = prev_map.real_start + prev_map.length;
+        var scaled_end_of_prev_map = prev_map.scaled_start + prev_map.length + 1; // +1 ?
+        var scaled_gap_between_maps = Math.min(new_map.real_start - real_end_of_prev_map, EXON_MARGIN*2);
+        new_map.scaled_start = scaled_end_of_prev_map + scaled_gap_between_maps;
+
+        if (scaled_gap_between_maps <= 0) {
+            var possible_new_length = new_map.scaled_start + new_map.length - prev_map.scaled_start;
+            prev_map.length = Math.max(prev_map.length, possible_new_length);
         } else {
             pos_mapping.push(new_map);
         }
     }
-    console.log(pos_mapping);
     return pos_mapping;
 });
 
