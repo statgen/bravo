@@ -125,18 +125,14 @@ window.precalc_coding_coordinates_for_bin = function(bin, skip_utrs) {
     }
 };
 
-window.get_coding_coordinate_params = _.memoize(function(skip_utrs) {
-    var ret = {};
-
+window.get_maximum_coding_position = _.memoize(function(skip_utrs) {
     var pos_mapping = window.get_position_mapping(skip_utrs);
-    ret.num_exons = pos_mapping.length;
-    if (ret.num_exons === 0) {
-        ret.size = 0;
-    } else {
-        //assume that we start at 0 and go EXON_PADDING beyond the end of the last pos_mapping.
-        ret.size = pos_mapping[pos_mapping.length-1].length + pos_mapping[pos_mapping.length-1].scaled_start + EXON_PADDING + EXON_MARGIN;
+    if (pos_mapping.length === 0) {
+        return 0;
     }
-    return ret;
+    //assume that we start at 0 and go EXON_PADDING+EXON_MARGIN beyond the end of the last pos_mapping.
+    //Note that nothing can actually reach that into the EXON_MARGIN, so this function is kinda lying.
+    return pos_mapping[pos_mapping.length-1].length + pos_mapping[pos_mapping.length-1].scaled_start + EXON_PADDING + EXON_MARGIN;
 });
 
 window.precalc_coding_coordinates = function(objects) {
@@ -158,10 +154,12 @@ function create_charts() {
     var skip_utrs = true;
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
     var scale_type = 'overview';
-    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
-    var chart_width = (scale_type == 'overview') ? gene_chart_width : coding_coordinate_params.size*2;
+    var maximum_coding_position = get_maximum_coding_position(skip_utrs);
+    var chart_width = (scale_type == 'overview') ?
+        gene_chart_width :
+        Math.max(gene_chart_width, Math.min(gene_chart_width*4, maximum_coding_position*2));
     var exon_x_scale = d3.scale.linear()
-        .domain([0, coding_coordinate_params.size])
+        .domain([0, maximum_coding_position])
         .range([0, chart_width]);
 
     var coverage_track = d3.select('#gene_plot_container').append("svg")
@@ -361,16 +359,14 @@ function create_variants_plot(svg, exon_x_scale, coords) {
 function add_variants_to_variants_plot() {
     var exon_track = d3.select('#gene_plot_container').select('#exon_track');
     var skip_utrs = ! $('#include_utrs_checkbox').is(':checked');
-    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
+    var maximum_coding_position = get_maximum_coding_position(skip_utrs);
     var scale_type = $('.display_coverage_metric_buttons.active').attr('id').replace('display_coverage_', '').replace('_button', '');
-    var chart_width;
-    if (scale_type == 'overview') {
-        chart_width = gene_chart_width;
-    } else {
-        chart_width = coding_coordinate_params.size*2;
-    }
+    var chart_width = (scale_type === 'overview') ?
+        gene_chart_width :
+        Math.max(gene_chart_width, Math.min(maximum_coding_position, gene_chart_width*4));
+
     var exon_x_scale = d3.scale.linear()
-        .domain([0, coding_coordinate_params.size])
+        .domain([0, maximum_coding_position])
         .range([0, chart_width]);
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
 
@@ -510,15 +506,13 @@ function change_plots(scale_type, metric, skip_utrs) {
     //skip_utrs is boolean
 
     var coords = skip_utrs ? 'pos_coding_noutr' : 'pos_coding';
-    var coding_coordinate_params = get_coding_coordinate_params(skip_utrs);
-    var chart_width;
-    if (scale_type == 'overview') {
-        chart_width = gene_chart_width;
-    } else {
-        chart_width = coding_coordinate_params.size*2;
-    }
+    var maximum_coding_position = get_maximum_coding_position(skip_utrs);
+    var chart_width = (scale_type == 'overview') ?
+        gene_chart_width :
+        Math.max(gene_chart_width, Math.min(gene_chart_width*4, maximum_coding_position*2));
+
     var exon_x_scale = d3.scale.linear()
-        .domain([0, coding_coordinate_params.size])
+        .domain([0, maximum_coding_position])
         .range([0, chart_width]);
 
     change_coverage_chart(coords, chart_width, exon_x_scale, metric);
