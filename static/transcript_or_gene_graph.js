@@ -206,19 +206,10 @@ function create_charts() {
     create_variants_plot(exon_track, exon_x_scale, coords);
 }
 
-function create_coverage_chart(svg, coords, chart_width, exon_x_scale) {
-    // See change_coverage_chart(), which is very similar to this function.
+function create_coverage_chart(coverage_track, coords, chart_width, exon_x_scale) {
     var metric = 'mean';
     var coords_start = coords.replace('pos_', 'start_');
     var coords_end = coords.replace('pos_', 'end_');
-    var max_cov = 1;
-    if (metric == 'mean' || metric == 'median') {
-        max_cov = d3.max(window.coverage_stats, function(d) { return d[metric]; });
-    }
-
-    var y = d3.scale.linear()
-        .domain([0, max_cov])
-        .range([gene_chart_height, 0]);
 
     var area = d3.svg.area()
         .x( function(d) {
@@ -242,7 +233,15 @@ function create_coverage_chart(svg, coords, chart_width, exon_x_scale) {
         }
     });
 
-    svg.append("path")
+    var max_cov = 1;
+    if (metric == 'mean' || metric == 'median') {
+        max_cov = d3.max(my_datum, function(d) { return d[metric]; });
+    }
+    var y = d3.scale.linear()
+        .domain([0, max_cov])
+        .range([gene_chart_height, 0]);
+
+    coverage_track.append("path")
         .datum(my_datum)
         .style("fill", "steelblue")
         .attr('class', 'area')
@@ -252,7 +251,7 @@ function create_coverage_chart(svg, coords, chart_width, exon_x_scale) {
         .scale(y)
         .orient("left");
 
-    svg.append("g")
+    coverage_track.append("g")
         .attr("class", "y axis")
         .call(yAxis);
 }
@@ -386,19 +385,11 @@ function variant_colors(d) {
 function change_coverage_chart(coords, chart_width, exon_x_scale, metric) {
     var coords_start = coords.replace('pos_', 'start_');
     var coords_end = coords.replace('pos_', 'end_');
-    var max_cov = 1;
-    if (metric == 'mean' || metric == 'median') {
-        max_cov = d3.max(window.coverage_stats, function(d) { return d[metric]; });
-    }
 
-    var svg = d3.select('#gene_plot_container').select('#coverage_svg')
+    var coverage_track = d3.select('#gene_plot_container').select('#coverage_svg')
         .attr("width", chart_width + gene_chart_margin.left + gene_chart_margin.right)
         .attr("height", gene_chart_height + gene_chart_margin.top + gene_chart_margin.bottom)
         .select('#coverage_track');
-
-    var y = d3.scale.linear()
-        .domain([0, max_cov])
-        .range([gene_chart_height, 0]);
 
     var area = d3.svg.area()
         .x( function(d) { // Is .x() necessary?
@@ -422,7 +413,15 @@ function change_coverage_chart(coords, chart_width, exon_x_scale, metric) {
         }
     });
 
-    var path = svg.selectAll("path")
+    var max_cov = 1;
+    if (metric == 'mean' || metric == 'median') {
+        max_cov = d3.max(my_datum, function(d) { return d[metric]; });
+    }
+    var y = d3.scale.linear()
+        .domain([0, max_cov])
+        .range([gene_chart_height, 0]);
+
+    var path = coverage_track.selectAll("path")
         .datum(my_datum)
         .transition()
         .duration(500)
@@ -434,7 +433,7 @@ function change_coverage_chart(coords, chart_width, exon_x_scale, metric) {
         .scale(y)
         .orient("left");
 
-    svg.select(".y.axis")
+    coverage_track.select(".y.axis")
         .transition()
         .duration(200)
         .call(yAxis);
