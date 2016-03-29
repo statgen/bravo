@@ -259,57 +259,33 @@ function create_coverage_chart(svg, coords, chart_width, exon_x_scale) {
         .call(yAxis);
 }
 
-function create_exon_plot(svg, exon_x_scale, skip_utrs) {
+function create_exon_plot(exon_track, exon_x_scale, skip_utrs) {
     var exon_color = "lightsteelblue";
-    svg.selectAll("line.padded_exon")
+    exon_track.selectAll("line.padded_exon")
         .data(window.exons_and_utrs)
         .enter()
         .append('line')
         .attr("class", "padded_exon")
         .attr("y1", lower_gene_chart_height/2)
         .attr("y2", lower_gene_chart_height/2)
-        .attr("x1", function(d) { return exon_x_scale(get_coding_coordinate(d.start - EXON_PADDING, skip_utrs)); })
-        .attr("x2", function(d) { return exon_x_scale(get_coding_coordinate(d.stop + EXON_PADDING, skip_utrs)); })
-        .style("visibility", function(d) {
-            // TODO: check that x1 and x2 turned out okay.
-            if (d.feature_type === "CDS" || !skip_utrs) {
-                return "visible";
-            } else {
-                return "hidden";
-            }
-        })
         .attr("stroke-width", 5)
         .attr("stroke", exon_color);
 
     // plot exon rects
-    svg.selectAll(".track_bar")
+    exon_track.selectAll("rect.exon_or_utr")
         .data(window.exons_and_utrs)
         .enter()
         .append("rect")
-        .attr('class', 'track_bar')
+        .attr('class', 'exon_or_utr')
         .style("fill", exon_color)
-        .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })
         .attr("y", function(d, i) {
-            if (d.feature_type == 'CDS') {
-                return 0;
-            } else {
-                return lower_gene_chart_height/4;
-            }
-        })
-        .attr("width", function(d, i) {
-            // TODO: use precalc_coding_coordinates_for_bins() to constrain these to exons
-            if (get_coding_coordinate(d.start, skip_utrs) === null) {
-                return exon_x_scale(0);
-            }
-            return exon_x_scale(d.stop-d.start+1);
+            return (d.feature_type == 'CDS') ? 0 : lower_gene_chart_height/4;
         })
         .attr("height", function(d, i) {
-            if (d.feature_type == 'CDS') {
-                return lower_gene_chart_height;
-            } else {
-                return lower_gene_chart_height/2;
-            }
+            return (d.feature_type == 'CDS') ? lower_gene_chart_height : lower_gene_chart_height/2;
         });
+
+    change_exon_plot(skip_utrs, exon_x_scale);
 
     // draw strand-direction arrow
     var a_s = window.strand == "-"? -1 : 1; //arrow direction
@@ -318,11 +294,10 @@ function create_exon_plot(svg, exon_x_scale, skip_utrs) {
     var a_w = 2; //arrow width
     var points = [[a_x+a_s*6, a_y], [a_x+a_s*1, a_y+a_w*3], [a_x+a_s*1, a_y+a_w], [a_x-a_s*9, a_y+a_w],
         [a_x-a_s*9, a_y-a_w], [a_x+a_s*1, a_y-a_w], [a_x+a_s*1, a_y-a_w*3]];
-    svg.append("polygon")
+    exon_track.append("polygon")
             .attr("points", points.join(" "))
             .attr("fill", "steelblue")
             .attr("stroke", "black");
-
 }
 
 function create_variants_plot(svg, exon_x_scale, coords) {
@@ -470,38 +445,43 @@ function change_coverage_chart(coords, chart_width, exon_x_scale, metric) {
 }
 
 function change_exon_plot(skip_utrs, exon_x_scale) {
-    var exon_color = "lightsteelblue";
     var exon_track = d3.select('#exon_track');
 
     exon_track.selectAll("line.padded_exon")
-        .data(window.exons_and_utrs)
         .transition()
         .duration(500)
-        .attr("class", "padded_exon")
-        .attr("y1", lower_gene_chart_height/2)
-        .attr("y2", lower_gene_chart_height/2)
-        .attr("x1", function(d) { return exon_x_scale(get_coding_coordinate(d.start - EXON_PADDING, skip_utrs)); })
-        .attr("x2", function(d) { return exon_x_scale(get_coding_coordinate(d.stop + EXON_PADDING, skip_utrs)); })
-        .style("visibility", function(d) {
-            if (d.feature_type === "CDS" || !skip_utrs)
-                return "visible";
-            else
-                return "hidden";
+        .style('visibility', function(d) {
+            return (!skip_utrs || d.feature_type === 'CDS') ? 'visible' : 'hidden';
         })
-        .attr("stroke-width", 5)
-        .attr("stroke", exon_color);
+        .attr("x1", function(d) {
+            var x = exon_x_scale(get_coding_coordinate(d.start - EXON_PADDING, skip_utrs));
+            return x;
+        })
+        .attr("x2", function(d) {
+            var x = exon_x_scale(get_coding_coordinate(d.stop + EXON_PADDING, skip_utrs));
+            return x;
+        });
+
+    $('#exon_track line.padded_exon').each(function (i, d) {
+        if (d.getAttribute('x1') === '0' || d.getAttribute('x2') === '0') {
+            d.style.visibility = 'hidden';
+            $(d).hide();
+            console.log(d);
+        } else {
+            //console.log(['nope!', d]);
+        }
+    });
 
     // plot exon rounded rects
-    exon_track.selectAll("rect")
-        .data(window.exons_and_utrs)
+    exon_track.selectAll("rect.exon_or_utr")
         .transition()
         .duration(500)
         .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })
         .attr("width", function(d, i) {
-            if (get_coding_coordinate(d.start, skip_utrs) === null) {
-                return exon_x_scale(0);
-            }
-            return exon_x_scale(d.stop-d.start+1);
+            return (get_coding_coordinate(d.start, skip_utrs) === null) ? 0 : exon_x_scale(d.stop-d.start+1);
+        })
+        .style('visibility', function(d) {
+            return (!skip_utrs || d.feature_type === 'CDS') ? 'visible' : 'hidden';
         });
 }
 
