@@ -734,7 +734,7 @@ def oauth_callback_google():
         return redirect(url_for('homepage'))
 
     if email.lower() not in app.config['EMAIL_WHITELIST']:
-        flash('Your email, {}, is not in the list of allowed emails.'.format(email.lower()))
+        flash('Your email, {}, is not in the list of allowed emails. If it should be, email pjvh@umich.edu to request permission.'.format(email.lower()))
         return redirect(url_for('homepage'))
 
     # Look if the user already exists
