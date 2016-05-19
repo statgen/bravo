@@ -630,7 +630,7 @@ def not_found_page(query):
         query=query
     )
 
-@app.route('/error/<query>')
+@app.route('/error/<message>')
 @app.errorhandler(404)
 def error_page(message):
     return render_template(
