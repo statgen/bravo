@@ -372,17 +372,17 @@ function check_for_variant_in_clinvar() {
     var clinvar_searches = _.map(variant.rsids, function(rsid) {
         var clinvar_query = 'term={RSID}[Variant%20ID]&retmode=json'.replace('{RSID}', rsid);
         return {
-            xhr_url: 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&' + clinvar_query,
+            xhr_url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&' + clinvar_query,
             name: rsid,
-            webpage_url: 'http://www.ncbi.nlm.nih.gov/clinvar?' + clinvar_query
+            webpage_url: 'https://www.ncbi.nlm.nih.gov/clinvar?' + clinvar_query
         };
     });
     var clinvar_query = 'term={CHROM}[Chromosome]%20AND%20{POS}[Base%20Position%20for%20Assembly%20GRCh37]&retmode=json'
         .replace('{CHROM}', variant.chrom).replace('{POS}', variant.pos);
     clinvar_searches.push({
-        xhr_url: 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&' + clinvar_query,
+        xhr_url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&' + clinvar_query,
         name: variant.chrom + ':' + variant.pos,
-        webpage_url: 'http://www.ncbi.nlm.nih.gov/clinvar?' + clinvar_query
+        webpage_url: 'https://www.ncbi.nlm.nih.gov/clinvar?' + clinvar_query
     });
 
     _.each(clinvar_searches, function(clinvar_search) {

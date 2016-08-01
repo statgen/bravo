@@ -7,7 +7,7 @@
         None found
     {% else %}
         {% for _rsid in variant.rsids %}
-            <a href="http://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs={{ _rsid }}" target="_blank">{{ _rsid }}</a>
+            <a href="https://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs={{ _rsid }}" target="_blank">{{ _rsid }}</a>
         {% endfor %}
     {% endif %}
     </dd>
