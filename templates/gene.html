@@ -183,8 +183,8 @@
         </div>
         <div class="row">
             <div class="col-xs-12 col-md-10 col-md-offset-1">
-                {% if variants_in_gene and variants_in_gene[0].chrom %}
-                    {% with chrom = variants_in_gene[0].chrom %}
+                {% if num_variants_in_gene != 0 %}
+                    {% with chrom = gene.chrom %}
                         {% include 'variant_table.html' %}
                     {% endwith %}
                 {% else %}
