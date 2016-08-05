@@ -34,11 +34,16 @@ Compress(app)
 REGION_LIMIT = 1E5
 EXON_PADDING = 50
 
-def get_db():
+def get_db(new_connection=False):
     # Only use the database within a request context! Something about threads/forks.
     # See <https://jira.mongodb.org/browse/PYTHON-961>
-    return get_db._mongo_client[app.config['MONGO']['name']]
-get_db._mongo_client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'])
+    # Note: I just added `connect=False`, so maybe we don't need this function anymore (unless used with new_connection=True)
+    if new_connection:
+        client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'], connect=False)
+    else:
+        client = get_db._mongo_client
+    return client[app.config['MONGO']['name']]
+get_db._mongo_client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'], connect=False)
 
 def get_autocomplete_strings():
     if not hasattr(get_autocomplete_strings, '_cache'):
@@ -94,8 +99,9 @@ def parse_tabix_file_subset(tabix_filenames, subset_i, subset_n, record_parser):
 
 
 def load_variants_file():
-    def load_variants(sites_file, i, n, db):
-        variants_generator = parse_tabix_file_subset([sites_file], i, n, get_variants_from_sites_vcf)
+    def load_variants(sites_files, i, n):
+        db = get_db(new_connection=True)
+        variants_generator = parse_tabix_file_subset(sites_files, i, n, get_variants_from_sites_vcf)
         try:
             db.variants.insert(variants_generator, w=0)
         except pymongo.errors.InvalidOperation:
@@ -116,16 +122,15 @@ def load_variants_file():
     sites_vcfs = app.config['SITES_VCFS']
     if len(sites_vcfs) == 0:
         raise IOError("No vcf file found")
-    elif len(sites_vcfs) > 1:
-        raise Exception("More than one sites vcf file found: %s" % sites_vcfs)
+    # elif len(sites_vcfs) > 1:
+    #     # TODO: why do we throw an exception for this?
+    #     raise Exception("More than one sites vcf file found: %s" % sites_vcfs)
 
-    procs = []
     num_procs = app.config['LOAD_DB_PARALLEL_PROCESSES']
-    for i in range(num_procs):
-        p = Process(target=load_variants, args=(sites_vcfs[0], i, num_procs, db))
-        p.start()
-        procs.append(p)
-    return procs
+    print('loading from {} files with {} processes.'.format(len(sites_vcfs), num_procs))
+    procs = [Process(target=load_variants, args=(sites_vcfs, i, num_procs)) for i in range(num_procs)]
+    for p in procs: p.start()
+    for p in procs: p.join()
 
     #print 'Done loading variants. Took %s seconds' % int(time.time() - start_time)
 
@@ -216,7 +221,8 @@ def load_gene_models():
 def load_dbsnp_file():
     db = get_db()
 
-    def load_dbsnp(dbsnp_file, i, n, db):
+    def load_dbsnp(dbsnp_file, i, n):
+        db = get_db(new_connection=True)
         if os.path.isfile(dbsnp_file + ".tbi"):
             dbsnp_record_generator = parse_tabix_file_subset([dbsnp_file], i, n, get_snp_from_dbsnp_file)
             try:
@@ -249,15 +255,11 @@ def load_dbsnp_file():
         else:
             raise Exception("dbsnp file %s(dbsnp_file)s not found." % locals())
 
-    procs = []
-    for i in range(num_procs):
-        p = Process(target=load_dbsnp, args=(dbsnp_file, i, num_procs, db))
-        p.start()
-        procs.append(p)
+    procs = [Process(target=load_dbsnp, args=(dbsnp_file, i, num_procs)) for i in range(num_procs)]
+    for p in procs: p.start()
+    for p in procs: p.join()
 
-    return procs
     #print 'Done loading dbSNP. Took %s seconds' % int(time.time() - start_time)
-
     #start_time = time.time()
     #db.dbsnp.ensure_index('rsid')
     #print 'Done indexing dbSNP table. Took %s seconds' % int(time.time() - start_time)
@@ -762,4 +764,4 @@ def apply_caching(response):
 
 
 if __name__ == "__main__":
-    app.run(host='browser.sph.umich.edu', port=5000, threaded=True)
+    app.run(host='browser.sph.umich.edu', port=5002, threaded=True)
