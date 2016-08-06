@@ -90,6 +90,7 @@ def get_variants_from_sites_vcf(sites_vcf):
             alt_alleles = fields[4].split(',')
 
             # different variant for each alt allele
+            # we could do the parsing only once, but multi-allelic variants are rare so who cares
             for i, alt_allele in enumerate(alt_alleles):
 
                 #DT: we will store anotations for all variants (not only for exonic)
@@ -135,13 +136,16 @@ def get_variants_from_sites_vcf(sites_vcf):
 
                 # DT: variant['allele_count'] = int(info_field['AC_Adj'].split(',')[i])
                 variant['allele_count'] = int(info_field['AC'].split(',')[i])
+                if variant['allele_count'] == 0: continue
                 # DT: if not variant['allele_count'] and variant['filter'] == 'PASS': variant['filter'] = 'AC_Adj0' # Temporary filter
                 # DT: variant['allele_num'] = int(info_field['AN_Adj'])
                 variant['allele_num'] = int(info_field['AN'])
+                assert variant['allele_num'] != 0, variant
                 # DT: if variant['allele_num'] > 0:
                 # DT:    variant['allele_freq'] = variant['allele_count']/float(info_field['AN_Adj'])
                 # DT: else:
                 variant['allele_freq'] = float(info_field['AF'].split(',')[i])
+                assert variant['allele_freq'] != 0, variant
 
                 # DT: variant['pop_acs'] = dict([(POPS[x], int(info_field['AC_%s' % x].split(',')[i])) for x in POPS])
                 variant['pop_acs'] = dict([(POPS[x], 0) for x in POPS])

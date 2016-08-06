@@ -281,6 +281,8 @@ def precalculate_whether_variant_is_ever_missense_or_lof():
 
 
 def precalculate_metrics():
+    # TODO: figure out why this is much worse than linear (4sec/100k variants at start, 30sec/100k variants with 150M)
+    # 0<= qual <= 256, so make it a Counter.
     import numpy
     db = get_db()
     print 'Reading %s variants...' % db.variants.count()
@@ -288,7 +290,9 @@ def precalculate_metrics():
     binned_metrics = defaultdict(list)
     progress = 0
     start_time = time.time()
-    for variant in db.variants.find(projection=['quality_metrics', 'site_quality', 'allele_num', 'allele_count']):
+    for variant_i, variant in enumerate(db.variants.find(projection=['quality_metrics', 'site_quality', 'allele_num', 'allele_count'])):
+        if 'DP' in variant['quality_metrics'] and float(variant['quality_metrics']['DP']) == 0:
+            print('Warning: variant with id {} has depth of 0'.format(variant['_id']))
         for metric, value in variant['quality_metrics'].iteritems():
             metrics[metric].append(float(value))
         qual = float(variant['site_quality'])
@@ -299,13 +303,13 @@ def precalculate_metrics():
         elif variant['allele_count'] == 2:
             binned_metrics['doubleton'].append(qual)
         else:
-            for af in AF_BUCKETS:
-                if float(variant['allele_count'])/variant['allele_num'] < af:
-                    binned_metrics[af].append(qual)
+            variant_af = float(variant['allele_count'])/variant['allele_num']
+            for bucket_af in AF_BUCKETS:
+                if variant_af < bucket_af:
+                    binned_metrics[bucket_af].append(qual)
                     break
-        progress += 1
-        if not progress % 100000:
-            print 'Read %s variants. Took %s seconds' % (progress, int(time.time() - start_time))
+        if variant_i % int(1e5) == 0:
+            print 'Read %s variants. Took %s seconds' % (variant_i, int(time.time() - start_time))
     print 'Done reading variants. Dropping metrics database... '
     db.metrics.drop()
     print 'Dropped metrics database. Calculating metrics...'
