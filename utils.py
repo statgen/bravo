@@ -338,3 +338,12 @@ def get_top_gene_and_top_hgvss_for_consequences_drilldown(consequences):
     gene_for_top_csq = annotations_for_top_csq[0].get('SYMBOL') or top_csq.keys()[0]
     top_HGVSs = sorted({ann['HGVS'].lstrip('p.') for ann in annotations_for_top_csq if ann.get('HGVS')})
     return gene_for_top_csq, top_HGVSs
+
+class defaultdict_that_passes_key_to_default_factory(dict):
+    "A class like collections.defaultdict, but where the default_factory takes the missing key as an argument."
+    def __init__(self, default_factory):
+        self._default_factory = default_factory
+        super(defaultdict_that_passes_key_to_default_factory, self).__init__()
+    def __missing__(self, key):
+        value = self[key] = self._default_factory(key)
+        return value

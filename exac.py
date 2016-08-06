@@ -17,7 +17,7 @@ from flask import Flask, Response, request, session, g, redirect, url_for, abort
 from flask.ext.compress import Compress
 from flask_errormail import mail_on_500
 from flask.ext.login import LoginManager, UserMixin, login_user, logout_user, current_user
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from multiprocessing import Process
 import glob
@@ -281,41 +281,47 @@ def precalculate_whether_variant_is_ever_missense_or_lof():
 
 
 def precalculate_metrics():
-    # TODO: figure out why this is much worse than linear (4sec/100k variants at start, 30sec/100k variants with 150M)
-    # 0<= qual <= 256, so make it a Counter.
     import numpy
     db = get_db()
     print 'Reading %s variants...' % db.variants.count()
-    metrics = defaultdict(list)
-    binned_metrics = defaultdict(list)
-    progress = 0
+    # For some reason using Counter() gives this linear performance, whereas it was slowing down 10X towards the end of 150M variants with just list.append().
+    metrics_to_use_with_counter = {'DP', 'site_quality'}
+    metrics = defaultdict_that_passes_key_to_default_factory(lambda key: Counter() if key in metrics_to_use_with_counter else list())
+    qualities_by_af = defaultdict(Counter)
     start_time = time.time()
     for variant_i, variant in enumerate(db.variants.find(projection=['quality_metrics', 'site_quality', 'allele_num', 'allele_count'])):
         if 'DP' in variant['quality_metrics'] and float(variant['quality_metrics']['DP']) == 0:
             print('Warning: variant with id {} has depth of 0'.format(variant['_id']))
         for metric, value in variant['quality_metrics'].iteritems():
-            metrics[metric].append(float(value))
+            if metric in metrics_to_use_with_counter:
+                metrics[metric][float(value)] += 1
+            else:
+                metrics[metric].append(float(value))
         qual = float(variant['site_quality'])
-        metrics['site_quality'].append(qual)
+        metrics['site_quality'][qual] += 1
         if variant['allele_num'] == 0: continue
         if variant['allele_count'] == 1:
-            binned_metrics['singleton'].append(qual)
+            qualities_by_af['singleton'][qual] += 1
         elif variant['allele_count'] == 2:
-            binned_metrics['doubleton'].append(qual)
+            qualities_by_af['doubleton'][qual] += 1
         else:
             variant_af = float(variant['allele_count'])/variant['allele_num']
             for bucket_af in AF_BUCKETS:
                 if variant_af < bucket_af:
-                    binned_metrics[bucket_af].append(qual)
+                    qualities_by_af[bucket_af][qual] += 1
                     break
-        if variant_i % int(1e5) == 0:
+        if variant_i % int(1e6) == 0:
             print 'Read %s variants. Took %s seconds' % (variant_i, int(time.time() - start_time))
     print 'Done reading variants. Dropping metrics database... '
     db.metrics.drop()
     print 'Dropped metrics database. Calculating metrics...'
     for metric in metrics:
         bin_range = None
-        data = map(numpy.log, metrics[metric]) if metric == 'DP' else metrics[metric]
+        data = metrics[metric]
+        if metric in metrics_to_use_with_counter:
+            data = list(data.elements())
+        if metric == 'DP':
+            data = map(numpy.log, data)
         if metric == 'FS':
             bin_range = (0, 20)
         elif metric == 'VQSLOD':
@@ -334,12 +340,13 @@ def precalculate_metrics():
             'mids': lefts,
             'hist': hist[0].tolist()
         })
-    for metric in binned_metrics:
-        hist = numpy.histogram(map(numpy.log, binned_metrics[metric]), bins=40)
+    for af_bin in qualities_by_af:
+        qualities_as_list = qualities_by_af[af_bin].elements()
+        hist = numpy.histogram(map(numpy.log, qualities_as_list), bins=40)
         edges = hist[1]
         mids = [(edges[i]+edges[i+1])/2 for i in range(len(edges)-1)]
         db.metrics.insert({
-            'metric': 'binned_%s' % metric,
+            'metric': 'binned_%s' % af_bin,
             'mids': mids,
             'hist': hist[0].tolist()
         })
