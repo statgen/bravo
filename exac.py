@@ -20,11 +20,13 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, curren
 from collections import defaultdict, Counter
 
 from multiprocessing import Process
+import multiprocessing
 import glob
 import traceback
 import time
 import sys
 import functools
+import contextlib
 
 app = Flask(__name__)
 app.config.from_object('flask_config.BravoTestConfig')
@@ -97,21 +99,37 @@ def parse_tabix_file_subset(tabix_filenames, subset_i, subset_n, record_parser):
 
     print("Finished loading subset %(subset_i)s from  %(short_filenames)s (%(counter)s records)" % locals())
 
+def get_tabix_file_contig_pairs(tabix_filenames):
+    for tabix_filename in tabix_filenames:
+        with pysam.Tabixfile(tabix_filename) as tabix_file:
+            for contig in tabix_file.contigs:
+                yield (tabix_filename, contig)
+
+def get_records_from_tabix_contig(tabix_filename, contig, record_parser):
+    start_time = time.time()
+    with pysam.Tabixfile(tabix_filename) as tabix_file:
+        for record_i, parsed_record in enumerate(record_parser(itertools.chain(tabix_file.header, tabix_file.fetch(contig, 0, 10**10, multiple_iterators=True)))):
+            yield parsed_record
+
+            if record_i % int(1e6) == 0:
+                print("Loaded {:11,} records in {:6,} seconds from contig {!r:5} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
+
+
+def _load_variants_from_tabix_file_and_contig(tabix_file, contig):
+    db = get_db(new_connection=True)
+    variants_generator = get_records_from_tabix_contig(tabix_file, contig, get_variants_from_sites_vcf)
+    try:
+        db.variants.insert(variants_generator, w=0)
+    except pymongo.errors.InvalidOperation:
+        pass  # handle error when variant_generator is empty
+def _load_variants_from_tabix_file_and_contig_starred(args):
+    return _load_variants_from_tabix_file_and_contig(*args)
 
 def load_variants_file():
-    def load_variants(sites_files, i, n):
-        db = get_db(new_connection=True)
-        variants_generator = parse_tabix_file_subset(sites_files, i, n, get_variants_from_sites_vcf)
-        try:
-            db.variants.insert(variants_generator, w=0)
-        except pymongo.errors.InvalidOperation:
-            pass  # handle error when variant_generator is empty
-
     db = get_db()
     db.variants.drop()
     print("Dropped db.variants")
 
-    # grab variants from sites VCF
     db.variants.ensure_index('xpos')
     db.variants.ensure_index('xstart')
     db.variants.ensure_index('xstop')
@@ -119,20 +137,12 @@ def load_variants_file():
     db.variants.ensure_index('genes')
     db.variants.ensure_index('transcripts')
 
-    sites_vcfs = app.config['SITES_VCFS']
-    if len(sites_vcfs) == 0:
+    if len(app.config['SITES_VCFS']) == 0:
         raise IOError("No vcf file found")
-    # elif len(sites_vcfs) > 1:
-    #     # TODO: why do we throw an exception for this?
-    #     raise Exception("More than one sites vcf file found: %s" % sites_vcfs)
 
-    num_procs = app.config['LOAD_DB_PARALLEL_PROCESSES']
-    print('loading from {} files with {} processes.'.format(len(sites_vcfs), num_procs))
-    procs = [Process(target=load_variants, args=(sites_vcfs, i, num_procs)) for i in range(num_procs)]
-    for p in procs: p.start()
-    for p in procs: p.join()
-
-    #print 'Done loading variants. Took %s seconds' % int(time.time() - start_time)
+    with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
+        # workaround for Pool.map() from <http://stackoverflow.com/a/1408476/1166306>
+        pool.map_async(_load_variants_from_tabix_file_and_contig_starred, get_tabix_file_contig_pairs(app.config['SITES_VCFS'])).get(9999999)
 
 
 def load_gene_models():
@@ -215,10 +225,9 @@ def load_gene_models():
     db.exons.ensure_index('gene_id')
     print 'Done indexing exon table. Took %s seconds' % int(time.time() - start_time)
 
-    return []
-
 
 def load_dbsnp_file():
+    # TODO: replace `parse_tabix_file_subset` with the two new functions and Pool().map_async().get()
     db = get_db()
 
     def load_dbsnp(dbsnp_file, i, n):
