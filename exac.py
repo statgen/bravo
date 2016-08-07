@@ -266,18 +266,17 @@ def load_dbsnp_file():
 
 
 def precalculate_whether_variant_is_ever_missense_or_lof():
-    # TODO: try this: regex = '(^|&)({})(&|$)'.format('|'.join(missense_and_lof_csqs))
     missense_and_lof_csqs = csq_order[:csq_order.index('MISSENSE_THRESHOLD')]
     missense_and_lof_csqs.remove('LOF_THRESHOLD')
+    regex = r'(^|&)({})(&|$)'.format('|'.join(missense_and_lof_csqs))
     db = get_db()
-    print 'Reading %s variants' % db.variants.count()
-    for csq in missense_and_lof_csqs:
-        st = time.time()
-        result = db.variants.update_many(
-            {'vep_annotations.Consequence': {'$regex': csq}},
-            {'$set': {'sometimes_missense_or_lof': 1}}
-        )
-        print "done with {}: updated {} documents in {:.2f} seconds".format(csq, result.matched_count, time.time() - st)
+    print('Updating all {:,} variants with all {} missense/LoF consequences'.format(db.variants.count()), len(missense_and_lof_csqs))
+    st = time.time()
+    result = db.variants.update_many(
+        {'vep_annotations.Consequence': {'$regex': regex}},
+        {'$set': {'sometimes_missense_or_lof': 1}}
+    )
+    print "updated {:,} documents in {:,.0f} seconds".format(result.matched_count, time.time() - st)
 
 
 def precalculate_metrics():
