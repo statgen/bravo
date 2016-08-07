@@ -14,9 +14,9 @@ from pycoverage import *
 import auth
 
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
-from flask.ext.compress import Compress
+from flask_compress import Compress
 from flask_errormail import mail_on_500
-from flask.ext.login import LoginManager, UserMixin, login_user, logout_user, current_user
+from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
 from collections import defaultdict, Counter
 
 from multiprocessing import Process
