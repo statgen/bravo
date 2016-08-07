@@ -64,66 +64,36 @@ def get_coverages():
         get_coverages._cache = coverages
     return get_coverages._cache
 
-def parse_tabix_file_subset(tabix_filenames, subset_i, subset_n, record_parser):
-    """
-    Returns a generator of parsed record objects (as returned by record_parser) for the i'th out n subset of records
-    across all the given tabix_file(s). The records are split by files and contigs within files, with 1/n of all contigs
-    from all files being assigned to this the i'th subset.
-
-    Args:
-        tabix_filenames: a list of one or more tabix-indexed files. These will be opened using pysam.Tabixfile
-        subset_i: zero-based number
-        subset_n: total number of subsets
-        record_parser: a function that takes a file-like object and returns a generator of parsed records
-    """
-    start_time = time.time()
-    open_tabix_files = [pysam.Tabixfile(tabix_filename) for tabix_filename in tabix_filenames]
-    tabix_file_contig_pairs = [(tabix_file, contig) for tabix_file in open_tabix_files for contig in tabix_file.contigs]
-    tabix_file_contig_subset = tabix_file_contig_pairs[subset_i : : subset_n]  # get every n'th tabix_file/contig pair
-    short_filenames = ", ".join(map(os.path.basename, tabix_filenames))
-    num_file_contig_pairs = len(tabix_file_contig_subset)
-    print(("Loading subset %(subset_i)s of %(subset_n)s total: %(num_file_contig_pairs)s contigs from "
-           "%(short_filenames)s") % locals())
-    counter = 0
-    for tabix_file, contig in tabix_file_contig_subset:
-        header_iterator = tabix_file.header
-        records_iterator = tabix_file.fetch(contig, 0, 10**9, multiple_iterators=True)
-        for parsed_record in record_parser(itertools.chain(header_iterator, records_iterator)):
-            counter += 1
-            yield parsed_record
-
-            if counter % 100000 == 0:
-                seconds_elapsed = int(time.time()-start_time)
-                print(("Loaded %(counter)s records from subset %(subset_i)s of %(subset_n)s from %(short_filenames)s "
-                       "(%(seconds_elapsed)s seconds)") % locals())
-
-    print("Finished loading subset %(subset_i)s from  %(short_filenames)s (%(counter)s records)" % locals())
 
 def get_tabix_file_contig_pairs(tabix_filenames):
+    def _convert_contig_to_int(contig):
+        try: return int(contig)
+        except: return 0 # parse X/Y right at the beginning.
     for tabix_filename in tabix_filenames:
         with pysam.Tabixfile(tabix_filename) as tabix_file:
-            for contig in tabix_file.contigs:
+            for contig in sorted(tabix_file.contigs, key=_convert_contig_to_int): # Hopefully going from large -> small chroms keeps load higher.
                 yield (tabix_filename, contig)
 
 def get_records_from_tabix_contig(tabix_filename, contig, record_parser):
     start_time = time.time()
     with pysam.Tabixfile(tabix_filename) as tabix_file:
-        for record_i, parsed_record in enumerate(record_parser(itertools.chain(tabix_file.header, tabix_file.fetch(contig, 0, 10**10, multiple_iterators=True)))):
+        record_i = 0 # in case record_parser never yields anything.
+        for record_i, parsed_record in enumerate(record_parser(itertools.chain(tabix_file.header, tabix_file.fetch(contig, 0, 10**10, multiple_iterators=True))), start=1):
             yield parsed_record
 
             if record_i % int(1e6) == 0:
-                print("Loaded {:11,} records in {:6,} seconds from contig {!r:5} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
+                print("Loaded {:11,} records in {:6,} seconds from contig {!r:6} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
+    print("Loaded {:11,} records in {:6,} seconds from contig {!r:6} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
 
 
-def _load_variants_from_tabix_file_and_contig(tabix_file, contig):
+def _load_variants_from_tabix_file_and_contig(args):
+    tabix_file, contig = args
     db = get_db(new_connection=True)
     variants_generator = get_records_from_tabix_contig(tabix_file, contig, get_variants_from_sites_vcf)
     try:
         db.variants.insert(variants_generator, w=0)
     except pymongo.errors.InvalidOperation:
         pass  # handle error when variant_generator is empty
-def _load_variants_from_tabix_file_and_contig_starred(args):
-    return _load_variants_from_tabix_file_and_contig(*args)
 
 def load_variants_file():
     db = get_db()
@@ -142,7 +112,7 @@ def load_variants_file():
 
     with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
         # workaround for Pool.map() from <http://stackoverflow.com/a/1408476/1166306>
-        pool.map_async(_load_variants_from_tabix_file_and_contig_starred, get_tabix_file_contig_pairs(app.config['SITES_VCFS'])).get(9999999)
+        pool.map_async(_load_variants_from_tabix_file_and_contig, get_tabix_file_contig_pairs(app.config['SITES_VCFS'])).get(9999999)
 
 
 def load_gene_models():
@@ -226,52 +196,43 @@ def load_gene_models():
     print 'Done indexing exon table. Took %s seconds' % int(time.time() - start_time)
 
 
+def _load_dbsnp_from_tabix_file_and_contig(args):
+    dbsnp_file, contig = args
+    db = get_db(new_connection=True)
+    dbsnp_record_generator = get_records_from_tabix_contig(dbsnp_file, contig, get_snp_from_dbsnp_file)
+    try:
+        db.dbsnp.insert(dbsnp_record_generator, w=0)
+    except pymongo.errors.InvalidOperation:
+        pass  # handle error when coverage_generator is empty
+
 def load_dbsnp_file():
-    # TODO: replace `parse_tabix_file_subset` with the two new functions and Pool().map_async().get()
     db = get_db()
 
-    def load_dbsnp(dbsnp_file, i, n):
-        db = get_db(new_connection=True)
-        if os.path.isfile(dbsnp_file + ".tbi"):
-            dbsnp_record_generator = parse_tabix_file_subset([dbsnp_file], i, n, get_snp_from_dbsnp_file)
-            try:
-                db.dbsnp.insert(dbsnp_record_generator, w=0)
-            except pymongo.errors.InvalidOperation:
-                pass  # handle error when coverage_generator is empty
-
-        else:
-            with gzip.open(dbsnp_file) as f:
-                db.dbsnp.insert((snp for snp in get_snp_from_dbsnp_file(f)), w=0)
-
     db.dbsnp.drop()
-    db.dbsnp.ensure_index('rsid')
+    db.dbsnp.ensure_index('rsid') # It seems faster to build these indexes before inserts.  Strange.
     db.dbsnp.ensure_index('xpos')
     start_time = time.time()
     dbsnp_file = app.config['DBSNP_FILE']
 
     print "Loading dbsnp from %s" % dbsnp_file
     if os.path.isfile(dbsnp_file + ".tbi"):
-        num_procs = app.config['LOAD_DB_PARALLEL_PROCESSES']
-    else:
+        with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
+            # workaround for Pool.map() from <http://stackoverflow.com/a/1408476/1166306>
+            pool.map_async(_load_dbsnp_from_tabix_file_and_contig, get_tabix_file_contig_pairs([dbsnp_file])).get(9999999)
+        print('Done loading dbSNP in {:,} seconds'.format(int(time.time() - start_time)))
+
+    elif os.path.isfile(dbsnp_file):
         # see if non-tabixed .gz version exists
-        if os.path.isfile(dbsnp_file):
-            print(("WARNING: %(dbsnp_file)s.tbi index file not found. Will use single thread to load dbsnp."
-                "To create a tabix-indexed dbsnp file based on UCSC dbsnp, do: \n"
-                "   wget http://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/snp141.txt.gz \n"
-                "   gzcat snp141.txt.gz | cut -f 1-5 | bgzip -c > snp141.txt.bgz \n"
-                "   tabix -0 -s 2 -b 3 -e 4 snp141.txt.bgz") % locals())
-            num_procs = 1
-        else:
-            raise Exception("dbsnp file %s(dbsnp_file)s not found." % locals())
+        print(("WARNING: %(dbsnp_file)s.tbi index file not found. Will use single thread to load dbsnp."
+               "To create a tabix-indexed dbsnp file based on UCSC dbsnp, do: \n"
+               "   wget http://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/snp141.txt.gz \n"
+               "   gzcat snp141.txt.gz | cut -f 1-5 | bgzip -c > snp141.txt.bgz \n"
+               "   tabix -0 -s 2 -b 3 -e 4 snp141.txt.bgz") % locals())
+        with gzip.open(dbsnp_file) as f:
+            db.dbsnp.insert((snp for snp in get_snp_from_dbsnp_file(f)), w=0)
 
-    procs = [Process(target=load_dbsnp, args=(dbsnp_file, i, num_procs)) for i in range(num_procs)]
-    for p in procs: p.start()
-    for p in procs: p.join()
-
-    #print 'Done loading dbSNP. Took %s seconds' % int(time.time() - start_time)
-    #start_time = time.time()
-    #db.dbsnp.ensure_index('rsid')
-    #print 'Done indexing dbSNP table. Took %s seconds' % int(time.time() - start_time)
+    else:
+        raise Exception("dbsnp file %s(dbsnp_file)s not found." % locals())
 
 
 def precalculate_whether_variant_is_ever_missense_or_lof():
@@ -279,13 +240,13 @@ def precalculate_whether_variant_is_ever_missense_or_lof():
     missense_and_lof_csqs.remove('LOF_THRESHOLD')
     regex = r'(^|&)({})(&|$)'.format('|'.join(missense_and_lof_csqs))
     db = get_db()
-    print('Updating all {:,} variants with all {} missense/LoF consequences'.format(db.variants.count()), len(missense_and_lof_csqs))
-    st = time.time()
+    print('Updating all {:,} variants for all {} missense/LoF consequences...'.format(db.variants.count(), len(missense_and_lof_csqs)))
+    start_time = time.time()
     result = db.variants.update_many(
         {'vep_annotations.Consequence': {'$regex': regex}},
         {'$set': {'sometimes_missense_or_lof': 1}}
     )
-    print "updated {:,} documents in {:,.0f} seconds".format(result.matched_count, time.time() - st)
+    print "updated {:,} documents in {:,.0f} seconds".format(result.matched_count, time.time() - start_time)
 
 
 def precalculate_metrics():
