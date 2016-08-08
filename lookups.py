@@ -118,10 +118,15 @@ def get_awesomebar_suggestions(autocomplete_strings, query):
 
 
 # 1:1-1000
-R1 = re.compile(r'^(\d+|X|Y|M|MT)\s*:\s*(\d+)-(\d+)$')
-R2 = re.compile(r'^(\d+|X|Y|M|MT)\s*:\s*(\d+)$')
-R3 = re.compile(r'^(\d+|X|Y|M|MT)$')
-R4 = re.compile(r'^\s*(\d+|X|Y|M|MT)\s*[-:]\s*(\d+)[-:\s]*([ATCG]+)\s*[-:/]\s*([ATCG]+)\s*$')
+_regex_pattern_chr = r'^(?:CHR)?(\d+|X|Y|M|MT)'
+_regex_pattern_chr_pos = _regex_pattern_chr + r'\s*[-:/]\s*([\d,]+)'
+_regex_pattern_chr_start_end = _regex_pattern_chr_pos + r'\s*[-:/]\s*([\d,]+)'
+_regex_pattern_chr_pos_ref_alt = _regex_pattern_chr_pos + r'\s*[-:/]\s*([ATCG]+)\s*[-:/]\s*([ATCG]+)'
+
+_regex_chr = re.compile(_regex_pattern_chr+'$')
+_regex_chr_pos = re.compile(_regex_pattern_chr_pos+'$')
+_regex_chr_start_end = re.compile(_regex_pattern_chr_start_end+'$')
+_regex_chr_pos_ref_alt = re.compile(_regex_pattern_chr_pos_ref_alt+'$')
 
 
 def get_awesomebar_result(db, query):
@@ -187,24 +192,20 @@ def get_awesomebar_result(db, query):
         if transcript:
             return 'transcript', transcript['transcript_id']
 
-    # From here on out, only region queries
-    if query.startswith('CHR'):
-        query = query.lstrip('CHR')
     # Region
-    m = R1.match(query)
-    if m:
-        if int(m.group(3)) < int(m.group(2)):
-            return 'region', 'invalid'
-        return 'region', '{}-{}-{}'.format(m.group(1), m.group(2), m.group(3))
-    m = R2.match(query)
-    if m:
-        return 'region', '{}-{}-{}'.format(m.group(1), m.group(2), m.group(2))
-    m = R3.match(query)
-    if m:
-        return 'region', '{}'.format(m.group(1))
-    m = R4.match(query)
-    if m:
-        return 'variant', '{}-{}-{}-{}'.format(m.group(1), m.group(2), m.group(3), m.group(4))
+    match = _regex_chr.match(query) or _regex_chr_pos.match(query) or _regex_chr_start_end.match(query) or _regex_chr_pos_ref_alt.match(query)
+    if match is not None:
+        num_groups = len([g for g in match.groups() if g is not None])
+        chrom = match.groups()[0]
+        if num_groups == 1:
+            return 'region', '{}'.format(chrom)
+        pos = int(match.groups()[1].replace(',',''))
+        if num_groups == 2:
+            return 'region', '{}-{}-{}'.format(chrom, pos, pos)
+        if num_groups == 3:
+            end = int(match.groups()[2].replace(',',''))
+            return 'region', '{}-{}-{}'.format(chrom, pos, end)
+        return 'variant', '{}-{}-{}-{}'.format(chrom, pos, match.groups()[2], match.groups()[3])
 
     return 'not_found', query
 
