@@ -284,6 +284,12 @@ function create_exon_plot(exon_track, exon_x_scale, skip_utrs) {
 
     change_exon_plot(skip_utrs, exon_x_scale);
 
+    // create strand-direction tooltip
+    window.strand_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
+        return 'Strand Direction: ' + window.strand + '<br/>';
+    });
+    exon_track.call(window.strand_tip);
+
     // draw strand-direction arrow
     var a_s = window.strand == "-"? -1 : 1; //arrow direction
     var a_x = -5;  //arrow position on x-axis
@@ -294,7 +300,9 @@ function create_exon_plot(exon_track, exon_x_scale, skip_utrs) {
     exon_track.append("polygon")
             .attr("points", points.join(" "))
             .attr("fill", "steelblue")
-            .attr("stroke", "black");
+            .attr("stroke", "black")
+            .on('mouseover', window.strand_tip.show)
+            .on('mouseout', window.strand_tip.hide);
 }
 
 function create_variants_plot(svg, exon_x_scale, coords) {
