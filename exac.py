@@ -430,6 +430,11 @@ def gene_page(gene_id):
         gene = lookups.get_gene(db, gene_id)
         if gene is None:
             abort(404)
+        try:
+            int(gene['chrom'])
+        except ValueError: # we only have numeric chromosomes in Bravo right now
+            return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
+                app.config['DATASET_NAME'], gene['chrom']))
         print 'Rendering gene: %s' % gene_id
         variants_in_gene = lookups.get_most_important_variants_in_gene(db, gene_id)
         num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
