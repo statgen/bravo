@@ -361,6 +361,6 @@ def get_exons_in_transcript(db, transcript_id):
 
 def get_exons_in_gene(db, gene_id):
     """
-    Returns CDS and UTR exons, sorted by position.
+    Returns the "exons", sorted by position.
     """
     return sorted(list(db.exons.find({'gene_id': gene_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])

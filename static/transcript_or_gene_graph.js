@@ -34,6 +34,7 @@ var EXON_MARGIN = 60;
     Random notes:
         - coding coordinates have no concept of a gene - they are solely a property of a transcript
         - should probably have a map between coding coodinates and protein position
+        - only "CDS" is shown by default.  "UTR" and "exon" are hidden until "show UTRs" is checked.
  */
 window.get_position_mapping = _.memoize(function(skip_utrs) {
     // Uses window.exons_and_utrs
@@ -45,7 +46,7 @@ window.get_position_mapping = _.memoize(function(skip_utrs) {
     var exons = window.exons_and_utrs;
     if (skip_utrs) {
         exons = _.filter(exons, function(exon) {
-            return exon.feature_type !== "UTR";
+            return exon.feature_type === "CDS";
         });
         if (exons.length === 0) {
             exons = window.exons_and_utrs;
@@ -188,12 +189,11 @@ function create_charts() {
                     .replace('3 prime', "3'")
                     .replace('5 prime', "5'")
                     .replace('nc ', "non-coding ");
-            var output = csq + '<br/>' + d.chrom + ':' + d.pos + ' ' + d.ref + '&#8594;' + d.alt;
+            var output = csq + '<br/>' + d.chrom + ':' + d.pos.toLocaleString() + ' ' + d.ref + '&#8594;' + d.alt;
             if (d.major_consequence == 'missense_variant' || d.major_consequence == 'synonymous_variant') {
                 output += '<br/>' + d.HGVSp;
             }
             output += '<br/>Frequency: ' + d.allele_freq.toPrecision(3);
-            output += '<br/>Pos: ' + d.pos;
             return output;
         } else {
             return 'None';
@@ -276,10 +276,10 @@ function create_exon_plot(exon_track, exon_x_scale, skip_utrs) {
         .attr('class', 'exon_or_utr')
         .style("fill", exon_color)
         .attr("y", function(d, i) {
-            return (d.feature_type !== 'UTR') ? 0 : lower_gene_chart_height/4;
+            return (d.feature_type === 'CDS') ? 0 : lower_gene_chart_height/4;
         })
         .attr("height", function(d, i) {
-            return (d.feature_type !== 'UTR') ? lower_gene_chart_height : lower_gene_chart_height/2;
+            return (d.feature_type === 'CDS') ? lower_gene_chart_height : lower_gene_chart_height/2;
         });
 
     change_exon_plot(skip_utrs, exon_x_scale);
@@ -454,7 +454,7 @@ function change_exon_plot(skip_utrs, exon_x_scale) {
         .transition()
         .duration(500)
         .style('visibility', function(d) {
-            return (!skip_utrs || d.feature_type !== 'UTR') ? 'visible' : 'hidden';
+            return (!skip_utrs || d.feature_type === 'CDS') ? 'visible' : 'hidden';
         })
         .attr("x1", function(d) {
             var x = exon_x_scale(get_coding_coordinate(d.start - EXON_PADDING, skip_utrs));
@@ -484,7 +484,7 @@ function change_exon_plot(skip_utrs, exon_x_scale) {
             return (get_coding_coordinate(d.start, skip_utrs) === null) ? 0 : exon_x_scale(d.stop-d.start+1);
         })
         .style('visibility', function(d) {
-            return (!skip_utrs || d.feature_type !== 'UTR') ? 'visible' : 'hidden';
+            return (!skip_utrs || d.feature_type === 'CDS') ? 'visible' : 'hidden';
         });
 }
 

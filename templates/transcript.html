@@ -59,9 +59,8 @@
                 <h3>Transcript: {{ transcript.transcript_id }} (<span id="number_of_exons"></span> coding exons)</h3>
                 <script>
                   var coding_exons = _.filter(window.exons_and_utrs, function(d) {
-                      return d.feature_type !== 'UTR';
+                      return d.feature_type === 'CDS';
                   });
-                  console.log('num exons: ', coding_exons);
                   $('#number_of_exons').html(coding_exons.length);
                 </script>
             </div>
