@@ -9,9 +9,7 @@
     <script type="text/javascript">
         window.transcript = {{ transcript|tojson(separators=(',',':'))|safe }};
         window.strand = window.transcript.strand;
-        window.exons_and_utrs = _.sortBy(_.filter(window.transcript.exons, function(d) {
-            return _.contains(["CDS", "UTR"], d.feature_type);
-        }), "start");
+        window.exons_and_utrs = _.sortBy(window.transcript.exons, "start");
         window.table_variants = {{ variants_in_transcript|tojson(separators=(',',':'))|safe }};
         window.variants_for_graph = window.table_variants;
         window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
@@ -61,8 +59,9 @@
                 <h3>Transcript: {{ transcript.transcript_id }} (<span id="number_of_exons"></span> coding exons)</h3>
                 <script>
                   var coding_exons = _.filter(window.exons_and_utrs, function(d) {
-                      return d.feature_type == 'CDS';
+                      return d.feature_type !== 'UTR';
                   });
+                  console.log('num exons: ', coding_exons);
                   $('#number_of_exons').html(coding_exons.length);
                 </script>
             </div>
