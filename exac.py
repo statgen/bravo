@@ -29,7 +29,7 @@ import functools
 import contextlib
 
 app = Flask(__name__)
-app.config.from_object('flask_config.BravoTestConfig')
+app.config.from_object('flask_config.BravoConfig')
 mail_on_500(app, app.config['ADMINS'])
 Compress(app)
 
