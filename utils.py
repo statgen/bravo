@@ -251,30 +251,36 @@ def get_pop_afs(variant):
     """
     Convert the nasty output of VEP into a decent dictionary of population AFs.
     """
+    # TODO: Ideally, this should check for non-zero numbers in each of the populations, and then report numbers for all 5 populations.
+    # Instead, I'm just going to try things and fail fast if they don't work, because annotations are super weird.
     if 'vep_annotations' not in variant or len(variant['vep_annotations']) == 0:
         return {}
 
-    pop_strings = {}
-    for pop in POP_AFS_1000G:
-        values = [ann[pop] for ann in variant['vep_annotations']]
-        assert all(value == values[0] for value in values)
-        pop_strings[pop] = values[0]
+    try:
+        pop_strings = {}
+        for pop in POP_AFS_1000G:
+            values = [ann[pop] for ann in variant['vep_annotations']]
+            assert all(value == values[0] for value in values)
+            pop_strings[pop] = values[0]
 
-    if all(pop_string == '' for pop_string in pop_strings.values()):
-        return {}
-
-    pop_acs = {}
-    for pop_key, pop_name in POP_AFS_1000G.items():
-        d = {}
-        for alt_af in pop_strings[pop_key].split('&'):
-            k, v = alt_af.split(':')
-            assert all(letter in 'ACTG-' for letter in k)
-            d[k] = float(v)
-        pop_acs[pop_name] = d.get(variant['alt'])
-        if pop_acs[pop_name] is None:
-            print('WARNING: pop_af dictionary {!r} is missing alt allele {!r} for population {!r} for variant {}'.format(d, variant['alt'], pop_key, variant['variant_id']))
+        pop_acs = {}
+        for pop_key, pop_name in POP_AFS_1000G.items():
+            d = {}
+            for alt_af in pop_strings[pop_key].split('&'):
+                if ':' in alt_af:
+                    k, v = alt_af.split(':')
+                    assert all(letter in 'ACTG-' for letter in k)
+                    d[k] = float(v)
+            try:
+                pop_acs[pop_name] = d[variant['alt']]
+            except KeyError:
+                pass
+        if all(v==0 for v in pop_acs.values()):
             return {}
-    return pop_acs
+        return pop_acs
+    except Exception as exc:
+        print('failed in get_pop_afs() for variant {!r} with error:'.format(variant, traceback.format_exc()))
+        return {}
 
 def get_consequences_drilldown_for_variant(variant):
     """
