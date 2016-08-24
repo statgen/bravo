@@ -39,9 +39,11 @@
             <div class="col-xs-12">
                 <div id="home-searchbox">
                     <form action="/awesome">
-                        <input type="submit" style="display: none;"/>
-                        <input id="home-searchbox-input" name="query" class="form-control input-lg awesomebar" type="text" placeholder="Search for a gene or variant or region" autofocus />
-                        <input type="submit" style="position: absolute; left: -9999px"/>
+                       <fieldset>
+                          <div class="form-group">
+                            <input name="query" class="form-control typeahead" type="text" placeholder="Search for a gene or variant or region" autofocus />
+                          </div>
+                       </fieldset>
                     </form>
                     <p class="text-muted">
                         Examples - Gene: <a href="/awesome?query=ANK3">ANK3</a>,

@@ -354,10 +354,11 @@ def homepage():
     return render_template('homepage.html')
 
 
-@app.route('/autocomplete/<query>')
-def awesome_autocomplete(query):
+@app.route('/api/autocomplete')
+def autocomplete():
+    query = request.args.get('query', '')
     suggestions = lookups.get_awesomebar_suggestions(get_autocomplete_strings(), query)
-    return jsonify([{'value': s} for s in suggestions])
+    return jsonify([{'value': s} for s in sorted(suggestions)])
 
 
 @app.route('/awesome')
