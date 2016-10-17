@@ -45,7 +45,7 @@ Put these in a directory, and store that directory in `_FILES_DIRECTORY` in `fla
 - `SITES_VCFS`: used by `load_variants_file()`
 - `DBSNP_FILE`: used by `load_dbsnp_file()`
 - `GENCODE_GTF`: used by `load_gene_models()`
-- `CANONICAL_TRANSCRIPT_FILE`: used by used by `load_gene_models()`
+- `CANONICAL_TRANSCRIPT_FILE`: used by `load_gene_models()`
 - `OMIM_FILE`: used by `load_gene_models()`
 
 Then run:
