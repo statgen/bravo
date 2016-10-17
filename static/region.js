@@ -1,13 +1,3 @@
-<div id="region_plot">
-    {% include 'coverage_selectors.html' %}
-    <br/>
-    <div id="region_plot_container"></div>
-</div>
-<div id="not_covered" style="display: none;">
-    No coverage for this region.
-</div>
-<script type="text/javascript">
-
 gene_chart_margin = {top: 10, right: 30, bottom: 30, left: 80},
     gene_chart_margin_lower = {top: 5, right: gene_chart_margin.right, bottom: 5, left: gene_chart_margin.left},
     gene_chart_width = 1100 - gene_chart_margin.left - gene_chart_margin.right;
@@ -210,4 +200,3 @@ $(document).ready(function() {
     }
 
 });
-</script>

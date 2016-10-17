@@ -1,4 +1,9 @@
 {% extends "layout.html" %}
+
+{% block in_head %}
+<script type="text/javascript" src="{{ url_for('static', filename='region.js') }}"></script>
+{% endblock %}
+
 {% block body %}
     <script type="text/javascript">
         window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
@@ -11,39 +16,26 @@
     <div class="container-fluid">
       <div class="row">
         <div class="col-xs-12">
-            {% if rsid %}
-                <h1>RSID: {{ rsid }}</h1>
-            {% elif stop == None %}
-                <h1>Region: {{ chrom }}</h1>
-            {% else %}
-                <h1>Region: {{ chrom }} / {{ start }} / {{ stop }}</h1>
-            {% endif %}
-            <br/>
-            {% if stop != None %}
-                {% if stop-start > 100000 %}
-                    <p>
-                        <span class="label label-danger">Warning:</span> Your region is too large. Please submit a region of at most 100 kb.
-                    </p>
-                {% elif stop < start %}
-                    <p>
-                        Invalid region! Ends ({{ stop }}) before it begins ({{ start }}).
-                    </p>
-                {% endif %}
-            {% endif %}
+            <h1>Region: {{ chrom }} / {{ start }} / {{ stop }}</h1>
         </div>
       </div>
-        {% if genes_in_region %}
-            {% if stop != None %}
-                <div class="row">
-                  <div class="col-xs-12 col-md-offset-1 col-md-10">
-                    <h3>Coverage summary</h3>
-                    {% include 'region_display.html' %}
-                  </div>
-                </div>
-            {% endif %}
-            <div class="row">
+      <div class="row">
+          <div class="col-xs-12 col-md-offset-1 col-md-10">
+              <h3>Coverage summary</h3>
+              <div id="region_plot">
+                    {% include 'coverage_selectors.html' %}
+                    <br/>
+                    <div id="region_plot_container"></div>
+              </div>
+              <div id="not_covered" style="display: none;">
+                    No coverage for this region.
+              </div>
+          </div>
+      </div>
+      {% if genes_in_region %}
+          <div class="row">
                 <div class="col-xs-12 col-md-offset-1 col-md-10">
-                    <div class="section_header">Genes</div>
+                    <div class="section_header">Genes in this region:</div>
                     <ul>
                         {% for gene in genes_in_region %}
                             <li><a href="/gene/{{ gene.gene_id }}">{{ gene.gene_id }}</a></li>
@@ -51,28 +43,24 @@
                     </ul>
                     <br/>
                 </div>
-            </div>
-        {% endif %}
-        {% if variants_in_region %}
+          </div>
+      {% endif %}
+      {% if variants_in_region %}
             <div class="row">
                 <div class="col-xs-12 col-md-offset-1 col-md-10">
-                    {% if rsid %}
-                        <p>This is a dbSNP variant. Here are the possibilities</p>
-                    {% else %}
-                        <div class="section_header">Variants</div>
-                    {% endif %}
+                    <div class="section_header">Variants</div>
                     {% with table_variants = variants_in_region %}
                         {% include 'variant_table.html' %}
                     {% endwith %}
                 </div>
             </div>
-        {% endif %}
-        {% if not variants_in_region and not genes_in_region %}
+      {% endif %}
+      {% if not variants_in_region and not genes_in_region %}
             <div class="row">
                 <div class="col-xs-12 col-md-offset-1 col-md-10">
-                    <p> There is nothing in this region. </p>
+                    <p> There is nothing in this region.</p>
                 </div>
             </div>
-        {% endif %}
+      {% endif %}
     </div>
 {% endblock %}

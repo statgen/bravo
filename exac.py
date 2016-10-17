@@ -33,7 +33,7 @@ app.config.from_object('flask_config.BravoTestConfig')
 mail_on_500(app, app.config['ADMINS'])
 Compress(app)
 
-REGION_LIMIT = 1E5
+REGION_LIMIT = int(1e5)
 EXON_PADDING = 50
 
 def get_db(new_connection=False):
@@ -544,27 +544,18 @@ def region_page(region_id):
         region = region_id.split('-')
         print 'Rendering region: %s' % region_id
 
-        chrom = region[0]
-        start = None
-        stop = None
-        if len(region) == 3:
-            chrom, start, stop = region
-            start = int(start)
-            stop = int(stop)
-        if start is None or stop - start > REGION_LIMIT or stop < start:
-            return render_template(
-                'region.html',
-                genes_in_region=None,
-                variants_in_region=None,
-                chrom=chrom,
-                start=start,
-                stop=stop,
-                coverage_stats=None,
-                csq_order=csq_order,
-            )
+        if len(region) != 3:
+            return error_page("Sorry, '{}' doesn't look like a valid region. A valid region looks like 1-55530545-55531525.".format(region_id))
+
+        chrom, start, stop = region[0], int(region[1]), int(region[2])
+        if stop - start > REGION_LIMIT:
+            return error_page("The region you requested, '{}', is {:,} bases long.  We only accept regions shorter than {:,} bases.".format(region_id, stop - start, REGION_LIMIT))
+        if stop < start:
+            return error_page("The region you requested, '{}', stops before it starts.  Did you mean '{chrom}-{stop}-{start}'?".format(region_id, chrom=chrom, start=start, stop=stop))
         if start == stop:
             start -= 20
             stop += 20
+
         genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
         variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
         xstart = get_xpos(chrom, start)
@@ -590,6 +581,7 @@ def region_page(region_id):
 def dbsnp_page(rsid):
     db = get_db()
     try:
+        print 'Rendering multi-variant rsid: %s' % rsid
         variants = lookups.get_variants_by_rsid(db, rsid)
         chrom = None
         start = None
