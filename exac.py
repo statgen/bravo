@@ -583,21 +583,11 @@ def dbsnp_page(rsid):
     try:
         print 'Rendering multi-variant rsid: %s' % rsid
         variants = lookups.get_variants_by_rsid(db, rsid)
-        chrom = None
-        start = None
-        stop = None
-        print 'Rendering rsid: %s' % rsid
-        return render_template(
-            'region.html',
-            rsid=rsid,
-            variants_in_region=variants,
-            chrom=chrom,
-            start=start,
-            stop=stop,
-            coverage=None,
-            genes_in_region=None,
-            csq_order=csq_order,
-        )
+        if variants is None or len(variants) == 0:
+            return error_page("There are no variants with the rsid '{}'".format(rsid))
+        return error_page('There are multiple variants at the location of rsid {}: {}'.format(
+            rsid,
+            ', '.join('{chrom}-{pos}-{ref}-{alt}'.format(**variant) for variant in variants)))
     except Exception, e:
         print 'Failed on rsid:', rsid, ';Error=', traceback.format_exc()
         abort(404)
