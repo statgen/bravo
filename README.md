@@ -57,8 +57,8 @@ Then run:
 
 ### Precalculate some things in the database
 
-    python manage.py precalculate_metrics
-    python manage.py precalculate_whether_variant_is_ever_missense_or_lof
+    ./manage.py precalculate_metrics
+    ./manage.py precalculate_whether_variant_is_ever_missense_or_lof
 
 
 ### Generate coverage files and configure the browser to use them
@@ -86,7 +86,7 @@ While the other operations here are all idempotent, this one will wipe your user
 You can run the development server with:
 
     source venv/bin/activate
-    python2 exac.py
+    ./exac.py
 
 And visit on your browser:
 
@@ -96,4 +96,4 @@ And visit on your browser:
 
 For testing, you can open up an interactive shell with:
 
-    python manage.py shell
+    ./manage.py shell
