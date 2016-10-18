@@ -732,4 +732,9 @@ def apply_caching(response):
 
 
 if __name__ == "__main__":
-    app.run(host='browser.sph.umich.edu', port=5002, threaded=True)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', default='0.0.0.0', help='the hostname to use to access this server')
+    parser.add_argument('--port', type=int, default=5000, help='an integer for the accumulator')
+    args = parser.parse_args()
+    app.run(host=args.host, port=args.port, threaded=True)
