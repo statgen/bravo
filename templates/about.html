@@ -5,12 +5,25 @@
             <div class="col-xs-10 col-xs-offset-1 col-md-8 col-xl-6">
                 <h1 style="margin-bottom: 1em">About {{ config['BROWSER_NAME'] }}</h1>
                 <p>
-                  If you have a question about this website, contact <a href="mailto:pjvh@umich.edu">pjvh@umich.edu</a>
+                  This variant browser currently shows chromosome locations, alleles, VEP functional annotations,
+                  and allele frequencies for {{ "{:,}".format(num_variants) }} variants observed in {{ "{:,}".format(config['NUM_SAMPLES']) }} individuals
+                  sequenced in <a href="http://nhlbiwgs.org/">NHLBI's TOPMed program</a>.
                 </p>
-                <br/>
                 <p>
-                  This variant browser currently show chromosome locations, alleles, VEP annotations, and allele frequencies for a subset of the variants observed in {{ config['DATASET_NAME'] }}..
-                  The information is restricted to variants ovserved in individuals with GRU (General Research Use) or HMB (Health/Medical/Biomedical) consent.
+                  The information is shared by <a href="https://www.nhlbiwgs.org/group/project-studies-phase-1">TOPMed Phase 1 studies</a>
+                  and is available for users that agree to <a href="{{ url_for('terms_page') }}">the terms</a>.
+                </p>
+                <p>
+                  The sequencing analysis pipeline consists of two major processes:
+                  <ol>
+                    <li>Harmonization of data from the BAM files provided by the sequencing centers and</li>
+                    <li>Joint variant discovery and genotype calling across studies.</li>
+                  </ol>
+                  The alignment pipeline is available at <a href="http://github.com/statgen/gotcloud">github.com/statgen/gotcloud</a>
+                  and the variant calling pipeline is available at <a href="https://github.com/statgen/topmed_freeze3_calling">github.com/statgen/topmed_freeze3_calling</a>.
+                </p>
+                <p>
+                  If you have a question about this website, contact pjvh@umich.edu.
                 </p>
             </div>
         </div>

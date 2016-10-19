@@ -609,7 +609,10 @@ def error_page(message):
 
 @app.route('/about')
 def about_page():
-    return render_template('about.html')
+    db = get_db()
+    num_variants = db.variants.count()
+    return render_template('about.html',
+                           num_variants=num_variants)
 
 @app.route('/terms')
 def terms_page():
