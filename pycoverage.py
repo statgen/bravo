@@ -4,6 +4,11 @@ from intervaltree import IntervalTree
 import sys
 import utils
 
+# TODO:
+# - organize first by contig, then by lengths.
+# - assert that ranges are (1) never overlapping and (2) cover [0,inf]
+#    - so, maybe each (filepath,contig) should just have a min_length.  Then we use bisect.
+
 class Coverage(object):
 
     def __init__(self):
@@ -21,14 +26,17 @@ class Coverage(object):
             handler.close()
 
     def getCoverage(self, contig, start, end):
-        return [json.loads(row[2]) for row in self.tabix_handler[contig].fetch(contig, start, end + 1, parser = pysam.asTuple())]
+        try:
+            handler = self.tabix_handler[contig]
+        except KeyError:
+            return None
+        return [json.loads(row[2]) for row in handler.fetch(contig, start, end + 1, parser = pysam.asTuple())]
 
     def getCoverageX(self, xstart, xend):
         contig = utils.CHROMOSOME_NUMBER_TO_CODE[xstart // int(1e9)]
         if contig.startswith('chr'): contig = contig[3:] # TODO: this is gross, why do I need to do this?
-        #contig = str(xstart // 1000000000)
-        start = xstart % 1000000000
-        end = xend % 1000000000
+        start = xstart % int(1e9)
+        end = xend % int(1e9)
         return self.getCoverage(contig, start, end)
 
 
@@ -38,15 +46,9 @@ class CoverageCollection(object):
         self.collection = IntervalTree()
 
     def setTabixPath(self, min_length, max_length, contig, path):
-        coverages = self.collection.search(min_length, max_length)
-        if coverages:
-            for coverage in coverages:
-                coverage.data.setTabixPath(contig, path)
-                break
-        else:
-            coverage = Coverage()
-            coverage.setTabixPath(contig, path)
-            self.collection[min_length:max_length] = coverage
+        coverage = Coverage()
+        coverage.setTabixPath(contig, path)
+        self.collection[min_length:max_length] = coverage
 
     def openAll(self):
         for coverage in self.collection.items():
@@ -62,14 +64,15 @@ class CoverageCollection(object):
 
     def getCoverage(self, contig, start, end):
         for coverage in self.collection.search(end - start):
-            return coverage.data.getCoverage(contig, start, end)
-
+            rv = coverage.data.getCoverage(contig, start, end)
+            if rv is not None: return rv
         return []
 
     def getCoverageX(self, xstart, xend):
         for coverage in self.collection.search(xend - xstart):
-            return coverage.data.getCoverageX(xstart, xend)
-
+            rv = coverage.data.getCoverageX(xstart, xend)
+            if rv is not None:
+                return rv
         return []
 
     def printAll(self):
