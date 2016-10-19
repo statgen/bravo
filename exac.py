@@ -58,8 +58,7 @@ def get_coverages():
     if not hasattr(get_coverages, '_cache'):
         coverages = CoverageCollection()
         for coverage in app.config['BASE_COVERAGE']:
-            for contig, path in coverage['path'].iteritems():
-                coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], contig, path)
+            coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], coverage['chrom'], coverage['path'])
         coverages.openAll()
         get_coverages._cache = coverages
     return get_coverages._cache
