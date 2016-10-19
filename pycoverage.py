@@ -2,6 +2,7 @@ import json
 import pysam
 from intervaltree import IntervalTree
 import sys
+import utils
 
 class Coverage(object):
 
@@ -23,7 +24,9 @@ class Coverage(object):
         return [json.loads(row[2]) for row in self.tabix_handler[contig].fetch(contig, start, end + 1, parser = pysam.asTuple())]
 
     def getCoverageX(self, xstart, xend):
-        contig = str(xstart // 1000000000)
+        contig = utils.CHROMOSOME_NUMBER_TO_CODE[xstart // int(1e9)]
+        if contig.startswith('chr'): contig = contig[3:] # TODO: this is gross, why do I need to do this?
+        #contig = str(xstart // 1000000000)
         start = xstart % 1000000000
         end = xend % 1000000000
         return self.getCoverage(contig, start, end)
