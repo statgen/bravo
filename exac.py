@@ -688,17 +688,21 @@ def get_authorized():
             orig_dest = session['original_destination']
             del session['original_destination'] # We don't want old destinations hanging around.  If this leads to problems with re-opening windows, disable this line.
         else:
-            orig_dest = '/'
+            orig_dest = url_for('homepage')
         return redirect(orig_dest)
 
 @app.route('/callback/google')
 def oauth_callback_google():
     if not current_user.is_anonymous:
         return redirect(url_for('homepage'))
-    username, email = google_sign_in.callback() # oauth.callback reads request.args.
+    try:
+        username, email = google_sign_in.callback() # oauth.callback reads request.args.
+    except:
+        flash('Something is wrong with authentication.  Please email pjvh@umich.edu')
+        return redirect(url_for('homepage'))
     if email is None:
         # I need a valid email address for my user identification
-        flash('Authentication failed.')
+        flash('Authentication failed by failing to get an email address.  Please email pjvh@umich.edu')
         return redirect(url_for('homepage'))
 
     if email.lower() not in app.config['EMAIL_WHITELIST']:
