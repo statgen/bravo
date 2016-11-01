@@ -12,16 +12,16 @@
         <tr>
             <th class="tooltip-table-header omit_csv" data-tooltip="reference/alternate &#xa;(dbSNP144 rsID)">
                 Allele</th>
-            <th>Position on chr{{ chrom }}</th>
+            <th class="hidden-xs">Position on chr{{ chrom }}</th>
             <td class="hidden">RSID</td>
             <th class="hidden">Reference</th>
             <th class="hidden">Alternate</th>
-            <th class="hidden-xs tooltip-table-header" data-tooltip="HGVS annotation (protein change, where defined, or transcript change for splice variants, otherwise empty)">Consequence</th>
+            <th class="tooltip-table-header" data-tooltip="HGVS annotation (protein change, where defined, or transcript change for splice variants, otherwise empty)">Consequence</th>
             <th class="hidden">Protein Consequence</th>
             <th class="hidden">Transcript Consequence</th>
             <th class="hidden-sm tooltip-table-header" data-tooltip="VQSR sensitivity filter & hard filters">Filter</th>
             <th class="tooltip-table-header" data-tooltip="Variant Effect Predictor (VEP) &#xa; annotation using Ensembl 75 and Gencode 19.&#xa; Worst across all transcripts of this gene.">Annotation</th>
-            <th class="tooltip-table-header">
+            <th class="tooltip-table-header" data-tooltip="PHRED-scaled CADD score">
                 CADD score</th>
             <th class="hidden-xs tooltip-table-header" data-tooltip="Number of alternate alleles called">
                 Allele Count</th>
@@ -62,11 +62,11 @@
                 <% } %>
                 </a>
             </td>
-            <td style="text-align:right;padding-right:2em;" data-pos="<%= variant.pos %>"> <%= variant.pos.toLocaleString() %></td>
+            <td class="hidden-xs" style="text-align:right;padding-right:2em;" data-pos="<%= variant.pos %>"> <%= variant.pos.toLocaleString() %></td>
             <td class="hidden"><%= variant.rsids.join(", ") %></td>
             <th class="hidden"> <%= variant.ref %></th>
             <th class="hidden"> <%= variant.alt %></th>
-            <td class='hidden-xs'>
+            <td>
                 <% if (variant.HGVS != '') { %>
                     <% if (variant.HGVS.length > 20) { %>
                         <%= variant.HGVS.slice(0,20) %>...
