@@ -2,11 +2,11 @@ from flask import url_for, redirect, request
 from rauth import OAuth2Service
 
 import json, urllib2
+import requests
 
 class GoogleSignIn(object):
     def __init__(self, current_app):
-        googleinfo = urllib2.urlopen('https://accounts.google.com/.well-known/openid-configuration')
-        google_params = json.load(googleinfo)
+        google_params = self._get_google_info()
         self.service = OAuth2Service(
             name='google',
             client_id=current_app.config['GOOGLE_LOGIN_CLIENT_ID'],
@@ -15,6 +15,16 @@ class GoogleSignIn(object):
             base_url=google_params.get('userinfo_endpoint'),
             access_token_url=google_params.get('token_endpoint')
         )
+
+    def _get_google_info(self):
+        # Previously I used:
+        #  import urllib3.contrib.pyopenssl
+        #  urllib3.contrib.pyopenssl.inject_into_urllib3()
+        #  googleinfo = urllib2.urlopen('https://accounts.google.com/.well-known/openid-configuration')
+        #  return json.load(googleinfo)
+        r = requests.get('https://accounts.google.com/.well-known/openid-configuration')
+        r.raise_for_status()
+        return json.loads(r.text)
 
     def authorize(self):
         return redirect(self.service.get_authorize_url(
