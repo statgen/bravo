@@ -697,7 +697,10 @@ def oauth_callback_google():
         return redirect(url_for('homepage'))
     try:
         username, email = google_sign_in.callback() # oauth.callback reads request.args.
-    except:
+    except Exception as exc:
+        print('Error in google_sign_in.callback():')
+        print(exc)
+        print(traceback.format_exc())
         flash('Something is wrong with authentication.  Please email pjvh@umich.edu')
         return redirect(url_for('homepage'))
     if email is None:

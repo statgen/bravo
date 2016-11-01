@@ -4,6 +4,10 @@ from rauth import OAuth2Service
 import json, urllib2
 import requests
 
+# It seems like everything is working without these two lines, and I'm not sure why: (maybe because I installed `requests[security]`?)
+# import urllib3.contrib.pyopenssl
+# urllib3.contrib.pyopenssl.inject_into_urllib3()
+
 class GoogleSignIn(object):
     def __init__(self, current_app):
         google_params = self._get_google_info()
@@ -18,8 +22,6 @@ class GoogleSignIn(object):
 
     def _get_google_info(self):
         # Previously I used:
-        #  import urllib3.contrib.pyopenssl
-        #  urllib3.contrib.pyopenssl.inject_into_urllib3()
         #  googleinfo = urllib2.urlopen('https://accounts.google.com/.well-known/openid-configuration')
         #  return json.load(googleinfo)
         r = requests.get('https://accounts.google.com/.well-known/openid-configuration')
@@ -41,15 +43,14 @@ class GoogleSignIn(object):
     def callback(self):
         if 'code' not in request.args:
             return (None, None)
-        # The following two commands are based on `requests` and pass **kwargs to it.
+        # The following two commands pass **kwargs to requests.
         oauth_session = self.service.get_auth_session(
                 data={'code': request.args['code'],
                       'grant_type': 'authorization_code',
                       'redirect_uri': self.get_callback_url()
                      },
-                decoder = json.loads,
-                verify = False
+                decoder = json.loads
         )
-        me = oauth_session.get('', verify=False).json()
+        me = oauth_session.get('').json()
         return (me['name'],
                 me['email'])
