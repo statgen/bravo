@@ -39,6 +39,12 @@ def precalculate_whether_variant_is_ever_missense_or_lof():
 def create_users():
     exac.create_users()
 
+@manager.command
+def all_variants():
+    exac.load_variants_file()
+    exac.precalculate_whether_variant_is_ever_missense_or_lof()
+    exac.precalculate_metrics()
+
 if __name__ == "__main__":
     manager.run()
 
