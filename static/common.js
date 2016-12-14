@@ -81,7 +81,10 @@ function with_waiting_notice(f) {
             limit: 10,
             templates: {
                 suggestion: _.template("<div><%= value %></div>"),
-                empty: "<div class='tt-empty-message'>No matches found.</div>"
+                // Currently, variants and rsids do not give autocomplete results.
+                // So, if `empty` is enabled, then they always say "No matches found", even though there ARE matches.
+                // So, I'm removing this.  A bad solution, but better than nothing.
+                //empty: "<div class='tt-empty-message'>No matches found.</div>"
             }
         });
 
