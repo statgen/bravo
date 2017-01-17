@@ -27,26 +27,53 @@ Use `data/remove_ac0.py` to remove variants that never vary.
 Use `data/import_info.py` with some options (I don't know which) to copy some INFO fields from one vcf (eg, your full vcf) into another (eg, your sites vcf)
 
 
+### Make some config for your new dataset
+In `flask_config.py`, there's one section (actually a python class) for each dataset.  Make (or repurpose) a section for your dataset.
+
+Then make sure that `exac.py` uses the name of your dataset on the line `app.config.from_object('flask_config.<name_of_dataset>')`.
+
+
+## Set up OAuth and an email whitelist
+In your section of `flask_config.py`, the variable `EMAIL_WHITELIST` should be a list of allowed email addresses.  Currently that list is made in a separate file like `whitelist_topmed.py` and imported into `flask_config.py`, but you could just use a list instead.  If the list is empty or false (ie, `EMAIL_WHITELIST = False`), any email will be allowed.
+
+You need to set up a OAuth with Google.  Go to <https://console.developers.google.com/apis/credentials> and create a project.  In the list "Authorized redirect URIs" add your OAuth callback URL, which should look like <https://example.com/callback/google> or <https://example.com:5000/callback/google>.  Then copy the client ID and secret from the top of that page into `flask_config.py` for the variables `GOOGLE_LOGIN_CLIENT_ID` and `GOOGLE_LOGIN_CLIENT_SECRET`.
+
+
 ### Import data into Mongo
 
-You'll need files like the following:
+You'll need the following files:
 
-    ALL.polymorphic.vcf.gz (this is the VCF from the section "Prepare a VCF")
-    ALL.polymorphic.vcf.gz.tbi
-    canonical_transcripts.txt.gz
-    dbsnp144.txt.bgz
-    dbsnp144.txt.bgz.tbi
-    gencode.gtf.gz
-    omim_info.txt.gz
-    dbNSFP2.6_gene.gz (used in parsing.py? TODO)
+- `ALL.polymorphic.vcf.gz`
+    - this is the VCF from the section "Prepare a VCF"
+    - stored in the variable `SITES_VCFS`.  If you want to use a different name or multiple files, just make sure that pattern for `SITES_VCFS` in `flask_config.py` matches all of your files.
+    - used by `load_variants_file()`
+- `ALL.polymorphic.vcf.gz.tbi`
+- `canonical_transcripts.txt.gz`
+    - stored in the variable `CANONICAL_TRANSCRIPT_FILE`
+    - used by `load_gene_models()`
+- `dbsnp149.txt.bgz`
+    - stored in `DBSNP_FILE`
+    - used by `load_dbsnp_file()`
+    - everything should work fine with a newer version of dbSNP
+    - you should be able to make this by running (possibly after updating version numbers):
 
-Put these in a directory, and store that directory in `_FILES_DIRECTORY` in `flask_config.py`.  As long as the names match our patterns, those files should correctly be stored in:
+            wget dbsnp149.bcp.gz ftp://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606_b149_GRCh37p13/database/organism_data/b149_SNPChrPosOnRef_105.bcp.gz
+            zcat dbsnp149.bcp.gz | awk '$3 != ""' | perl -pe 's/ +/\t/g' | sort -k2,2 -k3,3n | bgzip -c > dbsnp149.txt.bgz
+            tabix -s 2 -b 3 -e 3 dbsnp149.txt.bgz
 
-- `SITES_VCFS`: used by `load_variants_file()`
-- `DBSNP_FILE`: used by `load_dbsnp_file()`
-- `GENCODE_GTF`: used by `load_gene_models()`
-- `CANONICAL_TRANSCRIPT_FILE`: used by `load_gene_models()`
-- `OMIM_FILE`: used by `load_gene_models()`
+    - you will have to update the pattern for this file in your section of `flask_config.py`.
+- `dbsnp149.txt.bgz.tbi`
+- `gencode.gtf.gz`
+    - stored in `GENCODE_GTF`
+    - used by `load_gene_models()`
+- `omim_info.txt.gz`
+    - stored in `OMIM_FILE`
+    - used by `load_gene_models()`
+- `dbNSFP2.6_gene.gz`
+    - stored in `DBNSFP_FILE`
+    - used by `load_gene_models()`
+
+Put these in a directory, and store that directory in `_FILES_DIRECTORY` in your section of `flask_config.py`.  If you use exactly these names, everything should work.  If you change names, modify the file-matching patterns in your section of `flask_config.py`.
 
 Then run:
 
