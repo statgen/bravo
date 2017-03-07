@@ -39,6 +39,10 @@ In your section of `flask_config.py`, the variable `EMAIL_WHITELIST` should be a
 You need to set up a OAuth with Google.  Go to <https://console.developers.google.com/apis/credentials> and create a project.  In the list "Authorized redirect URIs" add your OAuth callback URL, which should look like <https://example.com/callback/google> or <https://example.com:5000/callback/google>.  Then copy the client ID and secret from the top of that page into `flask_config.py` for the variables `GOOGLE_LOGIN_CLIENT_ID` and `GOOGLE_LOGIN_CLIENT_SECRET`.
 
 
+## Set up Google Analytics (optional)
+Go to <https://analytics.google.com/analytics/web> and do whatever you have to to get your own `UA-xxxxxx-xx` tracking id.  Put that in `flask_config.py`.  Or just leave the default `UA-01234567-89`, and you won't receive any of the tracking data.
+
+
 ### Import data into Mongo
 
 You'll need the following files:
@@ -54,10 +58,10 @@ You'll need the following files:
 - `dbsnp149.txt.bgz`
     - stored in `DBSNP_FILE`
     - used by `load_dbsnp_file()`
-    - everything should work fine with a newer version of dbSNP
+    - as dbSNP updates, they drop older versions, so you might have to update from 149 to something higher. Everything should probably work fine with newer versions of dbSNP
     - you should be able to make this by running (possibly after updating version numbers):
 
-            wget dbsnp149.bcp.gz ftp://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606_b149_GRCh37p13/database/organism_data/b149_SNPChrPosOnRef_105.bcp.gz
+            wget -O dbsnp149.bcp.gz ftp://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606_b149_GRCh37p13/database/organism_data/b149_SNPChrPosOnRef_105.bcp.gz
             zcat dbsnp149.bcp.gz | awk '$3 != ""' | perl -pe 's/ +/\t/g' | sort -k2,2 -k3,3n | bgzip -c > dbsnp149.txt.bgz
             tabix -s 2 -b 3 -e 3 dbsnp149.txt.bgz
 
