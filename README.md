@@ -47,15 +47,17 @@ Go to <https://analytics.google.com/analytics/web> and do whatever you have to t
 
 You'll need the following files:
 
-- `ALL.polymorphic.vcf.gz`
+- `ALL.vcf.gz` and `ALL.vcf.gz.tbi`
     - this is the VCF from the section "Prepare a VCF"
     - stored in the variable `SITES_VCFS`.  If you want to use a different name or multiple files, just make sure that pattern for `SITES_VCFS` in `flask_config.py` matches all of your files.
     - used by `load_variants_file()`
-- `ALL.polymorphic.vcf.gz.tbi`
+
 - `canonical_transcripts.txt.gz`
     - stored in the variable `CANONICAL_TRANSCRIPT_FILE`
     - used by `load_gene_models()`
-- `dbsnp149.txt.bgz`
+    - I'm not sure where to get this.  I see that exac provides one at <https://personal.broadinstitute.org/konradk/exac_browser/>, but that's old.  I can't understand <https://www.gencodegenes.org/gencode_tags.html>.  Gencode talks about canonical transcripts [here](http://www.ensembl.org/Help/Glossary?id=346;redirect=no) but I can't find any other references to them.  APPRIS lists canonical transcripts [here](http://apprisws.bioinfo.cnio.es/pub/current_release/datafiles/homo_sapiens/GRCh37/appris_data.principal.txt) but some genes are missing and some have two tied principle transcripts.  Maybe I just need to follow Gencode's definition and make these by hand.
+
+- `dbsnp149.txt.bgz` and `dbsnp149.txt.bgz.tbi`
     - stored in `DBSNP_FILE`
     - used by `load_dbsnp_file()`
     - as dbSNP updates, they drop older versions, so you might have to update from 149 to something higher. Everything should probably work fine with newer versions of dbSNP
@@ -66,16 +68,21 @@ You'll need the following files:
             tabix -s 2 -b 3 -e 3 dbsnp149.txt.bgz
 
     - you will have to update the pattern for this file in your section of `flask_config.py`.
-- `dbsnp149.txt.bgz.tbi`
+
 - `gencode.gtf.gz`
     - stored in `GENCODE_GTF`
     - used by `load_gene_models()`
+    - this can be downloaded from [here](https://personal.broadinstitute.org/konradk/exac_browser/), but that's out-of-date.  Gencode v25 for GRCh37 is [here](ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/GRCh37_mapping/gencode.v25lift37.annotation.gtf.gz) and should work fine but hasn't been tested.
+
 - `omim_info.txt.gz`
     - stored in `OMIM_FILE`
     - used by `load_gene_models()`
+    - This can be downloaded from [ExAC](https://personal.broadinstitute.org/konradk/exac_browser/), but that's out-of-date.  This isn't <https://omim.org/static/omim/data/mim2gene.txt>, maybe it's one of the educational-use-only files on that download page.
+
 - `dbNSFP2.6_gene.gz`
     - stored in `DBNSFP_FILE`
     - used by `load_gene_models()`
+    - this can be downloaded from [this site](https://sites.google.com/site/jpopgen/dbNSFP).  Our version is out-of-date and should be replaced by <http://genenames.org>.
 
 Put these in a directory, and store that directory in `_FILES_DIRECTORY` in your section of `flask_config.py`.  If you use exactly these names, everything should work.  If you change names, modify the file-matching patterns in your section of `flask_config.py`.
 
