@@ -370,7 +370,7 @@ $(document).ready(function() {
 
 function check_for_variant_in_clinvar() {
     var clinvar_searches = _.map(variant.rsids, function(rsid) {
-        var clinvar_query = 'term={RSID}[Variant%20ID]&retmode=json'.replace('{RSID}', rsid);
+        var clinvar_query = 'term={RSID}&retmode=json'.replace('{RSID}', rsid);
         return {
             xhr_url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=clinvar&' + clinvar_query,
             name: rsid,
