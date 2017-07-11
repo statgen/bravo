@@ -33,13 +33,13 @@ In `flask_config.py`, there's one section (actually a python class) for each dat
 Then make sure that `exac.py` uses the name of your dataset on the line `app.config.from_object('flask_config.<name_of_dataset>')`.
 
 
-## Set up OAuth and an email whitelist
+### Set up OAuth and an email whitelist
 In your section of `flask_config.py`, the variable `EMAIL_WHITELIST` should be a list of allowed email addresses.  Currently that list is made in a separate file like `whitelist_topmed.py` and imported into `flask_config.py`, but you could just use a list instead.  If the list is empty or false (ie, `EMAIL_WHITELIST = False`), any email will be allowed.
 
 You need to set up a OAuth with Google.  Go [here](https://console.developers.google.com/apis/credentials) and create a project.  In the list "Authorized redirect URIs" add your OAuth callback URL, which should look like `https://example.com/callback/google` or `https://example.com:5000/callback/google`.  Then copy the client ID and secret from the top of that page into `flask_config.py` for the variables `GOOGLE_LOGIN_CLIENT_ID` and `GOOGLE_LOGIN_CLIENT_SECRET`.
 
 
-## Set up Google Analytics (optional)
+### Set up Google Analytics (optional)
 Go [here](https://analytics.google.com/analytics/web) and do whatever you have to to get your own `UA-xxxxxx-xx` tracking id.  Put that in `flask_config.py`.  Or just leave the default `UA-01234567-89`, and you won't receive any of the tracking data.
 
 
