@@ -29,7 +29,7 @@ import functools
 import contextlib
 
 app = Flask(__name__)
-app.config.from_object('flask_config.BravoTestConfig')
+app.config.from_object('flask_config.BravoFreeze3PublicConfig')
 mail_on_500(app, app.config['ADMINS'])
 Compress(app)
 
@@ -74,6 +74,7 @@ def get_tabix_file_contig_pairs(tabix_filenames):
                 yield (tabix_filename, contig)
 
 def get_records_from_tabix_contig(tabix_filename, contig, record_parser):
+    # TODO: we can do better than splitting up just "contigs" (chromosomes).  Why not split chromosomes into pieces?
     start_time = time.time()
     with pysam.Tabixfile(tabix_filename) as tabix_file:
         record_i = 0 # in case record_parser never yields anything.
@@ -608,7 +609,10 @@ def error_page(message):
 
 @app.route('/about')
 def about_page():
-    return render_template('about.html')
+    db = get_db()
+    num_variants = db.variants.count()
+    return render_template('about.html',
+                           num_variants=num_variants)
 
 @app.route('/terms')
 def terms_page():

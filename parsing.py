@@ -71,8 +71,9 @@ def get_variants_from_sites_vcf(sites_vcf):
                 dp_mids = map(float, line.split('Mids: ')[-1].strip('">').split('|'))
             if line.startswith('##INFO=<ID=GQ_HIST'):
                 gq_mids = map(float, line.split('Mids: ')[-1].strip('">').split('|'))
-            if line.startswith('##INFO=<ID=AVGDP'):
-                contains_avgdp = True
+            # PJVH: Freeze3a contains a header for AVGDP but doesn't have it in INFO.
+            # if line.startswith('##INFO=<ID=AVGDP'):
+            #     contains_avgdp = True
             if line.startswith('#'):
                 continue
 
