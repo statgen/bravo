@@ -55,7 +55,7 @@ You'll need the following files:
 - `canonical_transcripts.txt.gz`
     - stored in the variable `CANONICAL_TRANSCRIPT_FILE`
     - used by `load_gene_models()`
-    - I'm not sure where to get this.  I see that exac provides one [here](https://personal.broadinstitute.org/konradk/exac_browser/), but that's old.  I can't understand [this page](https://www.gencodegenes.org/gencode_tags.html).  Gencode talks about canonical transcripts [here](http://www.ensembl.org/Help/Glossary?id=346;redirect=no) but I can't find any other references to them.  APPRIS lists canonical transcripts [here](http://apprisws.bioinfo.cnio.es/pub/current_release/datafiles/homo_sapiens/GRCh37/appris_data.principal.txt) but some genes are missing and some have two tied principle transcripts.  Maybe I just need to follow Gencode's definition and make these by hand.
+    - this can be obtained with `perl download_canonical_transcripts.pl | gzip -c > canonical_transcripts.txt.gz`. Note that to run `download_canonical_transcripts.pl` you will need to install Ensembl API perl modules.
 
 - `dbsnp149.txt.bgz` and `dbsnp149.txt.bgz.tbi`
     - stored in `DBSNP_FILE`
