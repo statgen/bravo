@@ -72,7 +72,7 @@ You'll need the following files:
 - `gencode.gtf.gz`
     - stored in `GENCODE_GTF`
     - used by `load_gene_models()`
-    - this can be downloaded from [here](https://personal.broadinstitute.org/konradk/exac_browser/), but that's out-of-date.  Gencode v25 for GRCh37 is [here](ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_25/GRCh37_mapping/gencode.v25lift37.annotation.gtf.gz) and should work fine but hasn't been tested.
+    - this can be downloaded from [here](https://www.gencodegenes.org/releases/current.html)
 
 - `omim_info.txt.gz`
     - stored in `OMIM_FILE`
