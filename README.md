@@ -77,7 +77,10 @@ You'll need the following files:
 - `omim_info.txt.gz`
     - stored in `OMIM_FILE`
     - used by `load_gene_models()`
-    - This can be downloaded from [ExAC](https://personal.broadinstitute.org/konradk/exac_browser/), but that's out-of-date.  This isn't [mim2gene](https://omim.org/static/omim/data/mim2gene.txt), maybe it's one of the educational-use-only files on that download page.
+    - this can be downloaded from Ensembl BioMart:
+        - "Ensembl Genes" database 
+        - "Human genes" dataset 
+        - "Gene stable ID", "Transcript stable ID", "MIM gene accession", "MIM gene description" attributes
 
 - `dbNSFP2.6_gene.gz`
     - stored in `DBNSFP_FILE`
