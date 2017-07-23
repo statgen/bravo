@@ -104,7 +104,8 @@ def get_variants_from_sites_vcf(sites_vcf):
                 pos, ref, alt = get_minimal_representation(fields[1], fields[3], alt_allele)
 
                 variant = {}
-                variant['chrom'] = fields[0]
+                #variant['chrom'] = fields[0]
+		variant['chrom'] = fields[0][3:] if fields[0].startswith('chr') else fields[0]
                 variant['pos'] = pos
 
                 #DT: We will take rsIds and CADD from the VEP annotation
