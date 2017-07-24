@@ -240,14 +240,25 @@ def get_minimal_representation(pos, ref, alt):
             pos += 1
         return pos, ref, alt
 
+# DT: XYZ_MAF were renamed to XYZ_AG in new VEP versions
 # Note: I don't know why these are named "MAF".  They are often > 50%.
+#POP_AFS_1000G = {
+#    "EAS_MAF": "1000G East Asian",
+#    "AFR_MAF": "1000G African",
+#    "EUR_MAF": "1000G European",
+#    "SAS_MAF": "1000G South Asian",
+#    "AMR_MAF": "1000G American"
+#}
+
 POP_AFS_1000G = {
-    "EAS_MAF": "1000G East Asian",
-    "AFR_MAF": "1000G African",
-    "EUR_MAF": "1000G European",
-    "SAS_MAF": "1000G South Asian",
-    "AMR_MAF": "1000G American"
+    "EAS_AF": "1000G East Asian",
+    "AFR_AF": "1000G African",
+    "EUR_AF": "1000G European",
+    "SAS_AF": "1000G South Asian",
+    "AMR_AF": "1000G American"
 }
+
+
 def get_pop_afs(variant):
     """
     Convert the nasty output of VEP into a decent dictionary of population AFs.
@@ -260,22 +271,26 @@ def get_pop_afs(variant):
     try:
         pop_strings = {}
         for pop in POP_AFS_1000G:
-            values = [ann[pop] for ann in variant['vep_annotations']]
+            # DT: due to format change in new VEP
+            # values = [ann[pop] for ann in variant['vep_annotations']]
+	    values = [ann[pop] for ann in variant['vep_annotations'] if ann['Allele'] == variant['alt'] or ann['Allele'] == '-']
             assert all(value == values[0] for value in values)
             pop_strings[pop] = values[0]
 
         pop_acs = {}
         for pop_key, pop_name in POP_AFS_1000G.items():
-            d = {}
-            for alt_af in pop_strings[pop_key].split('&'):
-                if ':' in alt_af:
-                    k, v = alt_af.split(':')
-                    assert all(letter in 'ACTG-' for letter in k)
-                    d[k] = float(v)
-            try:
-                pop_acs[pop_name] = d[variant['alt']]
-            except KeyError:
-                pass
+           pop_acs[pop_name] = float(pop_strings[pop_key])
+        # DT: due to format change in new VEP
+        #    d = {}
+        #    for alt_af in pop_strings[pop_key].split('&'):
+        #        if ':' in alt_af:
+        #            k, v = alt_af.split(':')
+        #            assert all(letter in 'ACTG-' for letter in k)
+        #            d[k] = float(v)
+        #    try:
+        #        pop_acs[pop_name] = d[variant['alt']]
+        #    except KeyError:
+        #        pass
         if all(v==0 for v in pop_acs.values()):
             return {}
         return pop_acs
