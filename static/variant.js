@@ -81,7 +81,7 @@ function draw_region_coverage(raw_data, metric, ref) {
                 .attr("height", function(d) { return quality_chart_height - y(d[metric]); })
                 .attr("y", function(d) { return y(d[metric]); });
         }
-    } else {
+    } else if (raw_data.length == 1) {
         var data = {};
         $.each(raw_data[0], function(d, i) {
             var num = parseInt(d);
