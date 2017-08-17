@@ -1,9 +1,10 @@
 import re
-from utils import *
+from utils import * # TODO: explicitly list
 import itertools
 import pysam
 import json
 import time
+import pymongo
 
 SEARCH_LIMIT = 10000
 
@@ -364,3 +365,86 @@ def get_exons_in_gene(db, gene_id):
     Returns the "exons", sorted by position.
     """
     return sorted(list(db.exons.find({'gene_id': gene_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])
+
+
+
+def get_variants_for_table(db, xstart, xend, columns, order, filter_info, start, length):
+    st = time.time()
+
+    mongo_region = {'xpos': {'$gte': xstart, '$lte': xend}}
+    n_variants = db.variants.find(mongo_region, projection={'_id': False}).count()
+    print '## {:0.3f} sec:'.format(time.time()-st), 'n_variants={}'.format(n_variants); st = time.time()
+
+    cols = { # `in` comes from mongo.  `out` goes to API.  `inout` goes straight from mongo to API.
+      'allele': {'inout': ['rsids', 'ref', 'alt']},
+      'pos': {'orderable': True},
+      'hgvs': {'in': ['vep_annotations'], 'out': ['HGVS', 'CANONICAL']},
+      'category': {'in': ['vep_annotations'], 'out': ['category']},
+      'csq': {'in': ['vep_annotations'], 'out': ['major_consequence']},
+      'filter': {},
+      'allele_count': {'orderable': True},
+      'allele_num': {'orderable': True},
+      'hom_count': {'orderable': True},
+      'allele_freq': {'orderable': True},
+    }
+    for name, col in cols.items():
+        if not any(k in col for k in 'inout in out'.split()): col['inout'] = [name]
+        if 'inout' in col: col['in'] = col['out'] = col['inout']
+        if 'orderable' not in col: col['orderable'] = False
+        if col['orderable']: assert len(col['inout']) == 1
+
+    mongo_sort_order = OrderedDict()
+    for d in order:
+        if d['dir'] == 'asc': direction = pymongo.ASCENDING
+        elif d['dir'] == 'desc': direction = pymongo.DESCENDING
+        else: raise Exception(d)
+        colidx = d['column']
+        colname = columns[colidx]['name']
+        if not cols[colname]['orderable']: raise Exception(d)
+        mongo_sort_order[cols[colname]['inout'][0]] = direction
+
+    # TODO: only include cols mentioned in `columns`?
+    keys_for_sort = set(mongo_sort_order.keys()) # used to sort while obtaining `_id`s.
+    keys_from_mongo = {k for col in cols.values() for k in col['in']} # all keys retrieved from mongo (before modifying in python)
+    keys_to_return = {k for col in cols.values() for k in col['out']} # all keys to return in API
+
+    mongo_match = mongo_region
+    if isinstance(filter_info.get('pos_ge',None),int): mongo_match['pos'] = {'$gte': filter_info['pos_ge']}
+    if isinstance(filter_info.get('pos_le',None),int): mongo_match['pos'] = {'$lte': filter_info['pos_le']}
+    if filter_info.get('filter_value',None) is not None:
+        if filter_info['filter_value'] in ['PASS', 'SVM', 'DISC', 'EXHET', 'CHRXHET', 'CEN']: mongo_match['filter'] = {'$regex': '.*{}.*'.format(filter_info['filter_value'])}
+        elif filter_info['filter_value'] == 'not PASS': mongo_match['filter'] = {'$ne': 'PASS'}
+
+    v_ids_curs = db.variants.aggregate([
+        {'$match': mongo_match},
+        {'$project': mkdict(keys_for_sort)},
+        {'$sort': mongo_sort_order},
+        {'$project': {'_id': 1}},
+        {'$group': {'_id':0, 'count':{'$sum':1}, 'results':{'$push':'$$ROOT'}}},
+        {'$project': {'_id':0, 'count':1, 'ids':{'$slice':['$results',start,length]}}},
+    ])
+    print '## {:0.3f} sec:'.format(time.time()-st), 'cursor created'; st = time.time()
+
+    v_ids_result = list(v_ids_curs)
+    if len(v_ids_result) == 0:
+        n_filtered = 0
+        variants = []
+        print '## {:0.3f} sec:'.format(time.time()-st), 'n_filtered={}'.format(n_filtered); st = time.time()
+    else:
+        assert len(v_ids_result) == 1
+        n_filtered = v_ids_result[0]['count']
+        print '## {:0.3f} sec:'.format(time.time()-st), 'n_filtered={}'.format(n_filtered); st = time.time()
+        v_ids = [v['_id'] for v in v_ids_result[0]['ids']]
+        variants = [db.variants.find_one({'_id': vid}, mkdict(keys_from_mongo)) for vid in v_ids]
+        print '## {:0.3f} sec:'.format(time.time()-st), 'len(variants)={}'.format(len(variants)); st = time.time()
+
+    for variant in variants:
+        add_consequence_to_variant(variant)
+        for key in [key for key in variant if key not in keys_to_return]: del variant[key]
+    print '## {:0.3f} sec:'.format(time.time()-st), 'added csq'; st = time.time()
+
+    return {
+        'recordsTotal': n_variants,
+        'recordsFiltered': n_filtered,
+        'data': variants
+    }

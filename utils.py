@@ -369,3 +369,10 @@ class defaultdict_that_passes_key_to_default_factory(dict):
     def __missing__(self, key):
         value = self[key] = self._default_factory(key)
         return value
+
+def indent_pprint(obj):
+    import pprint
+    print '\n'.join('####'+line for line in pprint.pformat(obj).split('\n'))
+def mkdict(*dicts, **ret):
+    for d in dicts: ret.update({k:True for k in d} if isinstance(d, set) else d)
+    return ret

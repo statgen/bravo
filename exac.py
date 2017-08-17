@@ -497,6 +497,34 @@ def variants_gene_api(gene_id):
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
 
+@app.route('/api/variants_for_table', methods=['POST'])
+@require_agreement_to_terms_and_store_destination
+def variants_table_api():
+    db = get_db()
+    try:
+        args = json.loads(request.form['args'])
+        assert isinstance(args['draw'], int)
+
+        filter_info = json.loads(request.form['filter_info'])
+        import pprint; pprint.pprint(filter_info)
+        chrom = filter_info['chrom'].encode()
+        start_pos = int(filter_info['start'])
+        end_pos = int(filter_info['stop'])
+        xstart = get_xpos(chrom, start_pos)
+        xend = get_xpos(chrom, end_pos)
+
+        ret = lookups.get_variants_for_table(
+            db,
+            xstart, xend,
+            args['columns'], args['order'], filter_info,
+            start=args['start'], length=args['length']
+        )
+        ret['draw'] = args['draw']
+        return jsonify(ret)
+    except Exception as e:
+        print 'Failed with:', request.form, ';Error=', traceback.format_exc()
+        abort(404)
+
 @app.route('/api/variants_in_transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def variants_transcript_api(transcript_id):
@@ -747,4 +775,4 @@ if __name__ == "__main__":
     parser.add_argument('--host', default='0.0.0.0', help='the hostname to use to access this server')
     parser.add_argument('--port', type=int, default=5000, help='an integer for the accumulator')
     args = parser.parse_args()
-    app.run(host=args.host, port=args.port, threaded=True)
+    app.run(host=args.host, port=args.port, threaded=True, use_reloader=True)

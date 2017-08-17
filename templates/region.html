@@ -1,17 +1,18 @@
 {% extends "layout.html" %}
 
 {% block in_head %}
+<script type="text/javascript" src="//cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='region.js') }}"></script>
 {% endblock %}
 
 {% block body %}
     <script type="text/javascript">
-        window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
-        window.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
-        window.variants = {{ variants_in_region|tojson(separators=(',',':'))|safe }};
-        window.table_variants = variants;
-        window.start = {{ start|tojson(separators=(',',':'))|safe }};
-        window.stop = {{ stop|tojson(separators=(',',':'))|safe }};
+        window.model = window.model || {};
+        window.model.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
+        window.model.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
+        window.model.chrom = {{ chrom|tojson|safe }};
+        window.model.start = {{ start|tojson(separators=(',',':'))|safe }};
+        window.model.stop = {{ stop|tojson(separators=(',',':'))|safe }};
     </script>
     <div class="container-fluid">
       <div class="row">
@@ -20,7 +21,7 @@
         </div>
       </div>
       <div class="row">
-          <div class="col-xs-12 col-md-offset-1 col-md-10">
+          <div class="col-xs-12">
               <h3>Coverage summary</h3>
               <div id="region_plot">
                     {% include 'coverage_selectors.html' %}
@@ -45,22 +46,13 @@
                 </div>
           </div>
       {% endif %}
-      {% if variants_in_region %}
-            <div class="row">
-                <div class="col-xs-12 col-md-offset-1 col-md-10">
-                    <div class="section_header">Variants</div>
-                    {% with table_variants = variants_in_region %}
-                        {% include 'variant_table.html' %}
-                    {% endwith %}
-                </div>
-            </div>
-      {% endif %}
-      {% if not variants_in_region and not genes_in_region %}
-            <div class="row">
-                <div class="col-xs-12 col-md-offset-1 col-md-10">
-                    <p> There is nothing in this region.</p>
-                </div>
-            </div>
-      {% endif %}
+      <div class="row">
+          <div class="col-xs-12 col-md-offset-1 col-md-10">
+              <div class="section_header">Variants</div>
+              <p>pos between <input type="number" class="dt_filter" id="pos_ge"> and <input type="number" class="dt_filter" id="pos_le"></p>
+              <p>QC = <select class='variant_table_filter' id='filter_value'><option value='*'>any</option><option value='PASS'>PASS</option><option value='not PASS'>not PASS</option><option value='DISC'>DISC</option><option value=EXHET>EXHET</option><option value=SVM>SVM</option><option value=CEN>CEN</option><option value=CHRXHET>CHRXHET</option></select></select></p>
+              <table id="variant_table" class="display compact" cellspacing=0><tbody></tbody></table>
+          </div>
+      </div>
     </div>
 {% endblock %}
