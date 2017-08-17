@@ -368,10 +368,13 @@ def get_exons_in_gene(db, gene_id):
 
 
 
-def get_variants_for_table(db, xstart, xend, columns, order, filter_info, start, length):
+def get_variants_for_table(db, chrom, start_pos, end_pos, columns, order, filter_info, skip, length):
     st = time.time()
 
-    mongo_region = {'xpos': {'$gte': xstart, '$lte': xend}}
+    mongo_region = {'xpos': {
+        '$gte': Xpos.from_chrom_pos(chrom, start_pos),
+        '$lte': Xpos.from_chrom_pos(chrom, end_pos),
+    }}
     n_variants = db.variants.find(mongo_region, projection={'_id': False}).count()
     print '## {:0.3f} sec:'.format(time.time()-st), 'n_variants={}'.format(n_variants); st = time.time()
 
@@ -401,7 +404,9 @@ def get_variants_for_table(db, xstart, xend, columns, order, filter_info, start,
         colidx = d['column']
         colname = columns[colidx]['name']
         if not cols[colname]['orderable']: raise Exception(d)
-        mongo_sort_order[cols[colname]['inout'][0]] = direction
+        key = cols[colname]['inout'][0]
+        if key == 'pos': key = 'xpos'
+        mongo_sort_order[key] = direction
 
     # TODO: only include cols mentioned in `columns`?
     keys_for_sort = set(mongo_sort_order.keys()) # used to sort while obtaining `_id`s.
@@ -409,8 +414,8 @@ def get_variants_for_table(db, xstart, xend, columns, order, filter_info, start,
     keys_to_return = {k for col in cols.values() for k in col['out']} # all keys to return in API
 
     mongo_match = mongo_region
-    if isinstance(filter_info.get('pos_ge',None),int): mongo_match['pos'] = {'$gte': filter_info['pos_ge']}
-    if isinstance(filter_info.get('pos_le',None),int): mongo_match['pos'] = {'$lte': filter_info['pos_le']}
+    if isinstance(filter_info.get('pos_ge',None),int): mongo_match['xpos'] = {'$gte': Xpos.from_chrom_pos(chrom, filter_info['pos_ge'])}
+    if isinstance(filter_info.get('pos_le',None),int): mongo_match['xpos'] = {'$lte': Xpos.from_chrom_pos(chrom, filter_info['pos_le'])}
     if filter_info.get('filter_value',None) is not None:
         if filter_info['filter_value'] in ['PASS', 'SVM', 'DISC', 'EXHET', 'CHRXHET', 'CEN']: mongo_match['filter'] = {'$regex': '.*{}.*'.format(filter_info['filter_value'])}
         elif filter_info['filter_value'] == 'not PASS': mongo_match['filter'] = {'$ne': 'PASS'}
@@ -421,7 +426,7 @@ def get_variants_for_table(db, xstart, xend, columns, order, filter_info, start,
         {'$sort': mongo_sort_order},
         {'$project': {'_id': 1}},
         {'$group': {'_id':0, 'count':{'$sum':1}, 'results':{'$push':'$$ROOT'}}},
-        {'$project': {'_id':0, 'count':1, 'ids':{'$slice':['$results',start,length]}}},
+        {'$project': {'_id':0, 'count':1, 'ids':{'$slice':['$results',skip,length]}}},
     ])
     print '## {:0.3f} sec:'.format(time.time()-st), 'cursor created'; st = time.time()
 

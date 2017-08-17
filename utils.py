@@ -186,7 +186,7 @@ def annotation_severity(annotation):
         rv += 0.1
     return rv
 
-CHROMOSOMES = ['chr%s' % x for x in range(1, 23)]
+CHROMOSOMES = ['chr%s' % x for x in range(1, 22+1)]
 CHROMOSOMES.extend(['chrX', 'chrY', 'chrM'])
 CHROMOSOME_TO_CODE = { item: i+1 for i, item in enumerate(CHROMOSOMES) }
 CHROMOSOME_NUMBER_TO_CODE = {num: code for code,num in CHROMOSOME_TO_CODE.items()}
@@ -200,6 +200,16 @@ def get_single_location(chrom, pos):
     """
     return CHROMOSOME_TO_CODE[chrom] * int(1e9) + pos
 
+
+class Xpos:
+    @staticmethod
+    def from_chrom_pos(chrom, pos):
+        return get_xpos(chrom, pos)
+    @staticmethod
+    def to_chrom_pos(xpos):
+        pos = xpos % int(1e9)
+        chrom = CHROMOSOME_NUMBER_TO_CODE[int(xpos) / int(1e9)]
+        return (chrom, pos)
 
 def get_xpos(chrom, pos):
     """

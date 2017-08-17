@@ -515,9 +515,9 @@ def variants_table_api():
 
         ret = lookups.get_variants_for_table(
             db,
-            xstart, xend,
+            chrom, start_pos, end_pos,
             args['columns'], args['order'], filter_info,
-            start=args['start'], length=args['length']
+            skip=args['start'], length=args['length']
         )
         ret['draw'] = args['draw']
         return jsonify(ret)
