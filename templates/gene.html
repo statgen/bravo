@@ -7,15 +7,22 @@
 
 {% block in_head %}
 <script type="text/javascript">
-    window.gene = {{ gene|tojson(separators=(',',':'))|safe }};
-    window.strand = window.gene.strand;
-    window.exons_and_utrs = {{ exons_and_utrs|tojson(separators=(',',':'))|safe }};
-    window.table_variants = {{ variants_in_gene|tojson(separators=(',',':'))|safe }};
-    window.variants_for_graph = window.table_variants;
-    window.transcripts_in_gene = {{ transcripts_in_gene|tojson(separators=(',',':'))|safe }};
-    window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
-    window.page_name = window.gene.gene_id;
+ window.model = window.model || {};
+ window.model.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
+ window.model.gene = {{ gene|tojson(separators=(',',':'))|safe }};
+ window.model.exons = {{ exons|tojson(separators=(',',':'))|safe }};
+ window.model.chrom = {{ chrom|tojson|safe }};
+ window.model.start = {{ start|tojson(separators=(',',':'))|safe }};
+ window.model.stop = {{ stop|tojson(separators=(',',':'))|safe }};
 </script>
+<script type="text/javascript" src="{{ url_for('static', filename='gene.js') }}"></script>
+<style type="text/css">
+ .dataTables_info { float: left; }
+ .dataTable { font-family: Arial, Sans-serif; /* Arial handles figure-space correctly */ }
+ .dataTable .dt-right { text-align: right; padding-right: 0.7em; }
+ .dataTable .dt-center { text-align: center; }
+ .d3-tip { font-family: Arial, Sans-serif; /* Helvetica Neue ignores thinspace */ }
+</style>
 {% endblock %}
 
 
@@ -117,22 +124,22 @@
     </div>
   </div>
   <div class="row">
-        <div class="col-xs-12">
-            {% with plot_id = gene.gene_name %}
-                {% include 'transcript_or_gene_graph.html' %}
-            {% endwith %}
-        </div>
+    <div class="col-xs-12">
+      <h3>Coverage</h3>
+      {% include 'coverage_selectors.html' %}
+      <br/>
+      <div id="coverage_plot_container"></div>
+      <div id="gene_plot_container"></div>
+    </div>
   </div>
   <div class="row">
-        <div class="col-xs-12">
-            {% if num_variants_in_gene != 0 %}
-                {% with chrom = gene.chrom %}
-                    {% include 'variant_table.html' %}
-                {% endwith %}
-            {% else %}
-                No variants in this gene.
-            {% endif %}
-        </div>
+    <div class="col-xs-12">
+      <h3>Variants</h3>
+      <div id="variant_plot_container"></div>
+      <p>pos between <input type="number" class="dt_filter" id="pos_ge"> and <input type="number" class="dt_filter" id="pos_le"></p>
+      <p>QC = <select class='variant_table_filter' id='filter_value'><option value='*'>any</option><option value='PASS'>PASS</option><option value='not PASS'>not PASS</option><option value='DISC'>DISC</option><option value=EXHET>EXHET</option><option value=SVM>SVM</option><option value=CEN>CEN</option><option value=CHRXHET>CHRXHET</option></select></select></p>
+      <table id="variant_table" class="table table-bordered table-hover table-condensed" cellspacing=0><tbody></tbody></table>
+    </div>
   </div>
 </div>
 {% endblock %}

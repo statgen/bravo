@@ -438,21 +438,21 @@ def gene_page(gene_id):
             return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
                 app.config['DATASET_NAME'], gene['chrom']))
         print 'Rendering gene: %s' % gene_id
-        variants_in_gene = lookups.get_most_important_variants_in_gene(db, gene_id)
         num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
-        transcripts_in_gene = lookups.get_transcripts_in_gene(db, gene_id)
 
-        exons_and_utrs = lookups.get_exons_in_gene(db, gene_id)
+        exons = lookups.get_exons_in_gene(db, gene_id)
 
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), gene['xstart'] - EXON_PADDING, gene['xstop'] + EXON_PADDING)
+        coverage_stats = coverage_stats[::len(coverage_stats)/8]
 
         return render_template(
             'gene.html',
             gene=gene,
-            exons_and_utrs=exons_and_utrs,
-            variants_in_gene=variants_in_gene,
+            chrom=gene['chrom'],
+            start=gene['start'],
+            stop=gene['stop'],
+            exons=exons,
             num_variants_in_gene=num_variants_in_gene,
-            transcripts_in_gene=transcripts_in_gene,
             coverage_stats=coverage_stats,
             csq_order=csq_order,
         )
@@ -474,6 +474,7 @@ def transcript_page(transcript_id):
         gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
         variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
+        coverage_stats = coverage_stats[::len(coverage_stats)/8]
         num_variants_in_transcript = lookups.get_num_variants_in_transcript(db, transcript_id)
 
         return render_template(
@@ -591,6 +592,7 @@ def region_page(region_id):
         xstart = get_xpos(chrom, start)
         xstop = get_xpos(chrom, stop)
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
+        coverage_stats = coverage_stats[::len(coverage_stats)/8]
         return render_template(
             'region.html',
             genes_in_region=genes_in_region,

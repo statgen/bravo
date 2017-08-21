@@ -1,6 +1,8 @@
 var genome_coords_margin = {left: 80, right: 30};
 var coverage_plot_height = 200;
 var coverage_plot_margin = {top: 10, bottom: 30};
+var gene_plot_height = 40;
+var gene_plot_margin = {top: 5, bottom: 5};
 var variant_plot_height = 30;
 var variant_plot_margin = {top: 5, bottom: 5};
 
@@ -111,6 +113,37 @@ function change_coverage_chart_metric(cov_data, metric) {
         .call(yAxis);
 }
 
+function create_gene_plot() {
+    bootstrap_plot();
+
+    var svg = d3.select('#gene_plot_container').append('svg')
+        .attr('width', window.model.plot.svg_width)
+        .attr('height', gene_plot_height)
+        .append('g')
+        .attr('id', 'gene_track')
+        .attr('transform', 'translate(' + genome_coords_margin.left+','+0+')');
+
+    svg.append('line')
+        .attr("y1", gene_plot_height/2)
+        .attr("y2", gene_plot_height/2)
+        .attr("x1", 0)
+        .attr("x2", window.model.plot.genome_coords_width)
+        .attr("stroke-width", 1)
+        .attr("stroke", "lightsteelblue");
+
+    svg.selectAll('rect.exon')
+        .data(window.model.exons)
+        .enter()
+        .append('rect')
+        .attr('class', 'exon')
+        .style('fill', 'lightsteelblue')
+        .attr('y', function(d){return d.feature_type==='CDS' ? 0 : gene_plot_height/4})
+        .attr('height',function(d){return d.feature_type==='CDS' ? gene_plot_height : gene_plot_height/2})
+        .attr('x', function(d) { return window.model.plot.x(d.start) })
+        .attr('width', function(d) { return window.model.plot.x(d.stop)-window.model.plot.x(d.start) })
+
+}
+
 function create_variant_plot() {
     bootstrap_plot();
 
@@ -166,6 +199,7 @@ function change_variant_plot(variants) {
 
 
 $(document).ready(function() {
+    create_gene_plot();
     if (window.model.coverage_stats != null) {
         create_coverage_chart(window.model.coverage_stats);
         // Change coverage plot

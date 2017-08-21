@@ -37,19 +37,19 @@ var EXON_MARGIN = 60;
         - only "CDS" is shown by default.  "UTR" and "exon" are hidden until "show UTRs" is checked.
  */
 window.get_position_mapping = _.memoize(function(skip_utrs) {
-    // Uses window.exons_and_utrs
+    // Uses window.exons
     // Returns like [
     //    {real_start: 36649935, scaled_start: 0, length: 178},
     //    {real_start: 36650909, scaled_start: 179, length: 212}
     // ]
 
-    var exons = window.exons_and_utrs;
+    var exons = window.model.exons;
     if (skip_utrs) {
         exons = _.filter(exons, function(exon) {
             return exon.feature_type === "CDS";
         });
         if (exons.length === 0) {
-            exons = window.exons_and_utrs;
+            exons = window.model.exons;
         }
     }
     if (exons.length === 0) {
@@ -171,6 +171,7 @@ function create_charts() {
         .append("g")
         .attr('id', 'coverage_track')
         .attr("transform", "translate(" + gene_chart_margin.left + "," + gene_chart_margin.top + ")");
+
     d3.select('#gene_plot_container').append("br"); //make sure exon_track is below graph and not to the right of it
     var exon_track = d3.select('#gene_plot_container').append("svg")
         .attr("width", chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
@@ -259,7 +260,7 @@ function create_coverage_chart(coverage_track, coords, chart_width, exon_x_scale
 function create_exon_plot(exon_track, exon_x_scale, skip_utrs) {
     var exon_color = "lightsteelblue";
     exon_track.selectAll("line.padded_exon")
-        .data(window.exons_and_utrs)
+        .data(window.model.exons)
         .enter()
         .append('line')
         .attr("class", "padded_exon")
@@ -269,11 +270,11 @@ function create_exon_plot(exon_track, exon_x_scale, skip_utrs) {
         .attr("stroke", exon_color);
 
     // plot exon rects
-    exon_track.selectAll("rect.exon_or_utr")
-        .data(window.exons_and_utrs)
+    exon_track.selectAll("rect.exon")
+        .data(window.model.exons)
         .enter()
         .append("rect")
-        .attr('class', 'exon_or_utr')
+        .attr('class', 'exon')
         .style("fill", exon_color)
         .attr("y", function(d, i) {
             return (d.feature_type === 'CDS') ? 0 : lower_gene_chart_height/4;
@@ -476,7 +477,7 @@ function change_exon_plot(skip_utrs, exon_x_scale) {
     });
 
     // plot exon rounded rects
-    exon_track.selectAll("rect.exon_or_utr")
+    exon_track.selectAll("rect.exon")
         .transition()
         .duration(500)
         .attr("x", function(d, i) { return exon_x_scale(get_coding_coordinate(d.start, skip_utrs)); })
