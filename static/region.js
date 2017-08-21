@@ -3,15 +3,24 @@ var gene_chart_margin_lower = {top: 5, right: gene_chart_margin.right, bottom: 5
 var lower_gene_chart_height = 50 - gene_chart_margin_lower.top - gene_chart_margin_lower.bottom;
 var gene_chart_height = 300 - gene_chart_margin.top - gene_chart_margin.bottom - lower_gene_chart_height - gene_chart_margin_lower.top - gene_chart_margin_lower.bottom;
 
+function bootstrap_plot() {
+    window.model = window.model || {};
+    window.model.plot = window.model.plot || {};
+    if (!window.model.plot.width) {
+        var width_including_margin = $('#region_plot_container').width();
+        window.model.plot.width = width_including_margin - gene_chart_margin.left - gene_chart_margin.right;
+    }
+    if (!window.model.plot.x) {
+        window.model.plot.x = d3.scale.linear()
+            .domain([window.model.start, window.model.stop])
+            .range([0, window.model.plot.width]);
+    }
+}
+
 function create_region_chart(cov_data) {
-    var width_including_margin = $('#region_plot_container').width();
-    var gene_chart_width = width_including_margin - gene_chart_margin.left - gene_chart_margin.right;
+    bootstrap_plot();
 
     var metric = 'mean';
-
-    var x = d3.scale.linear()
-        .domain([d3.min(cov_data, function(d) { return d.start; }), d3.max(cov_data, function(d) { return d.end; })])
-        .range([0, gene_chart_width]);
 
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
@@ -23,7 +32,7 @@ function create_region_chart(cov_data) {
         .range([gene_chart_height, 0]);
 
     var xAxis = d3.svg.axis()
-        .scale(x)
+        .scale(window.model.plot.x)
         .orient("bottom");
 
     var yAxis = d3.svg.axis()
@@ -31,7 +40,7 @@ function create_region_chart(cov_data) {
         .orient("left");
 
     var svg = d3.select('#region_plot_container').append("svg")
-        .attr("width", gene_chart_width + gene_chart_margin.left + gene_chart_margin.right)
+        .attr("width", window.model.plot.width + gene_chart_margin.left + gene_chart_margin.right)
         .attr("height", gene_chart_height + gene_chart_margin.top + gene_chart_margin.bottom)
         .append("g")
         .attr('id', 'inner_graph')
@@ -44,11 +53,11 @@ function create_region_chart(cov_data) {
         .attr('class', 'main_plot_bars')
         .style("fill", "steelblue")
         .attr("x", function(d) {
-            return x(d.start);
+            return window.model.plot.x(d.start);
         })
         .attr("width", function(d) {
             var length_in_bases = d.end - d.start + 1;
-            var width_of_base = gene_chart_width/cov_data.length;
+            var width_of_base = window.model.plot.width/cov_data.length;
             return length_in_bases * width_of_base;
         })
         .attr("y", function(d) {
@@ -66,13 +75,6 @@ function create_region_chart(cov_data) {
     svg.append("g")
         .attr("class", "y axis")
         .call(yAxis);
-
-    var svg_outer = d3.select('#region_plot_container').append("svg")
-        .attr("width", gene_chart_width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
-        .attr("height", lower_gene_chart_height)
-        .append("g")
-        .attr('id', 'track')
-        .attr("transform", "translate(" + gene_chart_margin_lower.left + "," + 0 + ")");
 }
 
 function change_region_chart_metric(cov_data, metric) {
@@ -109,6 +111,60 @@ function change_region_chart_metric(cov_data, metric) {
 
 }
 
+function create_variant_oval_track() {
+    bootstrap_plot();
+
+    var svg_outer = d3.select('#region_plot_container').append("svg")
+        .attr("width", window.model.plot.width + gene_chart_margin_lower.left + gene_chart_margin_lower.right)
+        .attr("height", lower_gene_chart_height)
+        .append("g")
+        .attr('id', 'track')
+        .attr("transform", "translate(" + gene_chart_margin_lower.left + "," + 0 + ")");
+
+    svg_outer.append("line")
+        .attr("y1", lower_gene_chart_height/2)
+        .attr("y2", lower_gene_chart_height/2)
+        .attr("x1", 0)
+        .attr("x2", window.model.plot.width)
+        .attr("stroke-width", 1)
+        .attr("stroke", "lightsteelblue");
+
+    window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
+        var csq = d.major_consequence.replace(/_/g, ' ');
+        if (csq.length > 15) { csq = csq.substr(0, 15) + '...'; } // because d3-tip tooltips fall off the page
+        return group_thousands(d.pos) + '<br>' +
+            csq + '<br>' +
+            (d.filter === 'PASS' ? '' : d.filter + '<br>') +
+            'MAF: ' + perc_sigfigs(d.allele_freq, 2);
+        //return JSON.stringify(d);
+    });
+    svg_outer.call(window.model.plot.oval_tip);
+}
+
+function change_variant_oval_track(variants) {
+    console.log('plotting', variants);
+    var selection = d3.select('#track').selectAll('.variant-circle').data(variants);
+    selection.enter() //ENTER
+        .append('ellipse')
+        //.attr('foo', function(d) { console.log('enter-each', d)})
+        .attr('class', 'variant-circle')
+        .style('opacity', 0.5)
+        .style('fill', 'blue')
+        .attr('ry', 4)
+        .attr('rx', 4)
+        .attr('cy', lower_gene_chart_height/2)
+        .attr('cx', function(d) { return window.model.plot.x(d.pos); })
+        .on('mouseover', window.model.plot.oval_tip.show)
+        .on('mouseout', window.model.plot.oval_tip.hide)
+    selection // UPDATE // todo: learn how to get union of ENTER+UPDATE
+        //.attr('foo', function(d) { console.log('update-each', d)})
+        .attr('cx', function(d) { return window.model.plot.x(d.pos); })
+    selection.exit() //EXIT
+        //.attr('foo', function(d) { console.log('exit-each', d)})
+        .remove()
+}
+
+
 $(document).ready(function() {
     if (window.model.coverage_stats != null) {
         create_region_chart(window.model.coverage_stats);
@@ -132,6 +188,8 @@ $(document).ready(function() {
             change_region_chart_metric(window.model.coverage_stats, $(this).val());
         });
     }
+
+    create_variant_oval_track();
 });
 
 
@@ -175,11 +233,12 @@ function create_variant_table() {
             title: 'Annotation', name: 'csq',
             data: 'major_consequence', searchable:true, orderable:false, className: 'dt-center',
             render: function(cell_data, type, row) {
-                return cell_data.replace('_variant', '').replace(/_/g, ' ').replace('utr', 'UTR').replace('3 prime', "3'").replace('5 prime', "5'").replace('nc ', "non-coding ");
+                return fmt_annotation(cell_data);
             },
 
         },{
             title: 'CADD', name:'cadd',
+            orderable:false, className: 'dt-right',
             render: function() { return '0'; },
 
         },{
@@ -245,10 +304,11 @@ function create_variant_table() {
                     filter_info: JSON.stringify(window.model.filter_info),
                 };
             },
-            // dataSrc: function(resp) { /* modify API's response (for debugging) */
-            //     window._debug = window._debug || {}; window._debug.resp = resp;
-            //     return resp.data;
-            // },
+            dataSrc: function(resp) { /* modify API's response (for debugging) */
+                window._debug = window._debug || {}; window._debug.resp = resp;
+                change_variant_oval_track(resp.data);
+                return resp.data;
+            },
         },
 
         order: [[columns.map(function(d){return d.data==='pos'}).indexOf(true), 'asc']],
@@ -300,6 +360,7 @@ function perc_sigfigs(d, n_sigfigs, n_left_of_decimal) {
        left-pads with &nbsp; to line up `100%` with `0%`
        a leading 9 will never be rounded up, so the number of digits can never change. */
     try {
+        if (typeof n_sigfigs === 'undefined') n_sigfigs = 2;
         if (typeof n_left_of_decimal === 'undefined') n_left_of_decimal = 3;
         var nobreakspace = '\u2007'; // '\u00A0';
 
@@ -340,4 +401,7 @@ function leftpad(str, len, padding) {
 }
 function rightpad(str, len, padding) {
     str = String(str); len = len>>0; if (str.length >= len) return str; return str + padding.repeat(len - str.length);
+}
+function fmt_annotation(anno) {
+    return anno.replace('_variant', '').replace(/_/g, ' ').replace('utr', 'UTR').replace('3 prime', "3'").replace('5 prime', "5'").replace('nc ', "non-coding ");
 }

@@ -31,7 +31,10 @@ import contextlib
 app = Flask(__name__)
 app.config.from_object('flask_config.BravoFreeze65kAlphaConfig')
 mail_on_500(app, app.config['ADMINS'])
+app.config['COMPRESS_LEVEL'] = 2 # Since we don't cache, faster=better
 Compress(app)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 5 # 5 second browser cache timeout
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 REGION_LIMIT = int(1e5)
 EXON_PADDING = 50
