@@ -4,193 +4,135 @@
 <title>{{ config['BROWSER_NAME'] }} - {{ gene.gene_name }}</title>
 {% endblock %}
 
+
+{% block in_head %}
+<script type="text/javascript">
+    window.gene = {{ gene|tojson(separators=(',',':'))|safe }};
+    window.strand = window.gene.strand;
+    window.exons_and_utrs = {{ exons_and_utrs|tojson(separators=(',',':'))|safe }};
+    window.table_variants = {{ variants_in_gene|tojson(separators=(',',':'))|safe }};
+    window.variants_for_graph = window.table_variants;
+    window.transcripts_in_gene = {{ transcripts_in_gene|tojson(separators=(',',':'))|safe }};
+    window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
+    window.page_name = window.gene.gene_id;
+</script>
+{% endblock %}
+
+
 {% block body %}
-    <!-- Render context vars in JS here -->
-    <script type="text/javascript">
-        window.gene = {{ gene|tojson(separators=(',',':'))|safe }};
-        window.strand = window.gene.strand;
-        window.exons_and_utrs = {{ exons_and_utrs|tojson(separators=(',',':'))|safe }};
-        window.table_variants = {{ variants_in_gene|tojson(separators=(',',':'))|safe }};
-        window.variants_for_graph = window.table_variants;
-        window.transcripts_in_gene = {{ transcripts_in_gene|tojson(separators=(',',':'))|safe }};
-        window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
-        window.page_name = window.gene.gene_id;
-
-
-        $(document).ready(function() {
-            $('#consequence_other_variant_button')
-            .addClass('disabled')
-            .attr('disabled', 'disabled')
-            .attr('data-tooltip', "Loading...");
-        });
-
-        $.when($.getJSON("/api/variants_in_gene/" + window.gene.gene_id),
-               $.Deferred(function() { $(this.resolve); })) //document.ready
-        .done(function(gene_data) {
-            // Somehow these arguments get wrapped up, so we want gene_data[0].
-
-            $('#consequence_other_variant_button')
-            .attr('data-tooltip', "Show all variants")
-            .removeClass('disabled')
-            .removeAttr('disabled')
-            .one('change', function() {
-                with_waiting_notice(function() {
-                    //add variants to the variant_table
-                    window.table_variants = gene_data[0];
-                    build_variant_table();
-
-                    //add variants to the variant graph
-                    // Note: I'm just copying what happens in build_the_graph()
-                    window.variants_for_graph = gene_data[0];
-                    precalc_coding_coordinates(window.variants_for_graph);
-                    add_variants_to_variants_plot();
-                    update_variants();
-                });
-            });
-        })
-        .fail(function() {
-            console.log("XHR failed.");
-        });
-    </script>
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-xs-11 col-xs-offset-1">
-                <h1>Gene: <span class="gene-name">{{ gene.gene_name }}</span></h1>
-                <hr/>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-6 col-xs-10 col-xs-offset-1 col-md-offset-0">
-                <dl class="dl-horizontal">
-                    {% if gene.full_gene_name %}
-                        <dt>{{ gene.gene_name }}</dt>
-                        <dd>{{ gene.full_gene_name }}</dd>
-                    {% endif %}
-                    <dt>Number of variants</dt>
-                    <dd>{{ num_variants_in_gene }}</dd>
-                    <dt class="hidden-xs">Region</dt>
-                    <dd class="hidden-xs">
-                        <a href="/region/{{ gene.chrom }}-{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
-                            {{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }}
-                        </a>
-                    </dd>
-                    <dt class="hidden-xs">UCSC Browser</dt>
-                    <dd class="hidden-xs">
-                        <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
-                            {{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }}
-                            <i class="fa fa-external-link"></i>
-                        </a>
-                    </dd>
-                    <dt class="hidden-xs">GeneCards</dt>
-                    <dd class="hidden-xs">
-                        <a class="gene-name" href="http://www.genecards.org/cgi-bin/carddisp.pl?gene={{ gene.gene_name }}" target="_blank">
-                            {{ gene.gene_name }}
-                            <i class="fa fa-external-link"></i>
-                        </a>
-                    </dd>
-                    {% if gene.omim_accession %}
-                        <dt>OMIM</dt>
-                        <dd>
-                            <a class="gene-name" href="http://omim.org/entry/{{ gene.omim_accession }}" target="_blank">
-                                {{ gene.gene_name }}
-                                <i class="fa fa-external-link"></i>
-                            </a>
-                        </dd>
-                    {% endif %}
-                    <dt>Other</dt>
-                    <dd>
-                        <div class="dropdown">
-                            <button class="btn btn-default dropdown-toggle" type="button" id="external_ref_dropdown" data-toggle="dropdown">
-                                External References
-                                <span class="caret"></span>
-                            </button>
-                            <ul class="dropdown-menu" role="menu" aria-labelledby="external_ref_dropdown">
-                                <li role="presentation" class="visible-xs-block">
-                                    <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
-                                        UCSC Browser
-                                        <i class="fa fa-external-link"></i>
-                                    </a>
-                                </li>
-                                <li role="presentation" class="visible-xs-block">
-                                    <a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene={{ gene.gene_name }}" target="_blank">
-                                        GeneCards
-                                        <i class="fa fa-external-link"></i>
-                                    </a>
-                                </li>
-                                <li role="presentation">
-                                    <a role="menuitem" tabindex="-1" href="http://grch37.ensembl.org/Homo_sapiens/Gene/Summary?g={{ gene.gene_id }}" target="_blank">
-                                        Ensembl <i class="fa fa-external-link"></i>
-                                    </a>
-                                </li>
-                                <li role="presentation">
-                                    <a role="menuitem" tabindex="-1" href="http://en.wikipedia.org/wiki/{{ gene.gene_name }}" target="_blank">
-                                        Wikipedia <i class="fa fa-external-link"></i>
-                                    </a>
-                                </li>
-                                <li role="presentation">
-                                    <a role="menuitem" tabindex="-1" href="https://www.ncbi.nlm.nih.gov/pubmed?term={{ gene.gene_name }}" target="_blank">
-                                        PubMed Search <i class="fa fa-external-link"></i>
-                                    </a>
-                                </li>
-                                <li role="presentation">
-                                    <a role="menuitem" tabindex="-1" href="http://www.wikigenes.org/?search={{ gene.gene_name }}" target="_blank">
-                                        Wikigenes <i class="fa fa-external-link"></i>
-                                    </a>
-                                </li>
-                                <li role="presentation">
-                                    <a role="menuitem" tabindex="-1" href="http://www.gtexportal.org/home/gene/{{ gene.gene_name }}" target="_blank">
-                                        GTEx (Expression) <i class="fa fa-external-link"></i>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </dd>
-                </dl>
-            </div>
-            <div class="col-sm-6 hidden-xs">
-                <div class="dropdown">
-                    <button class="btn btn-default dropdown-toggle" type="button" id="transcript_dropdown" data-toggle="dropdown">
-                        Transcripts
-                        <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu" aria-labelledby="transcript_dropdown">
-                        {% for transcript in transcripts_in_gene %}
-                            <li role="presentation">
-                                <a role="menuitem" tabindex="-1" href="/transcript/{{ transcript.transcript_id }}" target="_blank">
-                                    {{ transcript.transcript_id }}
-                                    {% if transcript.transcript_id == gene.canonical_transcript %}
-                                        *
-                                    {% endif %}
-                                </a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-xs-12 col-md-10 col-md-offset-1">
-                <h3>Gene summary</h3>
-                <h4>(<span class="hidden-xs">Coverage shown for all transcripts</span>)</h4>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-xs-12 col-md-10 col-md-offset-1">
-                {% with plot_id = gene.gene_name %}
-                    {% include 'transcript_or_gene_graph.html' %}
-                {% endwith %}
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-xs-12 col-md-10 col-md-offset-1">
-                {% if num_variants_in_gene != 0 %}
-                    {% with chrom = gene.chrom %}
-                        {% include 'variant_table.html' %}
-                    {% endwith %}
-                {% else %}
-                    No variants in this gene.
-                {% endif %}
-            </div>
-        </div>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-xs-12">
+      <h1>Gene: <span class="gene-name">{{ gene.gene_name }}</span></h1>
+      <hr/>
     </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6 col-xs-12">
+       <dl class="dl-horizontal">
+          {% if gene.full_gene_name %}
+              <dt>{{ gene.gene_name }}</dt>
+              <dd>{{ gene.full_gene_name }}</dd>
+          {% endif %}
+          <dt>Number of variants</dt>
+          <dd>{{ num_variants_in_gene }}</dd>
+          <dt class="hidden-xs">Region</dt>
+          <dd class="hidden-xs">
+              <a href="/region/{{ gene.chrom }}-{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
+                  {{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }}
+              </a>
+          </dd>
+          <dt class="hidden-xs">UCSC Browser</dt>
+          <dd class="hidden-xs">
+              <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
+                  {{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }}
+                  <i class="fa fa-external-link"></i>
+              </a>
+          </dd>
+          <dt class="hidden-xs">GeneCards</dt>
+          <dd class="hidden-xs">
+              <a class="gene-name" href="http://www.genecards.org/cgi-bin/carddisp.pl?gene={{ gene.gene_name }}" target="_blank">
+                  {{ gene.gene_name }}
+                  <i class="fa fa-external-link"></i>
+              </a>
+          </dd>
+          {% if gene.omim_accession %}
+              <dt>OMIM</dt>
+              <dd>
+                  <a class="gene-name" href="http://omim.org/entry/{{ gene.omim_accession }}" target="_blank">
+                      {{ gene.gene_name }}
+                      <i class="fa fa-external-link"></i>
+                  </a>
+              </dd>
+          {% endif %}
+          <dt>Other</dt>
+          <dd>
+              <div class="dropdown">
+                  <button class="btn btn-default dropdown-toggle" type="button" id="external_ref_dropdown" data-toggle="dropdown">
+                      External References
+                      <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu" role="menu" aria-labelledby="external_ref_dropdown">
+                      <li role="presentation" class="visible-xs-block">
+                          <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
+                              UCSC Browser
+                              <i class="fa fa-external-link"></i>
+                          </a>
+                      </li>
+                      <li role="presentation" class="visible-xs-block">
+                          <a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene={{ gene.gene_name }}" target="_blank">
+                              GeneCards
+                              <i class="fa fa-external-link"></i>
+                          </a>
+                      </li>
+                      <li role="presentation">
+                          <a role="menuitem" tabindex="-1" href="http://grch37.ensembl.org/Homo_sapiens/Gene/Summary?g={{ gene.gene_id }}" target="_blank">
+                              Ensembl <i class="fa fa-external-link"></i>
+                          </a>
+                      </li>
+                      <li role="presentation">
+                          <a role="menuitem" tabindex="-1" href="http://en.wikipedia.org/wiki/{{ gene.gene_name }}" target="_blank">
+                              Wikipedia <i class="fa fa-external-link"></i>
+                          </a>
+                      </li>
+                      <li role="presentation">
+                          <a role="menuitem" tabindex="-1" href="https://www.ncbi.nlm.nih.gov/pubmed?term={{ gene.gene_name }}" target="_blank">
+                              PubMed Search <i class="fa fa-external-link"></i>
+                          </a>
+                      </li>
+                      <li role="presentation">
+                          <a role="menuitem" tabindex="-1" href="http://www.wikigenes.org/?search={{ gene.gene_name }}" target="_blank">
+                              Wikigenes <i class="fa fa-external-link"></i>
+                          </a>
+                      </li>
+                      <li role="presentation">
+                          <a role="menuitem" tabindex="-1" href="http://www.gtexportal.org/home/gene/{{ gene.gene_name }}" target="_blank">
+                              GTEx (Expression) <i class="fa fa-external-link"></i>
+                          </a>
+                      </li>
+                  </ul>
+              </div>
+          </dd>
+      </dl>
+    </div>
+  </div>
+  <div class="row">
+        <div class="col-xs-12">
+            {% with plot_id = gene.gene_name %}
+                {% include 'transcript_or_gene_graph.html' %}
+            {% endwith %}
+        </div>
+  </div>
+  <div class="row">
+        <div class="col-xs-12">
+            {% if num_variants_in_gene != 0 %}
+                {% with chrom = gene.chrom %}
+                    {% include 'variant_table.html' %}
+                {% endwith %}
+            {% else %}
+                No variants in this gene.
+            {% endif %}
+        </div>
+  </div>
+</div>
 {% endblock %}

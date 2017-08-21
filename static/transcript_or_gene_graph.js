@@ -609,8 +609,6 @@ function build_the_graph () {
     window.coverage_stats = _.filter(window.coverage_stats, function(d) {
         return d.start !== undefined && d.end !== undefined;
     });
-    $('#avg_coverage').html(coverage_sum('mean'));
-    $('#avg_coverage_x').html(coverage_sum('30')*100 + '%');
 
     if (window.coverage_stats != null) {
         create_charts();
@@ -634,8 +632,6 @@ function build_the_graph () {
         setTimeout(change_plots_with_values_from_page, 0);
     });
     $('#average_select').change(function () {
-        $('#avg_coverage_type').html($(this).val());
-        $('#avg_coverage').html(coverage_sum($(this).val()));
         setTimeout(change_plots_with_values_from_page, 0);
     });
     $('#over_x_select, #include_utrs_checkbox, .display_coverage_metric_buttons').change(function () {

@@ -1,5 +1,10 @@
 {% extends "layout.html" %}
 
+{% block title %}
+<title>{{ config['BROWSER_NAME'] }} - chr{{ chrom }}:{{ start }}-{{ end }}</title>
+{% endblock %}
+
+
 {% block in_head %}
 <script type="text/javascript" src="{{ url_for('static', filename='region.js') }}"></script>
 <script type="text/javascript">
