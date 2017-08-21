@@ -3,16 +3,15 @@
     {% block title %}<title>{{ config['BROWSER_NAME'] }}</title>{% endblock %}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='vendor/font-awesome.min.css') }}">
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/jquery-1.11.1.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/bootstrap.min.js') }}"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/r/bs-3.3.5/jq-2.1.4,dt-1.10.8/datatables.min.css">
+    <script type="text/javascript" src="https://cdn.datatables.net/r/bs-3.3.5/jqc-1.11.3,dt-1.10.8/datatables.min.js"></script>
+
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
 
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/jquery.tablesorter.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/jquery.tablesorter.pager.js') }}"></script>
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='vendor/theme.default.css') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='vendor/underscore-min.js') }}"></script>
 
-    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}">
     <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='vendor/d3.v3.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='vendor/d3-tip.js') }}"></script>

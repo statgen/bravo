@@ -188,7 +188,7 @@ function create_variant_table() {
 
         },{
             title: 'HomRef', name: 'n_homref',
-            searchable:true, orderable:true, className: 'dt-right',
+            searchable:true, orderable:false, className: 'dt-right',
             render: function(cell_data, type, row) {
                 var num_het_samples = row.allele_count - 2*row.hom_count;
                 var num_homref_samples = ((row.allele_num - row.allele_count) - num_het_samples) / 2;
@@ -197,14 +197,14 @@ function create_variant_table() {
 
         },{
             title: 'Het', name: 'n_het',
-            searchable:true, orderable:true, className: 'dt-right',
+            searchable:true, orderable:false, className: 'dt-right',
             render: function(cell_data, type, row) {
                 var num_het_samples = row.allele_count - 2*row.hom_count;
                 return group_thousands(num_het_samples);
             },
 
         },{
-            title: 'HomAlt', name: 'n_homalt',
+            title: 'HomAlt', name: 'hom_count',
             searchable:true, orderable:true, className: 'dt-right',
             render: function(cell_data, type, row) {
                 return group_thousands(row.hom_count);
@@ -232,7 +232,7 @@ function create_variant_table() {
 
         paging: true,
         pagingType: 'full', /* [first, prev, next, last] */
-        pageLength: 20,
+        pageLength: 10,
 
         searching: false,
 
@@ -254,7 +254,7 @@ function create_variant_table() {
         order: [[columns.map(function(d){return d.data==='pos'}).indexOf(true), 'asc']],
         columns: columns,
 
-        dom: 'ipfrt', // default is 'lfrtip'
+        dom: '<ip>ftr'  //'ipftr',  // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
 
     });
 
