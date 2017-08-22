@@ -36,7 +36,8 @@ function create_coverage_chart(cov_data) {
 
     var xAxis = d3.svg.axis()
         .scale(window.model.plot.x)
-        .orient("bottom");
+        .orient("bottom")
+        .tickFormat(group_thousands);
 
     var yAxis = _coverage_y_axis(y, metric);
 
@@ -368,7 +369,14 @@ function create_variant_table() {
         order: [[columns.map(function(d){return d.data==='pos'}).indexOf(true), 'asc']],
         columns: columns,
 
-        dom: '<ip>ftr'  //'ipftr',  // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
+        dom: '<ip>ftr', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
+
+        language: {
+            info: 'Showing variants _START_ - _END_ of _TOTAL_',
+            infoFiltered: '(filtered from _MAX_ variants)',
+            infoEmpty: 'No matching variants',
+            thousands: '\u202f',
+        }
 
     });
 
