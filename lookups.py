@@ -389,6 +389,7 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns, order, filter
       'allele_num': {'orderable': True},
       'hom_count': {'orderable': True},
       'allele_freq': {'orderable': True},
+      'cadd_phred': {'orderable': True},
     }
     for name, col in cols.items():
         if not any(k in col for k in 'inout in out'.split()): col['inout'] = [name]

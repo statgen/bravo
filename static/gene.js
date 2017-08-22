@@ -1,9 +1,9 @@
 var genome_coords_margin = {left: 80, right: 30};
 var coverage_plot_height = 100;
 var coverage_plot_margin = {top: 10, bottom: 30};
-var gene_plot_height = 40;
+var gene_plot_height = 20;
 var gene_plot_margin = {top: 5, bottom: 5};
-var variant_plot_height = 30;
+var variant_plot_height = 15;
 var variant_plot_margin = {top: 5, bottom: 5};
 
 function bootstrap_plot() {
@@ -37,6 +37,7 @@ function create_coverage_chart(cov_data) {
     var xAxis = d3.svg.axis()
         .scale(window.model.plot.x)
         .orient("bottom")
+        .ticks(5)
         .tickFormat(group_thousands);
 
     var yAxis = _coverage_y_axis(y, metric);
@@ -230,11 +231,13 @@ function change_variant_plot(variants) {
         .attr('rx', 4)
         .attr('cy', variant_plot_height/2)
         .attr('cx', function(d) { return window.model.plot.x(d.pos); })
+        .attr('id', get_variant_plot_id)
         .on('mouseover', window.model.plot.oval_tip.show)
         .on('mouseout', window.model.plot.oval_tip.hide)
     selection // UPDATE // todo: learn how to get union of ENTER+UPDATE
         //.attr('foo', function(d) { console.log('update-each', d)})
         .attr('cx', function(d) { return window.model.plot.x(d.pos); })
+        .attr('id', get_variant_plot_id);
     selection.exit() //EXIT
         //.attr('foo', function(d) { console.log('exit-each', d)})
         .remove()
@@ -287,14 +290,12 @@ function create_variant_table() {
         },{
             title: 'Annotation', name: 'csq',
             data: 'major_consequence', searchable:true, orderable:false, className: 'dt-center',
-            render: function(cell_data, type, row) {
-                return fmt_annotation(cell_data);
-            },
+            render: function(cell_data, type, row) { return fmt_annotation(cell_data); },
 
         },{
-            title: 'CADD', name:'cadd',
-            orderable:false, className: 'dt-right',
-            render: function() { return '0'; },
+            title: 'CADD', name:'cadd_phred',
+            data: 'cadd_phred', orderable:true, orderSequence:['desc', 'asc'], className: 'dt-right',
+            render: function(cell_data, type, row) { return cell_data.toFixed(0); },
 
         },{
             title: 'QC', name: 'filter',
@@ -311,7 +312,7 @@ function create_variant_table() {
 
         },{
             title: 'Het', name: 'n_het',
-            searchable:true, orderable:false, className: 'dt-right',
+            searchable:true, orderable:false, orderSequence:['desc','asc'], className: 'dt-right',
             render: function(cell_data, type, row) {
                 var num_het_samples = row.allele_count - 2*row.hom_count;
                 return group_thousands(num_het_samples);
@@ -319,14 +320,14 @@ function create_variant_table() {
 
         },{
             title: 'HomAlt', name: 'hom_count',
-            searchable:true, orderable:true, className: 'dt-right',
+            searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
             render: function(cell_data, type, row) {
                 return group_thousands(row.hom_count);
             },
 
         },{
             title: 'Frequency', name: 'allele_freq',
-            data: 'allele_freq', searchable:true, orderable:true, className: 'dt-pad-left',
+            data: 'allele_freq', searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-pad-left',
             render: function(cell_data, type, row) { return perc_sigfigs(cell_data, 2); },
 
         },
@@ -338,7 +339,7 @@ function create_variant_table() {
     window.model.filter_info.stop = window.model.stop;
     window.model.filter_info.chrom = window.model.chrom;
 
-    $('#variant_table').DataTable({
+    var tbl = $('#variant_table').DataTable({
         serverSide: true, /* API does all the real work */
 
         processing: true, /* show "processing" over table while waiting for API */
@@ -366,7 +367,7 @@ function create_variant_table() {
             },
         },
 
-        order: [[columns.map(function(d){return d.data==='pos'}).indexOf(true), 'asc']],
+        order: [[columns.map(function(d){return d.name==='cadd_phred'}).indexOf(true), 'desc']],
         columns: columns,
 
         dom: '<ip>ftr', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
@@ -379,6 +380,24 @@ function create_variant_table() {
         }
 
     });
+    window._debug.tbl = tbl;
+
+    // hilite corresponding variant-plot circle
+    $('#variant_table tbody').on('mouseleave', 'tr', function() {
+        var variant = tbl.row(this).data();
+        $('#' + get_variant_plot_id(variant))
+            .css('fill', 'blue')
+            .css('opacity', 0.3);
+    });
+    $('#variant_table tbody').on('mouseenter', 'tr', function() {
+        var variant = tbl.row(this).data();
+        $('.variant-circle')
+            .css('fill', 'blue')
+            .css('opacity', 0.3);
+        $('#' + get_variant_plot_id(variant))
+            .css('fill', 'black')
+            .css('opacity', 1);
+    });
 
     $('.variant_table_filter').on('change', function() {
         window.model.filter_info.pos_ge = parseInt($('input#pos_ge').val());
@@ -389,3 +408,5 @@ function create_variant_table() {
     });
 }
 $(create_variant_table);
+
+function get_variant_plot_id(variant) { return 'variant-plot-'+variant.pos+'-'+variant.ref+'-'+variant.alt; }

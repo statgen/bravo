@@ -1,3 +1,5 @@
+window.model = window.model || {};
+window._debug = window._debug || {};
 
 function get_af_bounds(data) {
     // Removing AC_Adj = 0 cases
