@@ -1,10 +1,10 @@
 var genome_coords_margin = {left: 80, right: 30};
 var coverage_plot_height = 100;
-var coverage_plot_margin = {top: 10, bottom: 30};
-var gene_plot_height = 20;
-var gene_plot_margin = {top: 5, bottom: 5};
+var coverage_plot_margin = {top: 10, bottom: 20};
+var gene_plot_height = 10;
+var gene_plot_margin = {top: 0, bottom: 0};
 var variant_plot_height = 15;
-var variant_plot_margin = {top: 5, bottom: 5};
+var variant_plot_margin = {top: 0, bottom: 0};
 
 function bootstrap_plot() {
     window.model = window.model || {};
@@ -164,6 +164,14 @@ function create_gene_plot() {
         .attr('id', 'gene_track')
         .attr('transform', 'translate(' + genome_coords_margin.left+','+0+')');
 
+    window.model.plot.exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
+        console.log(d);
+        return (d.feature_type==='CDS'?'Coding Sequence':'UTR') + '<br>' +
+            'start: ' + group_thousands_html(d.start) + '<br>' +
+            'stop: ' + group_thousands_html(d.stop);
+    });
+    svg.call(window.model.plot.exon_tip);
+
     svg.append('line')
         .attr("y1", gene_plot_height/2)
         .attr("y2", gene_plot_height/2)
@@ -182,7 +190,8 @@ function create_gene_plot() {
         .attr('height',function(d){return d.feature_type==='CDS' ? gene_plot_height : gene_plot_height/2})
         .attr('x', function(d) { return window.model.plot.x(d.start) })
         .attr('width', function(d) { return window.model.plot.x(d.stop)-window.model.plot.x(d.start) })
-
+        .on('mouseover', window.model.plot.exon_tip.show)
+        .on('mouseout', window.model.plot.exon_tip.hide)
 }
 
 function create_variant_plot() {
@@ -277,7 +286,7 @@ function create_variant_table() {
             })(),
 
         },{
-            title: 'Position on chr' + window.model.chrom, name: 'pos',
+            title: 'Position (chr' + window.model.chrom + ')', name: 'pos',
             data: 'pos', searchable: true,  orderable: true, className: 'dt-right',
             render: function(cell_data, type, row) { return group_thousands_html(cell_data); },
 
@@ -384,7 +393,7 @@ function create_variant_table() {
         order: [[columns.map(function(d){return d.name==='cadd_phred'}).indexOf(true), 'desc']],
         columns: columns,
 
-        dom: '<ilp>ftr', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
+        dom: '<ilp>rft', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
 
         language: {
             info: 'Showing variants _START_ - _END_ of _TOTAL_',
@@ -399,25 +408,31 @@ function create_variant_table() {
     // hilite corresponding variant-plot circle
     $('#variant_table tbody').on('mouseleave', 'tr', function() {
         var variant = window.model.tbl.row(this).data();
-        $('#' + get_variant_plot_id(variant))
+        if (variant) {
+            $('#' + get_variant_plot_id(variant))
             .css('fill', 'blue')
             .css('opacity', 0.3);
+        }
     });
     $('#variant_table tbody').on('mouseenter', 'tr', function() {
         var variant = window.model.tbl.row(this).data();
         $('.variant-circle')
             .css('fill', 'blue')
             .css('opacity', 0.3);
-        var vid = '#' + get_variant_plot_id(variant);
-        d3.select(vid).moveToFront();
-        $(vid)
-            .css('fill', 'orange')
-            .css('opacity', 1);
+        if (variant) {
+            var vid = '#' + get_variant_plot_id(variant);
+            d3.select(vid).moveToFront();
+            $(vid)
+                .css('fill', 'orange')
+                .css('opacity', 1);
+        }
     });
 
     $('.variant_table_filter').on('change', function() {
         window.model.filter_info.pos_ge = parseInt($('input#pos_ge').val());
         window.model.filter_info.pos_le = parseInt($('input#pos_le').val());
+        window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val());
+        window.model.filter_info.maf_le = parseFloat($('input#maf_le').val());
         window.model.filter_info.filter_value = $('select#filter_value').val();
         window.model.tbl.draw();
     });
@@ -430,6 +445,10 @@ $(document).ready(function() {
         create_coverage_chart(window.model.coverage_stats);
     }
     create_variant_table();
+    $('#pos_ge').val(window.model.start)
+    $('#pos_le').val(window.model.stop)
+    $('#pos_ge,#pos_le').attr('min', window.model.start)
+    $('#pos_ge,#pos_le').attr('max', window.model.stop)
 });
 
 function get_variant_plot_id(variant) { return 'variant-plot-'+get_variant_id(variant); }

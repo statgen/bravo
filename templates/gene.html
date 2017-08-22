@@ -17,6 +17,7 @@
 </script>
 <script type="text/javascript" src="{{ url_for('static', filename='gene.js') }}"></script>
 <style type="text/css">
+ .dataTable { font-size: 12px; }
  .dataTables_info { float: left; }
  .dataTable { font-family: Arial, Sans-serif; /* Arial handles figure-space correctly */ }
  .dataTable .dt-right { text-align: right; padding-right: 0.7em; }
@@ -28,6 +29,8 @@
  #coverage_plot_container .axis path { fill: None; stroke: black; }
  #variant_table .highlight { background-color: orange !important }
  .table-hover>tbody>tr:hover { background-color: orange !important }
+
+ input[type=number].variant_table_filter { padding: 0; }
 
  .numsep { margin-left: 0.1em; margin-right: 0.1em; }
 </style>
@@ -128,9 +131,16 @@
   <div class="row">
     <div class="col-xs-12">
       <h3>Variants</h3>
+      <p style="float:left;margin: 0 10px 5px">pos between
+        <input type="number" class="variant_table_filter" id="pos_ge" step=1000> and
+        <input type="number" class="variant_table_filter" id="pos_le" step=1000>
+      </p>
+      <p style="float:left;margin: 0 10px 5px">MAF between
+        <input type="number" class="variant_table_filter" id="maf_ge" value=0   min=0 max=0.5 step=0.01 style="width:4em"> and
+        <input type="number" class="variant_table_filter" id="maf_le" value=0.5 min=0 max=0.5 step=0.01 style="width:4em">
+      </p>
+      <p style="float:left;margin:0 10px 5px">Quality Control: <select class='variant_table_filter' id='filter_value'><option value='*'>PASS+FAIL</option><option value='PASS'>PASS</option><option value='not PASS'>FAIL</option></select></p>
       <div id="variant_plot_container"></div>
-{#      <p>pos between <input type="number" class="dt_filter" id="pos_ge"> and <input type="number" class="dt_filter" id="pos_le"></p> #}
-      <p>QC = <select class='variant_table_filter' id='filter_value'><option value='*'>any</option><option value='PASS'>PASS</option><option value='not PASS'>FAIL</option></select></p>
       <table id="variant_table" class="table table-bordered table-hover table-condensed" cellspacing=0><tbody></tbody></table>
     </div>
   </div>

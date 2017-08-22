@@ -414,15 +414,29 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns, order, filter
     keys_from_mongo = {k for col in cols.values() for k in col['in']} # all keys retrieved from mongo (before modifying in python)
     keys_to_return = {k for col in cols.values() for k in col['out']} # all keys to return in API
 
-    mongo_match = mongo_region
-    if isinstance(filter_info.get('pos_ge',None),int): mongo_match['xpos'] = {'$gte': Xpos.from_chrom_pos(chrom, filter_info['pos_ge'])}
-    if isinstance(filter_info.get('pos_le',None),int): mongo_match['xpos'] = {'$lte': Xpos.from_chrom_pos(chrom, filter_info['pos_le'])}
+    mongo_match = [{k:v} for k,v in mongo_region.items()]
+    if isinstance(filter_info.get('pos_ge',None),int): mongo_match.append({'xpos': {'$gte': Xpos.from_chrom_pos(chrom, filter_info['pos_ge'])}})
+    if isinstance(filter_info.get('pos_le',None),int): mongo_match.append({'xpos': {'$lte': Xpos.from_chrom_pos(chrom, filter_info['pos_le'])}})
     if filter_info.get('filter_value',None) is not None:
-        if filter_info['filter_value'] in ['PASS', 'SVM', 'DISC', 'EXHET', 'CHRXHET', 'CEN']: mongo_match['filter'] = {'$regex': '.*{}.*'.format(filter_info['filter_value'])}
-        elif filter_info['filter_value'] == 'not PASS': mongo_match['filter'] = {'$ne': 'PASS'}
+        if filter_info['filter_value'] == 'PASS':
+            mongo_match.append({'filter': 'PASS'})
+        elif filter_info['filter_value'] == 'not PASS':
+            mongo_match.append({'filter': {'$ne': 'PASS'}})
+    if isinstance(filter_info.get('maf_ge',None),(float,int)):
+        assert 0 <= filter_info['maf_ge'] <= 0.5
+        mongo_match.append({'$and': [
+            {'allele_freq': {'$gte': filter_info['maf_ge']}},
+            {'allele_freq': {'$lte': 1-filter_info['maf_ge']}}
+        ]})
+    if isinstance(filter_info.get('maf_le',None),(float,int)):
+        assert 0 <= filter_info['maf_le'] <= 0.5
+        mongo_match.append({'$or': [
+            {'allele_freq': {'$lte': filter_info['maf_le']}},
+            {'allele_freq': {'$gte': 1-filter_info['maf_le']}}
+        ]})
 
     v_ids_curs = db.variants.aggregate([
-        {'$match': mongo_match},
+        {'$match': {'$and': mongo_match}},
         {'$project': mkdict(keys_for_sort)},
         {'$sort': mongo_sort_order},
         {'$project': {'_id': 1}},
