@@ -21,10 +21,15 @@
  .dataTable { font-family: Arial, Sans-serif; /* Arial handles figure-space correctly */ }
  .dataTable .dt-right { text-align: right; padding-right: 0.7em; }
  .dataTable .dt-center { text-align: center; }
+ .dataTables_length { float: right; margin-left: 3em; }
+ .dataTables_paginate paging_full { float: right; margin-left: 3em; }
+
  .d3-tip { font-family: Arial, Sans-serif; /* Helvetica Neue ignores thinspace */ }
  #coverage_plot_container .axis path { fill: None; stroke: black; }
  #variant_table .highlight { background-color: orange !important }
  .table-hover>tbody>tr:hover { background-color: orange !important }
+
+ .numsep { margin-left: 0.1em; margin-right: 0.1em; }
 </style>
 {% endblock %}
 
@@ -125,7 +130,7 @@
       <h3>Variants</h3>
       <div id="variant_plot_container"></div>
 {#      <p>pos between <input type="number" class="dt_filter" id="pos_ge"> and <input type="number" class="dt_filter" id="pos_le"></p> #}
-      <p>QC = <select class='variant_table_filter' id='filter_value'><option value='*'>any</option><option value='PASS'>PASS</option><option value='not PASS'>not PASS</option><option value='DISC'>DISC</option><option value=EXHET>EXHET</option><option value=SVM>SVM</option><option value=CEN>CEN</option><option value=CHRXHET>CHRXHET</option></select></select></p>
+      <p>QC = <select class='variant_table_filter' id='filter_value'><option value='*'>any</option><option value='PASS'>PASS</option><option value='not PASS'>FAIL</option></select></p>
       <table id="variant_table" class="table table-bordered table-hover table-condensed" cellspacing=0><tbody></tbody></table>
     </div>
   </div>

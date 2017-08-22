@@ -99,6 +99,11 @@ function group_thousands(x) {
         return x;
     }
 }
+function group_thousands_html(x) {
+    var s = group_thousands(x);
+    var parts = s.split(/\s+/);
+    return '<span class="numsep">' + parts.join('</span><span class="numsep">') + '</span>';
+}
 function perc_sigfigs(d, n_sigfigs, n_left_of_decimal) {
     /* like proportion_sigfigs but outputs a percentage.
        left-pads with &nbsp; to line up `100%` with `0%`

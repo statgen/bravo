@@ -206,7 +206,7 @@ function create_variant_plot() {
     window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
         var csq = d.major_consequence.replace(/_/g, ' ');
         if (csq.length > 15) { csq = csq.substr(0, 15) + '...'; } // because d3-tip tooltips fall off the page
-        return group_thousands(d.pos) + '<br>' +
+        return group_thousands_html(d.pos) + '<br>' +
             csq + '<br>' +
             (d.filter === 'PASS' ? '' : d.filter + '<br>') +
             'MAF: ' + perc_sigfigs(d.allele_freq, 2);
@@ -279,7 +279,7 @@ function create_variant_table() {
         },{
             title: 'Position on chr' + window.model.chrom, name: 'pos',
             data: 'pos', searchable: true,  orderable: true, className: 'dt-right',
-            render: function(cell_data, type, row) { return group_thousands(cell_data); },
+            render: function(cell_data, type, row) { return group_thousands_html(cell_data); },
 
         },{
             title: 'HGVS', name: 'hgvs',
@@ -309,27 +309,34 @@ function create_variant_table() {
             data: 'filter', searchable:true, orderable:false, className: 'dt-center',
 
         },{
-            title: 'HomRef', name: 'n_homref',
-            searchable:true, orderable:false, className: 'dt-right',
+            title: 'N Alleles', name: 'allele_num',
+            data: 'allele_num', searchable:true, orderable:true, className: 'dt-right',
             render: function(cell_data, type, row) {
-                var num_het_samples = row.allele_count - 2*row.hom_count;
-                var num_homref_samples = ((row.allele_num - row.allele_count) - num_het_samples) / 2;
-                return group_thousands(num_homref_samples);
+                return group_thousands_html(cell_data);
             },
+
+        // },{
+        //     title: 'HomRef', name: 'n_homref',
+        //     searchable:true, orderable:false, className: 'dt-right',
+        //     render: function(cell_data, type, row) {
+        //         var num_het_samples = row.allele_count - 2*row.hom_count;
+        //         var num_homref_samples = ((row.allele_num - row.allele_count) - num_het_samples) / 2;
+        //         return group_thousands_html(num_homref_samples);
+        //     },
 
         },{
             title: 'Het', name: 'n_het',
             searchable:true, orderable:false, orderSequence:['desc','asc'], className: 'dt-right',
             render: function(cell_data, type, row) {
                 var num_het_samples = row.allele_count - 2*row.hom_count;
-                return group_thousands(num_het_samples);
+                return group_thousands_html(num_het_samples);
             },
 
         },{
             title: 'HomAlt', name: 'hom_count',
             searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
             render: function(cell_data, type, row) {
-                return group_thousands(row.hom_count);
+                return group_thousands_html(row.hom_count);
             },
 
         },{
@@ -377,13 +384,14 @@ function create_variant_table() {
         order: [[columns.map(function(d){return d.name==='cadd_phred'}).indexOf(true), 'desc']],
         columns: columns,
 
-        dom: '<ip>ftr', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
+        dom: '<ilp>ftr', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
 
         language: {
             info: 'Showing variants _START_ - _END_ of _TOTAL_',
             infoFiltered: '(filtered from _MAX_ variants)',
             infoEmpty: 'No matching variants',
             thousands: '\u202f',
+            lengthMenu: 'Show _MENU_ variants',
         }
 
     });

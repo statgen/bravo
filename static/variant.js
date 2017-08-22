@@ -11,7 +11,7 @@ function draw_region_coverage(raw_data, metric, ref) {
     // If it receives multiple bases, it draws a coverage graph, letting the user select mean, median, % > X
     // TODO: always draw coverage for only the first base.
     region_chart_width = 500;
-    region_chart_margin = {top: 10, right: 50, bottom: 55, left: 50};
+    region_chart_margin = {top: 10, right: 50, bottom: 55, left: 70};
     if (raw_data.length > 1) {
         var data = raw_data;
         var chart_width = _.min([region_chart_width, data.length*30]);
@@ -109,7 +109,9 @@ function draw_region_coverage(raw_data, metric, ref) {
 
         var yAxis = d3.svg.axis()
             .scale(y)
-            .orient("left");
+            .orient("left")
+            .ticks(5)
+            .tickFormat(d3.format('%'));
 
         svg = d3.select('#region_coverage').append("svg")
             .attr('id', 'inner_svg')
