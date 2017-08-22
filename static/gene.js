@@ -95,7 +95,6 @@ function create_coverage_chart(cov_data) {
     // Handle changes
     $('.coverage_metric_buttons').change(function () {
         var v = $(this).attr('id').replace('_covmet_button', '');
-        console.log('clicked', v)
         $('.coverage_subcat_selectors').hide();
         if (v == 'covered') {
             $('#over_x_select_container').show();
@@ -107,11 +106,9 @@ function create_coverage_chart(cov_data) {
         change_coverage_chart_metric(window.model.coverage_stats, v);
     });
     $('#over_x_select').change(function () {
-        console.log('clicked-%>x', $(this).val())
         change_coverage_chart_metric(window.model.coverage_stats, $(this).val().replace('X', ''));
     });
     $('#average_select').change(function () {
-        console.log('clicked-avg', $(this).val())
         change_coverage_chart_metric(window.model.coverage_stats, $(this).val());
     });
 }
@@ -123,7 +120,7 @@ function _coverage_y_axis(y_scale, metric) {
         .ticks(3);
 
     if (metric === 'mean' || metric === 'median')
-        yAxis = yAxis.tickFormat(function(d) {console.log(d); return d.toString() + '\u00d7'});
+        yAxis = yAxis.tickFormat(function(d) {return d.toString() + '\u00d7'});
     else
         yAxis = yAxis.tickFormat(d3.format('%'));
 
@@ -224,7 +221,6 @@ function change_variant_plot(variants) {
         .data(variants, get_variant_id); // define data-joining 2nd method to allow move-to-front
     selection.enter() //ENTER
         .append('ellipse')
-        //.attr('foo', function(d) { console.log('enter-each', d)})
         .attr('class', 'variant-circle')
         .style('opacity', 0.3)
         .style('fill', 'blue')
@@ -259,7 +255,6 @@ function change_variant_plot(variants) {
             });
         })
     selection.exit() //EXIT
-        //.attr('foo', function(d) { console.log('exit-each', d)})
         .remove()
 }
 
