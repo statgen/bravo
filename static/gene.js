@@ -227,13 +227,32 @@ function change_variant_plot(variants) {
         .attr('class', 'variant-circle')
         .style('opacity', 0.3)
         .style('fill', 'blue')
-        .attr('ry', 4)
-        .attr('rx', 4)
+        .attr('ry', 6)
+        .attr('rx', 6)
         .attr('cy', variant_plot_height/2)
         .attr('cx', function(d) { return window.model.plot.x(d.pos); })
         .attr('id', get_variant_plot_id)
-        .on('mouseover', window.model.plot.oval_tip.show)
-        .on('mouseout', window.model.plot.oval_tip.hide)
+        .on('mouseover', function(variant) {
+            window.model.plot.oval_tip.show(variant);
+            window.model.tbl.rows()[0].forEach(function(row_idx) {
+                $(window.model.tbl.row(row_idx).nodes()).removeClass('highlight');
+            });
+            window.model.tbl.rows()[0].forEach(function(row_idx) {
+                var cur_var = window.model.tbl.row(row_idx).data();
+                if (cur_var.pos === variant.pos && cur_var.ref === variant.ref && cur_var.alt === variant.alt) {
+                    $(window.model.tbl.row(row_idx).nodes()).addClass('highlight');
+                }
+            });
+        })
+        .on('mouseout', function(variant) {
+            window.model.plot.oval_tip.hide(variant);
+            window.model.tbl.rows()[0].forEach(function(row_idx) {
+                var cur_var = window.model.tbl.row(row_idx).data();
+                if (cur_var.pos === variant.pos && cur_var.ref === variant.ref && cur_var.alt === variant.alt) {
+                    $(window.model.tbl.row(row_idx).nodes()).removeClass('highlight');
+                }
+            });
+        })
     selection // UPDATE // todo: learn how to get union of ENTER+UPDATE
         //.attr('foo', function(d) { console.log('update-each', d)})
         .attr('cx', function(d) { return window.model.plot.x(d.pos); })
@@ -339,7 +358,7 @@ function create_variant_table() {
     window.model.filter_info.stop = window.model.stop;
     window.model.filter_info.chrom = window.model.chrom;
 
-    var tbl = $('#variant_table').DataTable({
+    window.model.tbl = $('#variant_table').DataTable({
         serverSide: true, /* API does all the real work */
 
         processing: true, /* show "processing" over table while waiting for API */
@@ -380,17 +399,16 @@ function create_variant_table() {
         }
 
     });
-    window._debug.tbl = tbl;
 
     // hilite corresponding variant-plot circle
     $('#variant_table tbody').on('mouseleave', 'tr', function() {
-        var variant = tbl.row(this).data();
+        var variant = window.model.tbl.row(this).data();
         $('#' + get_variant_plot_id(variant))
             .css('fill', 'blue')
             .css('opacity', 0.3);
     });
     $('#variant_table tbody').on('mouseenter', 'tr', function() {
-        var variant = tbl.row(this).data();
+        var variant = window.model.tbl.row(this).data();
         $('.variant-circle')
             .css('fill', 'blue')
             .css('opacity', 0.3);
@@ -404,7 +422,7 @@ function create_variant_table() {
         window.model.filter_info.pos_le = parseInt($('input#pos_le').val());
         window.model.filter_info.filter_value = $('select#filter_value').val();
         console.log(window.model);
-        $('#variant_table').DataTable().draw();
+        window.model.tbl.draw();
     });
 }
 $(create_variant_table);
