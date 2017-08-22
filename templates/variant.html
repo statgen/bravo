@@ -85,7 +85,7 @@
                    <div class="row">
                       <div class="col-xs-11">
                          <div class="section_header">Frequency Table</div>
-                         <table id="pop_afs_table">
+                         <table id="pop_afs_table" class="table table-bordered table-hover table-condensed">
                              <thead>
                                  <tr>
                                      <th>Population</th>
@@ -93,7 +93,7 @@
                                  </tr>
                              </thead>
                              <tbody>
-                                {% for pop in variant.pop_afs %}
+                                {% for pop in variant.pop_afs|sort %}
                                    <tr>
                                        <td>{{ pop }}</td>
                                        <td>{{ '%0.4g' % variant.pop_afs[pop] }}</td>

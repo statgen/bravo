@@ -263,7 +263,7 @@ function create_variant_table() {
                     '<a href="/variant/<%= window.model.chrom %>-<%= variant.pos %>-<%= variant.ref %>-<%= variant.alt %>" target="_blank">'+
                         '<% if (variant.ref.length > 20) { %><%= variant.ref.slice(0,20) %>...<% } else { %><%= variant.ref %><% } %> / '+
                         '<% if (variant.alt.length > 20) { %><%= variant.alt.slice(0,20) %>...<% } else { %><%= variant.alt %><% } %>'+
-                        '<% if (variant.rsids.length) { %>(<%= variant.rsids.join(", ") %>)<% } %>'+
+                        '<% if (variant.rsids.length) { %> (<%= variant.rsids.join(", ") %>)<% } %>'+
                         '</a>',
                     {variable:'variant'});
                 return function(cell_data, type, row) { return template(row); };

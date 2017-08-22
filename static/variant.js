@@ -425,10 +425,17 @@ function get_af_bucket_text(bin) {
     }
 }
 
-$(document).ready(function() {
-    $('#pop_afs_table').tablesorter({
-        sortList: [[0,0]],
+function create_pop_afs_table() {
+    $('#pop_afs_table').DataTable({
+        paging: false,
+        searching: false,
+        info: false,
+        ordering: false,
     });
+}
+
+$(document).ready(function() {
+    create_pop_afs_table();
 
     if (window.variant != null && 'genotype_depths' in window.variant) {
         draw_quality_histogram(window.variant.genotype_depths[0], '#quality_display_container', false, true, 'Depth', 'Number of Individuals');
