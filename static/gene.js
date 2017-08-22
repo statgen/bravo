@@ -1,5 +1,5 @@
 var genome_coords_margin = {left: 80, right: 30};
-var coverage_plot_height = 200;
+var coverage_plot_height = 100;
 var coverage_plot_margin = {top: 10, bottom: 30};
 var gene_plot_height = 40;
 var gene_plot_margin = {top: 5, bottom: 5};
@@ -49,19 +49,32 @@ function create_coverage_chart(cov_data) {
         .attr('id', 'inner_graph')
         .attr("transform", "translate(" + genome_coords_margin.left + "," + coverage_plot_margin.top + ")");
 
-    svg.selectAll("bar")
+    svg.append('clipPath')
+        .attr('id', 'cov-plot-clip')
+        .append('rect')
+        .attr('x', 0)
+        .attr('width', window.model.plot.genome_coords_width)
+        .attr('y', 0)
+        .attr('height', coverage_plot_height);
+
+    var cov_bar_g = svg.append('g')
+        .attr('clip-path', 'url(#cov-plot-clip)')
+        .attr('id', 'cov-bar-g');
+    cov_bar_g
+        .selectAll("rect.cov_plot_bars")
         .data(cov_data)
         .enter()
         .append("rect")
-        .attr('class', 'main_plot_bars')
+        .attr('class', 'cov_plot_bars')
         .style("fill", "steelblue")
         .attr("x", function(d) {
             return window.model.plot.x(d.start);
         })
         .attr("width", function(d) {
-            var length_in_bases = d.end - d.start + 1;
-            var width_of_base = window.model.plot.genome_coords_width/cov_data.length;
-            return length_in_bases * width_of_base;
+            return window.model.plot.x(d.end) - window.model.plot.x(d.start) + 1;
+            // var length_in_bases = d.end - d.start + 1;
+            // var width_of_base = window.model.plot.genome_coords_width/cov_data.length;
+            // return length_in_bases * width_of_base;
         })
         .attr("y", function(d) {
             return y(d[metric]) || 0;
@@ -78,17 +91,36 @@ function create_coverage_chart(cov_data) {
     svg.append("g")
         .attr("class", "y axis")
         .call(yAxis);
+
+    // Handle changes
+    $('.coverage_metric_buttons').change(function () {
+        var v = $(this).attr('id').replace('_covmet_button', '');
+        console.log('clicked', v)
+        $('.coverage_subcat_selectors').hide();
+        if (v == 'covered') {
+            $('#over_x_select_container').show();
+            v = $('#over_x_select').val().replace('X', '');
+        } else {
+            $('#average_select_container').show();
+            v = $("#average_select").val();
+        }
+        change_coverage_chart_metric(window.model.coverage_stats, v);
+    });
+    $('#over_x_select').change(function () {
+        console.log('clicked-%>x', $(this).val())
+        change_coverage_chart_metric(window.model.coverage_stats, $(this).val().replace('X', ''));
+    });
+    $('#average_select').change(function () {
+        console.log('clicked-avg', $(this).val())
+        change_coverage_chart_metric(window.model.coverage_stats, $(this).val());
+    });
 }
 
 function change_coverage_chart_metric(cov_data, metric) {
-
-    console.log(['cov_data', cov_data]);
-
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
         max_cov = d3.max(cov_data, function(d) { return d[metric]; });
     }
-    console.log(max_cov);
 
     var y = d3.scale.linear()
         .domain([0, max_cov])
@@ -96,7 +128,8 @@ function change_coverage_chart_metric(cov_data, metric) {
 
     var svg = d3.select('#coverage_plot_container').select('#inner_graph');
 
-    svg.selectAll("rect")
+    svg.select('#cov-bar-g')
+        .selectAll("rect.cov_plot_bars")
         .data(cov_data)
         .transition()
         .duration(500)
@@ -200,30 +233,10 @@ function change_variant_plot(variants) {
 
 $(document).ready(function() {
     create_gene_plot();
+    create_variant_plot();
     if (window.model.coverage_stats != null) {
         create_coverage_chart(window.model.coverage_stats);
-        // Change coverage plot
-        $('.coverage_metric_buttons').change(function () {
-            var v = $(this).attr('id').replace('_covmet_button', '');
-            $('.coverage_subcat_selectors').hide();
-            if (v == 'covered') {
-                $('#over_x_select_container').show();
-                v = $('#over_x_select').val().replace('X', '');
-            } else {
-                $('#average_select_container').show();
-                v = $("#average_select").val();
-            }
-            change_coverage_chart_metric(window.model.coverage_stats, v);
-        });
-        $('#over_x_select').change(function () {
-            change_coverage_chart_metric(window.model.coverage_stats, $(this).val().replace('X', ''));
-        });
-        $('#average_select').change(function () {
-            change_coverage_chart_metric(window.model.coverage_stats, $(this).val());
-        });
     }
-
-    create_variant_plot();
 });
 
 

@@ -443,7 +443,7 @@ def gene_page(gene_id):
         exons = lookups.get_exons_in_gene(db, gene_id)
 
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), gene['xstart'] - EXON_PADDING, gene['xstop'] + EXON_PADDING)
-        coverage_stats = coverage_stats[::len(coverage_stats)/8]
+        #coverage_stats = coverage_stats[::len(coverage_stats)/8]
 
         return render_template(
             'gene.html',
@@ -474,7 +474,7 @@ def transcript_page(transcript_id):
         gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
         variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
-        coverage_stats = coverage_stats[::len(coverage_stats)/8]
+        #coverage_stats = coverage_stats[::len(coverage_stats)/8]
         num_variants_in_transcript = lookups.get_num_variants_in_transcript(db, transcript_id)
 
         return render_template(
@@ -592,7 +592,7 @@ def region_page(region_id):
         xstart = get_xpos(chrom, start)
         xstop = get_xpos(chrom, stop)
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
-        coverage_stats = coverage_stats[::len(coverage_stats)/8]
+        #coverage_stats = coverage_stats[::len(coverage_stats)/8]
         return render_template(
             'region.html',
             genes_in_region=genes_in_region,

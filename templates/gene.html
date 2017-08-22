@@ -36,7 +36,7 @@
   </div>
   <div class="row">
     <div class="col-md-6 col-xs-12">
-       <dl class="dl-horizontal">
+       <dl class="dl-horizontal" style="margin-bottom:0">
           {% if gene.full_gene_name %}
               <dt>{{ gene.gene_name }}</dt>
               <dd>{{ gene.full_gene_name }}</dd>
@@ -49,29 +49,6 @@
                   {{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }}
               </a>
           </dd>
-          <dt class="hidden-xs">UCSC Browser</dt>
-          <dd class="hidden-xs">
-              <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
-                  {{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }}
-                  <i class="fa fa-external-link"></i>
-              </a>
-          </dd>
-          <dt class="hidden-xs">GeneCards</dt>
-          <dd class="hidden-xs">
-              <a class="gene-name" href="http://www.genecards.org/cgi-bin/carddisp.pl?gene={{ gene.gene_name }}" target="_blank">
-                  {{ gene.gene_name }}
-                  <i class="fa fa-external-link"></i>
-              </a>
-          </dd>
-          {% if gene.omim_accession %}
-              <dt>OMIM</dt>
-              <dd>
-                  <a class="gene-name" href="http://omim.org/entry/{{ gene.omim_accession }}" target="_blank">
-                      {{ gene.gene_name }}
-                      <i class="fa fa-external-link"></i>
-                  </a>
-              </dd>
-          {% endif %}
           <dt>Other</dt>
           <dd>
               <div class="dropdown">
@@ -80,18 +57,26 @@
                       <span class="caret"></span>
                   </button>
                   <ul class="dropdown-menu" role="menu" aria-labelledby="external_ref_dropdown">
-                      <li role="presentation" class="visible-xs-block">
+                      <li role="presentation">
                           <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
                               UCSC Browser
                               <i class="fa fa-external-link"></i>
                           </a>
                       </li>
-                      <li role="presentation" class="visible-xs-block">
+                      <li role="presentation">
                           <a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene={{ gene.gene_name }}" target="_blank">
                               GeneCards
                               <i class="fa fa-external-link"></i>
                           </a>
                       </li>
+                      {% if gene.omim_accession %}
+                      <li role="presentation">
+                          <a href="http://omim.org/entry/{{ gene.omim_accession }}" target="_blank">
+                              OMIM
+                              <i class="fa fa-external-link"></i>
+                          </a>
+                      </li>
+                      {% endif %}
                       <li role="presentation">
                           <a role="menuitem" tabindex="-1" href="http://grch37.ensembl.org/Homo_sapiens/Gene/Summary?g={{ gene.gene_id }}" target="_blank">
                               Ensembl <i class="fa fa-external-link"></i>
@@ -125,7 +110,7 @@
   </div>
   <div class="row">
     <div class="col-xs-12">
-      <h3>Coverage</h3>
+      <h3 style="margin-bottom:0">Coverage Depth</h3>
       {% include 'coverage_selectors.html' %}
       <br/>
       <div id="coverage_plot_container"></div>

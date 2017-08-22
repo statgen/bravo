@@ -75,7 +75,7 @@ function fmt(format) {
 function group_thousands(x) {
     // group_thousands_space(1234567.7654321) -> "1 234 567.765 432 1"
     try {
-        var thinspace = '\u2009';
+        var thinspace = '\u202f';
         var parts = (''+x).split('.');
         var b = parts[0]; // before the decimal
         var neg = b[0] === '-';
