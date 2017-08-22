@@ -38,9 +38,7 @@ function create_coverage_chart(cov_data) {
         .scale(window.model.plot.x)
         .orient("bottom");
 
-    var yAxis = d3.svg.axis()
-        .scale(y)
-        .orient("left");
+    var yAxis = _coverage_y_axis(y, metric);
 
     var svg = d3.select('#coverage_plot_container').append("svg")
         .attr("width", window.model.plot.svg_width)
@@ -116,6 +114,20 @@ function create_coverage_chart(cov_data) {
     });
 }
 
+function _coverage_y_axis(y_scale, metric) {
+    var yAxis = d3.svg.axis()
+        .scale(y_scale)
+        .orient('left')
+        .ticks(3);
+
+    if (metric === 'mean' || metric === 'median')
+        yAxis = yAxis.tickFormat(function(d) {console.log(d); return d.toString() + '\u00d7'});
+    else
+        yAxis = yAxis.tickFormat(d3.format('%'));
+
+    return yAxis;
+}
+
 function change_coverage_chart_metric(cov_data, metric) {
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
@@ -128,6 +140,12 @@ function change_coverage_chart_metric(cov_data, metric) {
 
     var svg = d3.select('#coverage_plot_container').select('#inner_graph');
 
+    var yAxis = _coverage_y_axis(y, metric);
+    svg.select(".y.axis")
+        .transition()
+        .duration(200)
+        .call(yAxis);
+
     svg.select('#cov-bar-g')
         .selectAll("rect.cov_plot_bars")
         .data(cov_data)
@@ -135,15 +153,6 @@ function change_coverage_chart_metric(cov_data, metric) {
         .duration(500)
         .attr("y", function(d) { return y(d[metric]); })
         .attr("height", function(d) { return coverage_plot_height - y(d[metric]); });
-
-    var yAxis = d3.svg.axis()
-        .scale(y)
-        .orient("left");
-
-    svg.select(".y.axis")
-        .transition()
-        .duration(200)
-        .call(yAxis);
 }
 
 function create_gene_plot() {
