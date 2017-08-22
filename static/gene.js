@@ -234,6 +234,8 @@ function change_variant_plot(variants) {
         .attr('id', get_variant_plot_id)
         .on('mouseover', function(variant) {
             window.model.plot.oval_tip.show(variant);
+            $('.variant-circle').css('fill', 'blue').css('opacity', 0.3);
+            $(this).css('fill', 'orange').css('opacity', 1);
             window.model.tbl.rows()[0].forEach(function(row_idx) {
                 $(window.model.tbl.row(row_idx).nodes()).removeClass('highlight');
             });
@@ -245,6 +247,7 @@ function change_variant_plot(variants) {
             });
         })
         .on('mouseout', function(variant) {
+            $(this).css('fill', 'blue').css('opacity', 0.3);
             window.model.plot.oval_tip.hide(variant);
             window.model.tbl.rows()[0].forEach(function(row_idx) {
                 var cur_var = window.model.tbl.row(row_idx).data();
@@ -413,7 +416,7 @@ function create_variant_table() {
             .css('fill', 'blue')
             .css('opacity', 0.3);
         $('#' + get_variant_plot_id(variant))
-            .css('fill', 'black')
+            .css('fill', 'orange')
             .css('opacity', 1);
     });
 
