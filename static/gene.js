@@ -431,8 +431,8 @@ function create_variant_table() {
     $('.variant_table_filter').on('change', function() {
         window.model.filter_info.pos_ge = parseInt($('input#pos_ge').val());
         window.model.filter_info.pos_le = parseInt($('input#pos_le').val());
-        window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val());
-        window.model.filter_info.maf_le = parseFloat($('input#maf_le').val());
+        window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val()) / 100; // %
+        window.model.filter_info.maf_le = parseFloat($('input#maf_le').val()) / 100; // %
         window.model.filter_info.filter_value = $('select#filter_value').val();
         window.model.tbl.draw();
     });

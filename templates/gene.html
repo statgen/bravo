@@ -136,8 +136,8 @@
         <input type="number" class="variant_table_filter" id="pos_le" step=1000>
       </p>
       <p style="float:left;margin: 0 10px 5px">MAF between
-        <input type="number" class="variant_table_filter" id="maf_ge" value=0   min=0 max=0.5 step=0.01 style="width:4em"> and
-        <input type="number" class="variant_table_filter" id="maf_le" value=0.5 min=0 max=0.5 step=0.01 style="width:4em">
+        <input type="number" class="variant_table_filter" id="maf_ge" value=0  min=0 max=50 step=1 style="width:5em">% and
+        <input type="number" class="variant_table_filter" id="maf_le" value=50 min=0 max=50 step=1 style="width:4em">%
       </p>
       <p style="float:left;margin:0 10px 5px">Quality Control: <select class='variant_table_filter' id='filter_value'><option value='*'>PASS+FAIL</option><option value='PASS'>PASS</option><option value='not PASS'>FAIL</option></select></p>
       <div id="variant_plot_container"></div>

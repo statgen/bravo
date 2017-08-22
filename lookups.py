@@ -424,16 +424,18 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns, order, filter
             mongo_match.append({'filter': {'$ne': 'PASS'}})
     if isinstance(filter_info.get('maf_ge',None),(float,int)):
         assert 0 <= filter_info['maf_ge'] <= 0.5
-        mongo_match.append({'$and': [
-            {'allele_freq': {'$gte': filter_info['maf_ge']}},
-            {'allele_freq': {'$lte': 1-filter_info['maf_ge']}}
-        ]})
+        if filter_info['maf_ge'] > 0:
+            mongo_match.append({'$and': [
+                {'allele_freq': {'$gte': filter_info['maf_ge']}},
+                {'allele_freq': {'$lte': 1-filter_info['maf_ge']}}
+            ]})
     if isinstance(filter_info.get('maf_le',None),(float,int)):
         assert 0 <= filter_info['maf_le'] <= 0.5
-        mongo_match.append({'$or': [
-            {'allele_freq': {'$lte': filter_info['maf_le']}},
-            {'allele_freq': {'$gte': 1-filter_info['maf_le']}}
-        ]})
+        if filter_info['maf_le'] < 0.5:
+            mongo_match.append({'$or': [
+                {'allele_freq': {'$lte': filter_info['maf_le']}},
+                {'allele_freq': {'$gte': 1-filter_info['maf_le']}}
+            ]})
 
     v_ids_curs = db.variants.aggregate([
         {'$match': {'$and': mongo_match}},
