@@ -149,3 +149,11 @@ function rightpad(str, len, padding) {
 function fmt_annotation(anno) {
     return anno.replace('_variant', '').replace(/_/g, ' ').replace('utr', 'UTR').replace('3 prime', "3'").replace('5 prime', "5'").replace('nc ', "non-coding ");
 }
+
+if (d3 && d3.selection) {
+    d3.selection.prototype.moveToFront = function() {
+        return this.each(function(){
+            this.parentNode.appendChild(this);
+        });
+    };
+}

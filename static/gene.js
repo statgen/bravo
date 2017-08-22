@@ -219,8 +219,9 @@ function create_variant_plot() {
 }
 
 function change_variant_plot(variants) {
-    //console.log('plotting', variants);
-    var selection = d3.select('#variant_track').selectAll('.variant-circle').data(variants);
+    var selection = d3.select('#variant_track')
+        .selectAll('.variant-circle')
+        .data(variants, get_variant_id); // define data-joining 2nd method to allow move-to-front
     selection.enter() //ENTER
         .append('ellipse')
         //.attr('foo', function(d) { console.log('enter-each', d)})
@@ -245,6 +246,7 @@ function change_variant_plot(variants) {
                     $(window.model.tbl.row(row_idx).nodes()).addClass('highlight');
                 }
             });
+            d3.select(this).moveToFront();
         })
         .on('mouseout', function(variant) {
             $(this).css('fill', 'blue').css('opacity', 0.3);
@@ -256,23 +258,11 @@ function change_variant_plot(variants) {
                 }
             });
         })
-    selection // UPDATE // todo: learn how to get union of ENTER+UPDATE
-        //.attr('foo', function(d) { console.log('update-each', d)})
-        .attr('cx', function(d) { return window.model.plot.x(d.pos); })
-        .attr('id', get_variant_plot_id);
     selection.exit() //EXIT
         //.attr('foo', function(d) { console.log('exit-each', d)})
         .remove()
 }
 
-
-$(document).ready(function() {
-    create_gene_plot();
-    create_variant_plot();
-    if (window.model.coverage_stats != null) {
-        create_coverage_chart(window.model.coverage_stats);
-    }
-});
 
 
 function create_variant_table() {
@@ -415,7 +405,9 @@ function create_variant_table() {
         $('.variant-circle')
             .css('fill', 'blue')
             .css('opacity', 0.3);
-        $('#' + get_variant_plot_id(variant))
+        var vid = '#' + get_variant_plot_id(variant);
+        d3.select(vid).moveToFront();
+        $(vid)
             .css('fill', 'orange')
             .css('opacity', 1);
     });
@@ -424,10 +416,18 @@ function create_variant_table() {
         window.model.filter_info.pos_ge = parseInt($('input#pos_ge').val());
         window.model.filter_info.pos_le = parseInt($('input#pos_le').val());
         window.model.filter_info.filter_value = $('select#filter_value').val();
-        console.log(window.model);
         window.model.tbl.draw();
     });
 }
-$(create_variant_table);
 
-function get_variant_plot_id(variant) { return 'variant-plot-'+variant.pos+'-'+variant.ref+'-'+variant.alt; }
+$(document).ready(function() {
+    create_gene_plot();
+    create_variant_plot();
+    if (window.model.coverage_stats != null) {
+        create_coverage_chart(window.model.coverage_stats);
+    }
+    create_variant_table();
+});
+
+function get_variant_plot_id(variant) { return 'variant-plot-'+get_variant_id(variant); }
+function get_variant_id(variant) { return ''+variant.pos+'-'+variant.ref+'-'+variant.alt; }
