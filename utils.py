@@ -384,5 +384,5 @@ def indent_pprint(obj):
     import pprint
     print '\n'.join('####'+line for line in pprint.pformat(obj).split('\n'))
 def mkdict(*dicts, **ret):
-    for d in dicts: ret.update({k:True for k in d} if isinstance(d, set) else d)
+    for d in dicts: ret.update({k:True for k in d} if isinstance(d, (set,list)) else d)
     return ret

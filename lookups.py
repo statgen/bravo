@@ -368,105 +368,98 @@ def get_exons_in_gene(db, gene_id):
 
 
 
-def get_variants_for_table(db, chrom, start_pos, end_pos, columns, order, filter_info, skip, length):
+def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, order, filter_info, skip, length):
+    # 1. match what the user asked for - using [chrom, start_pos, end_pos, filter_info]
+    # 2. project to just keys for sorting, sort, and get `_id`s - using [order]
+    # 3. get `n_filtered` and `length`-many `_id`s - using [skip, length]
+    # 4. look up those `_id`s and project to keys we'll need to make the final result - using [columns_to_return]
+    # 5. do modifications ("annotations") in python (LATER: just put [HGVS csq] in mongo) - using [columns_to_return]
+    # 6. project to just fields that we return - using [columns_to_return]
     st = time.time()
 
-    mongo_region = {'xpos': {
-        '$gte': Xpos.from_chrom_pos(chrom, start_pos),
-        '$lte': Xpos.from_chrom_pos(chrom, end_pos),
-    }}
-    n_variants = db.variants.find(mongo_region, projection={'_id': False}).count()
-    print '## {:0.3f} sec:'.format(time.time()-st), 'n_variants={}'.format(n_variants); st = time.time()
-
-    cols = { # `in` comes from mongo.  `out` goes to API.  `inout` goes straight from mongo to API.
-      'allele': {'inout': ['rsids', 'ref', 'alt']},
-      'pos': {'orderable': True},
-      'hgvs': {'in': ['vep_annotations'], 'out': ['HGVS', 'CANONICAL']},
-      'category': {'in': ['vep_annotations'], 'out': ['category']},
-      'csq': {'in': ['vep_annotations'], 'out': ['major_consequence']},
-      'filter': {},
-      'allele_count': {'orderable': True},
-      'allele_num': {'orderable': True},
-      'hom_count': {'orderable': True},
-      'allele_freq': {'orderable': True},
-      'cadd_phred': {'orderable': True},
-    }
-    for name, col in cols.items():
-        if not any(k in col for k in 'inout in out'.split()): col['inout'] = [name]
-        if 'inout' in col: col['in'] = col['out'] = col['inout']
-        if 'orderable' not in col: col['orderable'] = False
-        if col['orderable']: assert len(col['inout']) == 1
-
-    mongo_sort_order = OrderedDict()
-    for d in order:
-        if d['dir'] == 'asc': direction = pymongo.ASCENDING
-        elif d['dir'] == 'desc': direction = pymongo.DESCENDING
-        else: raise Exception(d)
-        colidx = d['column']
-        colname = columns[colidx]['name']
-        if not cols[colname]['orderable']: raise Exception(d)
-        key = cols[colname]['inout'][0]
-        if key == 'pos': key = 'xpos'
-        mongo_sort_order[key] = direction
-
-    # TODO: only include cols mentioned in `columns`?
-    keys_for_sort = set(mongo_sort_order.keys()) # used to sort while obtaining `_id`s.
-    keys_from_mongo = {k for col in cols.values() for k in col['in']} # all keys retrieved from mongo (before modifying in python)
-    keys_to_return = {k for col in cols.values() for k in col['out']} # all keys to return in API
-
-    mongo_match = [{k:v} for k,v in mongo_region.items()]
+    mongo_match = [{'xpos': {'$gte': Xpos.from_chrom_pos(chrom, start_pos), '$lte': Xpos.from_chrom_pos(chrom, end_pos)}}]
     if isinstance(filter_info.get('pos_ge',None),int): mongo_match.append({'xpos': {'$gte': Xpos.from_chrom_pos(chrom, filter_info['pos_ge'])}})
     if isinstance(filter_info.get('pos_le',None),int): mongo_match.append({'xpos': {'$lte': Xpos.from_chrom_pos(chrom, filter_info['pos_le'])}})
     if filter_info.get('filter_value',None) is not None:
-        if filter_info['filter_value'] == 'PASS':
-            mongo_match.append({'filter': 'PASS'})
-        elif filter_info['filter_value'] == 'not PASS':
-            mongo_match.append({'filter': {'$ne': 'PASS'}})
+        if filter_info['filter_value'] == 'PASS': mongo_match.append({'filter': 'PASS'})
+        elif filter_info['filter_value'] == 'not PASS': mongo_match.append({'filter': {'$ne': 'PASS'}})
     if isinstance(filter_info.get('maf_ge',None),(float,int)):
         assert 0 <= filter_info['maf_ge'] <= 0.5
-        if filter_info['maf_ge'] > 0:
-            mongo_match.append({'$and': [
-                {'allele_freq': {'$gte': filter_info['maf_ge']}},
-                {'allele_freq': {'$lte': 1-filter_info['maf_ge']}}
-            ]})
+        if filter_info['maf_ge'] > 0: mongo_match.append({'$and': [{'allele_freq': {'$gte': filter_info['maf_ge']}},{'allele_freq': {'$lte': 1-filter_info['maf_ge']}}]})
     if isinstance(filter_info.get('maf_le',None),(float,int)):
         assert 0 <= filter_info['maf_le'] <= 0.5
-        if filter_info['maf_le'] < 0.5:
-            mongo_match.append({'$or': [
-                {'allele_freq': {'$lte': filter_info['maf_le']}},
-                {'allele_freq': {'$gte': 1-filter_info['maf_le']}}
-            ]})
+        if filter_info['maf_le'] < 0.5: mongo_match.append({'$or': [{'allele_freq': {'$lte': filter_info['maf_le']}},{'allele_freq': {'$gte': 1-filter_info['maf_le']}}]})
+
+    cols = {
+        # after pre-processing, these will look like:
+        # <name>: {'sort': {'project': <projection>, 'sort_key': <key>}, 'return': {'project': <projection>, 'annotate': [<annotator>, ...], 'to_client': [<key>, ...]}}
+        'allele': {'return': ['rsids', 'ref', 'alt']},
+        'pos': {'sort': 'xpos'},
+        'hgvs': {'return': {'project': {'vep_annotations':1}, 'annotate': ['add_csq'], 'to_client':['HGVS']}},
+        'csq': {'return': {'project': {'vep_annotations':1}, 'annotate': ['add_csq'], 'to_client':['major_consequence']}},
+        'filter': {},
+        'allele_count': {'sort': True},
+        'allele_num': {'sort': True},
+        'het': {'sort': {'project': {'het': {'$subtract':['$allele_count',{'$multiply':[2,'$hom_count']}]}}, 'sort_key': 'het'},
+                'return': {'project': {'het': {'$subtract':['$allele_count',{'$multiply':[2,'$hom_count']}]}}, 'to_client': ['het']}},
+        'hom_count': {'sort': True},
+        'allele_freq': {'sort': True},
+        'cadd_phred': {'sort': True},
+    }
+    annotators = {'add_csq': add_consequence_to_variant}
+    for name, col in cols.items():
+        try:
+            if 'sort' not in col: col['sort'] = False
+            if col['sort'] == True: col['sort'] = name
+            if isinstance(col['sort'], str): col['sort'] = {'project': {col['sort']:1}, 'sort_key':col['sort']}
+            assert col['sort'] == False or isinstance(col['sort']['project'], dict) and isinstance(col['sort']['sort_key'], str)
+            if 'return' not in col: col['return'] = [name]
+            if isinstance(col['return'], list): col['return'] = {'project': {k:1 for k in col['return']}, 'to_client': col['return']}
+            assert isinstance(col['return']['project'], dict) and isinstance(col['return']['to_client'], list)
+            assert all(ann in annotators for ann in col['return'].get('annotate', []))
+        except:
+            print('COL = ', col)
+            raise
+
+    mongo_projection_before_sort = {}
+    mongo_sort = OrderedDict()
+    for order_item in order:
+        direction = {'asc': pymongo.ASCENDING, 'desc':pymongo.DESCENDING}[order_item['dir']]
+        colidx = order_item['column']; colname = columns_to_return[colidx]['name']; col = cols[colname]
+        mongo_projection_before_sort.update(col['sort']['project'])
+        mongo_sort[col['sort']['sort_key']] = direction
+
+    mongo_projection = mkdict(*[cols[ctr['name']]['return']['project'] for ctr in columns_to_return])
+    annotators_to_run = [annotators[ann] for ann in set(itertools.chain.from_iterable(cols[ctr['name']]['return'].get('annotate',[]) for ctr in columns_to_return))]
+    keys_to_return = set(itertools.chain.from_iterable(cols[ctr['name']]['return']['to_client'] for ctr in columns_to_return))
 
     v_ids_curs = db.variants.aggregate([
         {'$match': {'$and': mongo_match}},
-        {'$project': mkdict(keys_for_sort)},
-        {'$sort': mongo_sort_order},
+        {'$project': mongo_projection_before_sort},
+        {'$sort': mongo_sort},
         {'$project': {'_id': 1}},
         {'$group': {'_id':0, 'count':{'$sum':1}, 'results':{'$push':'$$ROOT'}}},
         {'$project': {'_id':0, 'count':1, 'ids':{'$slice':['$results',skip,length]}}},
     ])
     print '## {:0.3f} sec:'.format(time.time()-st), 'cursor created'; st = time.time()
-
     v_ids_result = list(v_ids_curs)
     if len(v_ids_result) == 0:
-        n_filtered = 0
-        variants = []
-        print '## {:0.3f} sec:'.format(time.time()-st), 'n_filtered={}'.format(n_filtered); st = time.time()
+        n_filtered, variants = 0, []
     else:
         assert len(v_ids_result) == 1
         n_filtered = v_ids_result[0]['count']
         print '## {:0.3f} sec:'.format(time.time()-st), 'n_filtered={}'.format(n_filtered); st = time.time()
         v_ids = [v['_id'] for v in v_ids_result[0]['ids']]
-        variants = [db.variants.find_one({'_id': vid}, mkdict(keys_from_mongo)) for vid in v_ids]
+        variants = [next(db.variants.aggregate([{'$match': {'_id': vid}}, {'$project': mongo_projection}])) for vid in v_ids] # b/c fancy projections require .aggregate()
         print '## {:0.3f} sec:'.format(time.time()-st), 'len(variants)={}'.format(len(variants)); st = time.time()
 
-    for variant in variants:
-        add_consequence_to_variant(variant)
-        for key in [key for key in variant if key not in keys_to_return]: del variant[key]
-    print '## {:0.3f} sec:'.format(time.time()-st), 'added csq'; st = time.time()
+        for variant in variants:
+            for ann in annotators_to_run: ann(variant)
+            for key in [key for key in variant if key not in keys_to_return]: del variant[key]
+        print '## {:0.3f} sec:'.format(time.time()-st), 'annotated'; st = time.time()
 
     return {
-        'recordsTotal': n_variants,
         'recordsFiltered': n_filtered,
+        'recordsTotal': n_filtered,
         'data': variants
     }

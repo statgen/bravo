@@ -320,33 +320,17 @@ function create_variant_table() {
         },{
             title: 'N Alleles', name: 'allele_num',
             data: 'allele_num', searchable:true, orderable:true, className: 'dt-right',
-            render: function(cell_data, type, row) {
-                return group_thousands_html(cell_data);
-            },
-
-        // },{
-        //     title: 'HomRef', name: 'n_homref',
-        //     searchable:true, orderable:false, className: 'dt-right',
-        //     render: function(cell_data, type, row) {
-        //         var num_het_samples = row.allele_count - 2*row.hom_count;
-        //         var num_homref_samples = ((row.allele_num - row.allele_count) - num_het_samples) / 2;
-        //         return group_thousands_html(num_homref_samples);
-        //     },
+            render: function(cell_data, type, row) {return group_thousands_html(cell_data);},
 
         },{
-            title: 'Het', name: 'n_het',
-            searchable:true, orderable:false, orderSequence:['desc','asc'], className: 'dt-right',
-            render: function(cell_data, type, row) {
-                var num_het_samples = row.allele_count - 2*row.hom_count;
-                return group_thousands_html(num_het_samples);
-            },
+            title: 'Het', name: 'het',
+            data: 'het', searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
+            render: function(cell_data, type, row) {return group_thousands_html(cell_data);},
 
         },{
             title: 'HomAlt', name: 'hom_count',
             searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
-            render: function(cell_data, type, row) {
-                return group_thousands_html(row.hom_count);
-            },
+            render: function(cell_data, type, row) {return group_thousands_html(row.hom_count);},
 
         },{
             title: 'Frequency', name: 'allele_freq',
