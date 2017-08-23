@@ -132,6 +132,13 @@ function perc_sigfigs(d, n_sigfigs, n_left_of_decimal) {
         return d;
     }
 }
+function perc_sigfigs_html(d, n_sigfigs, n_left_of_decimal) {
+    var s = perc_sigfigs(d, n_sigfigs, n_left_of_decimal);
+    var leading_whitespace = s.match(/^\s*/)[0];
+    var rest = s.substr(leading_whitespace);
+    var parts = rest.split(/\s+/);
+    return '<span class="numsep">' + leading_whitespace + parts.join('</span><span class="numsep">') + '</span>';
+}
 function sigfig(numstring, k) {
     /* sigfigs("999499", 1) -> "9995" */
     var not_sig = ''

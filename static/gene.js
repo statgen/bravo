@@ -218,7 +218,7 @@ function create_variant_plot() {
         return group_thousands_html(d.pos) + '<br>' +
             csq + '<br>' +
             (d.filter === 'PASS' ? '' : d.filter + '<br>') +
-            'MAF: ' + perc_sigfigs(d.allele_freq, 2);
+            'MAF: ' + perc_sigfigs_html(d.allele_freq, 2);
         //return JSON.stringify(d);
     });
     svg.call(window.model.plot.oval_tip);
@@ -351,7 +351,7 @@ function create_variant_table() {
         },{
             title: 'Frequency', name: 'allele_freq',
             data: 'allele_freq', searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-pad-left',
-            render: function(cell_data, type, row) { return perc_sigfigs(cell_data, 2); },
+            render: function(cell_data, type, row) { return perc_sigfigs_html(cell_data, 2); },
 
         },
     ];
