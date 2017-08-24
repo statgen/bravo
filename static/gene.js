@@ -418,7 +418,7 @@ function create_variant_table() {
         order: [[columns.map(function(d){return d.name==='cadd_phred'}).indexOf(true), 'desc']],
         columns: columns,
 
-        dom: '<ilp>rft', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
+        dom: '<ipl>rft', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
 
         language: {
             info: 'Showing variants _START_ - _END_ of _TOTAL_',
