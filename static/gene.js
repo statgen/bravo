@@ -53,13 +53,11 @@ function create_coverage_plot() {
             .attr("transform", "translate(0," + coverage_plot_height + ")")
             .call(xAxis);
 
-        var cov_bar_g = genome_g.append('g')
+        var data_g = genome_g.append('g')
             .attr('clip-path', 'url(#cov-plot-clip)')
             .attr('id', 'cov-bar-g');
 
-        genome_g.append('rect').attr('class', 'mouse_guide')
-            .attr('x', -999).style('height', '100%').style('width', '1px').attr('clip-path', 'url(#cov-plot-clip)')
-            .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
+        genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#cov-plot-clip)')
 
         var loading_text = genome_g.append('text')
             .attr('text-anchor','middle').text('loading...')
@@ -69,13 +67,13 @@ function create_coverage_plot() {
             .done(function(coverage_stats) {
                 loading_text.remove();
                 window.model.coverage_stats = coverage_stats;
-                if (window.model.coverage_stats !== null) populate_coverage_plot(cov_bar_g, genome_g);
+                if (window.model.coverage_stats !== null) populate_coverage_plot(data_g, genome_g);
             })
             .fail(function() { console.error('coverage XHR failed'); });
     });
 }
 
-function populate_coverage_plot(cov_bar_g, genome_g) {
+function populate_coverage_plot(data_g, genome_g) {
     var metric = 'mean';
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
@@ -86,7 +84,7 @@ function populate_coverage_plot(cov_bar_g, genome_g) {
         .range([coverage_plot_height, 0]);
     var yAxis = _coverage_y_axis(y, metric);
 
-    cov_bar_g
+    data_g
         .selectAll("rect.cov_plot_bars")
         .data(window.model.coverage_stats)
         .enter()
@@ -191,9 +189,7 @@ function create_gene_plot() {
         .attr('y', 0)
         .attr('height', gene_plot_height);
 
-    genome_g.append('rect').attr('class', 'mouse_guide')
-        .attr('x', -999).style('height', '100%').style('width', '1px').attr('clip-path', 'url(#gene-plot-clip)')
-        .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
+    genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#gene-plot-clip)');
 
     window.model.plot.exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
         return (d.feature_type==='CDS'?'Coding Sequence':'UTR') + '<br>' +
@@ -202,7 +198,9 @@ function create_gene_plot() {
     });
     svg.call(window.model.plot.exon_tip);
 
-    genome_g.append('line')
+    var data_g = genome_g.append('g');
+
+    data_g.append('line')
         .attr("y1", gene_plot_height/2)
         .attr("y2", gene_plot_height/2)
         .attr("x1", 0)
@@ -210,7 +208,7 @@ function create_gene_plot() {
         .attr("stroke-width", 1)
         .attr("stroke", "lightsteelblue");
 
-    genome_g.selectAll('rect.exon')
+    data_g.selectAll('rect.exon')
         .data(window.model.exons)
         .enter()
         .append('rect')
@@ -243,11 +241,11 @@ function create_variant_plot() {
         .attr('y', 0)
         .attr('height', coverage_plot_height);
 
-    genome_g.append('rect').attr('class', 'mouse_guide')
-        .attr('x', -999).style('height', '100%').style('width', '1px').attr('clip-path', 'url(#variant-plot-clip)')
-        .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
+    genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#variant-plot-clip)');
 
-    genome_g.append("line")
+    var data_g = genome_g.append('g');
+
+    data_g.append("line")
         .attr("y1", variant_plot_height/2)
         .attr("y2", variant_plot_height/2)
         .attr("x1", 0)
@@ -256,7 +254,7 @@ function create_variant_plot() {
         .attr("stroke", "lightsteelblue")
         .style('opacity', 0.3);
 
-    genome_g.append("line")
+    data_g.append("line")
         .attr('id', 'variant_plot_region_selector')
         .attr("y1", variant_plot_height/2)
         .attr("y2", variant_plot_height/2)
@@ -494,14 +492,9 @@ $(function() {
     create_variant_plot();
     create_variant_table();
     d3.selectAll('.genome_g')
-        .on('mousemove', function() {
-            var coords = d3.mouse(d3.select(this).node());
-            d3.selectAll('.mouse_guide').attr('x', coords[0]);
-        })
-        .on('mouseleave', function() {
-            d3.selectAll('.mouse_guide').attr('x', -999);
-        })
-        .append('rect').style('width', '100%').style('height', '100%').style('opacity', 0); // recives mousemove and bubbles it up to `.genome_g`
+        .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node());d3.selectAll('.mouse_guide').attr('x', coords[0]);})
+        .on('mouseleave', function() {d3.selectAll('.mouse_guide').attr('x', -999);})
+        .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recives mousemove and bubbles it up to `.genome_g`
 });
 
 function get_variant_plot_id(variant) { return 'variant-plot-'+get_variant_id(variant); }
