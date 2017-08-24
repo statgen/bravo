@@ -20,46 +20,62 @@ function bootstrap_plot() {
     }
 }
 
-function create_coverage_chart() {
-    bootstrap_plot();
+function create_coverage_plot() {
+    var coverage_XHR = $.getJSON(fmt('/api/coverage/region/{0}-{1}-{2}', window.model.chrom, window.model.start, window.model.stop));
 
+    $(function() {
+        bootstrap_plot();
+
+        var xAxis = d3.svg.axis()
+            .scale(window.model.plot.x)
+            .orient("bottom")
+            .ticks(5)
+            .tickFormat(group_thousands);
+
+        var svg = d3.select('#coverage_plot_container').append("svg")
+            .attr("width", window.model.plot.svg_width)
+            .attr("height", coverage_plot_height + coverage_plot_margin.top + coverage_plot_margin.bottom)
+            .append("g")
+            .attr('id', 'inner_graph')
+            .attr("transform", "translate(" + genome_coords_margin.left + "," + coverage_plot_margin.top + ")");
+
+        svg.append('clipPath')
+            .attr('id', 'cov-plot-clip')
+            .append('rect')
+            .attr('x', 0)
+            .attr('width', window.model.plot.genome_coords_width)
+            .attr('y', 0)
+            .attr('height', coverage_plot_height);
+
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + coverage_plot_height + ")")
+            .call(xAxis);
+
+        var cov_bar_g = svg.append('g')
+            .attr('clip-path', 'url(#cov-plot-clip)')
+            .attr('id', 'cov-bar-g');
+
+        coverage_XHR
+            .done(function(coverage_stats) {
+                window.model.coverage_stats = coverage_stats;
+                if (window.model.coverage_stats !== null) populate_coverage_plot(cov_bar_g, svg);
+            })
+            .fail(function() { console.error('coverage XHR failed'); });
+    });
+}
+
+function populate_coverage_plot(cov_bar_g, svg) {
     var metric = 'mean';
-
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
         max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
     }
-
     var y = d3.scale.linear()
         .domain([0, max_cov])
         .range([coverage_plot_height, 0]);
-
-    var xAxis = d3.svg.axis()
-        .scale(window.model.plot.x)
-        .orient("bottom")
-        .ticks(5)
-        .tickFormat(group_thousands);
-
     var yAxis = _coverage_y_axis(y, metric);
 
-    var svg = d3.select('#coverage_plot_container').append("svg")
-        .attr("width", window.model.plot.svg_width)
-        .attr("height", coverage_plot_height + coverage_plot_margin.top + coverage_plot_margin.bottom)
-        .append("g")
-        .attr('id', 'inner_graph')
-        .attr("transform", "translate(" + genome_coords_margin.left + "," + coverage_plot_margin.top + ")");
-
-    svg.append('clipPath')
-        .attr('id', 'cov-plot-clip')
-        .append('rect')
-        .attr('x', 0)
-        .attr('width', window.model.plot.genome_coords_width)
-        .attr('y', 0)
-        .attr('height', coverage_plot_height);
-
-    var cov_bar_g = svg.append('g')
-        .attr('clip-path', 'url(#cov-plot-clip)')
-        .attr('id', 'cov-bar-g');
     cov_bar_g
         .selectAll("rect.cov_plot_bars")
         .data(window.model.coverage_stats)
@@ -72,9 +88,6 @@ function create_coverage_chart() {
         })
         .attr("width", function(d) {
             return window.model.plot.x(d.end) - window.model.plot.x(d.start) + 1;
-            // var length_in_bases = d.end - d.start + 1;
-            // var width_of_base = window.model.plot.genome_coords_width/window.model.coverage_stats.length;
-            // return length_in_bases * width_of_base;
         })
         .attr("y", function(d) {
             return y(d[metric]) || 0;
@@ -82,11 +95,6 @@ function create_coverage_chart() {
         .attr("height", function(d) {
             return (coverage_plot_height - y(d[metric])) || 0;
         });
-
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + coverage_plot_height + ")")
-        .call(xAxis);
 
     svg.append("g")
         .attr("class", "y axis")
@@ -103,13 +111,13 @@ function create_coverage_chart() {
             $('#average_select_container').show();
             v = $("#average_select").val();
         }
-        change_coverage_chart_metric(v);
+        change_coverage_plot_metric(v);
     });
     $('#over_x_select').change(function () {
-        change_coverage_chart_metric($(this).val().replace('X', ''));
+        change_coverage_plot_metric($(this).val().replace('X', ''));
     });
     $('#average_select').change(function () {
-        change_coverage_chart_metric($(this).val());
+        change_coverage_plot_metric($(this).val());
     });
 }
 
@@ -127,7 +135,7 @@ function _coverage_y_axis(y_scale, metric) {
     return yAxis;
 }
 
-function change_coverage_chart_metric(metric) {
+function change_coverage_plot_metric(metric) {
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
         max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
@@ -228,7 +236,7 @@ function change_variant_plot(variants) {
     var selection = d3.select('#variant_track')
         .selectAll('.variant-circle')
         .data(variants, get_variant_id); // define data-joining 2nd method to allow move-to-front
-    selection.enter() //ENTER
+    selection.enter()
         .append('ellipse')
         .attr('class', 'variant-circle')
         .style('opacity', 0.3)
@@ -263,10 +271,9 @@ function change_variant_plot(variants) {
                 }
             });
         })
-    selection.exit() //EXIT
+    selection.exit()
         .remove()
 }
-
 
 
 function create_variant_table() {
@@ -422,24 +429,15 @@ function create_variant_table() {
     });
 }
 
-$(document).ready(function() {
-    $.getJSON(
-        fmt('/api/coverage/region/{0}-{1}-{2}',
-            window.model.chrom,
-            window.model.start,
-            window.model.stop))
-        .done(function(coverage_stats) {
-            window.model.coverage_stats = coverage_stats;
-            if (window.model.coverage_stats != null) create_coverage_chart();
-        })
-        .fail(function() { console.error('coverage XHR failed'); });
-    create_gene_plot();
-    create_variant_plot();
-    create_variant_table();
+create_coverage_plot();
+$(function() {
     $('#pos_ge').val(window.model.start)
     $('#pos_le').val(window.model.stop)
     $('#pos_ge,#pos_le').attr('min', window.model.start)
     $('#pos_ge,#pos_le').attr('max', window.model.stop)
+    create_gene_plot();
+    create_variant_plot();
+    create_variant_table();
 });
 
 function get_variant_plot_id(variant) { return 'variant-plot-'+get_variant_id(variant); }
