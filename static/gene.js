@@ -218,7 +218,17 @@ function create_variant_plot() {
         .attr("x1", 0)
         .attr("x2", window.model.plot.genome_coords_width)
         .attr("stroke-width", 1)
-        .attr("stroke", "lightsteelblue");
+        .attr("stroke", "lightsteelblue")
+        .style('opacity', 0.3);
+
+    svg.append("line")
+        .attr('id', 'variant_plot_region_selector')
+        .attr("y1", variant_plot_height/2)
+        .attr("y2", variant_plot_height/2)
+        .attr("x1", 0)
+        .attr("x2", window.model.plot.genome_coords_width)
+        .attr("stroke-width", 1)
+        .attr("stroke", "black");
 
     window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
         var csq = d.major_consequence.replace(/_/g, ' ');
@@ -230,6 +240,12 @@ function create_variant_plot() {
         //return JSON.stringify(d);
     });
     svg.call(window.model.plot.oval_tip);
+}
+
+function change_variant_plot_region_selector(start, stop) {
+    d3.select('#variant_plot_region_selector')
+        .attr('x1', window.model.plot.x(start))
+        .attr('x2', window.model.plot.x(stop))
 }
 
 function change_variant_plot(variants) {
@@ -426,6 +442,10 @@ function create_variant_table() {
         window.model.filter_info.maf_le = parseFloat($('input#maf_le').val()) / 100; // %
         window.model.filter_info.filter_value = $('select#filter_value').val();
         window.model.tbl.draw();
+    });
+
+    $('input#pos_le,input#pos_ge').change(function() {
+        change_variant_plot_region_selector(parseInt($('input#pos_ge').val()), parseInt($('input#pos_le').val()));
     });
 }
 
