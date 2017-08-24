@@ -58,7 +58,7 @@ function create_coverage_plot() {
             .attr('id', 'cov-bar-g');
 
         genome_g.append('rect').attr('class', 'mouse_guide')
-            .attr('x', -999).style('height', '100%').style('width', '1px')
+            .attr('x', -999).style('height', '100%').style('width', '1px').attr('clip-path', 'url(#cov-plot-clip)')
             .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
 
         var loading_text = genome_g.append('text')
@@ -183,8 +183,16 @@ function create_gene_plot() {
         .attr('id', 'gene_track')
         .attr('transform', 'translate(' + genome_coords_margin.left+','+0+')');
 
+    genome_g.append('clipPath')
+        .attr('id', 'gene-plot-clip')
+        .append('rect')
+        .attr('x', 0)
+        .attr('width', window.model.plot.genome_coords_width)
+        .attr('y', 0)
+        .attr('height', gene_plot_height);
+
     genome_g.append('rect').attr('class', 'mouse_guide')
-        .attr('x', -999).style('height', '100%').style('width', '1px')
+        .attr('x', -999).style('height', '100%').style('width', '1px').attr('clip-path', 'url(#gene-plot-clip)')
         .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
 
     window.model.plot.exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
@@ -227,8 +235,16 @@ function create_variant_plot() {
         .attr('class', 'genome_g')
         .attr("transform", "translate(" + genome_coords_margin.left + "," + 0 + ")");
 
+    genome_g.append('clipPath')
+        .attr('id', 'variant-plot-clip')
+        .append('rect')
+        .attr('x', 0)
+        .attr('width', window.model.plot.genome_coords_width)
+        .attr('y', 0)
+        .attr('height', coverage_plot_height);
+
     genome_g.append('rect').attr('class', 'mouse_guide')
-        .attr('x', -999).style('height', '100%').style('width', '1px')
+        .attr('x', -999).style('height', '100%').style('width', '1px').attr('clip-path', 'url(#variant-plot-clip)')
         .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
 
     genome_g.append("line")
