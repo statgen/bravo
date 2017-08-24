@@ -115,27 +115,39 @@
   </div>
   <div class="row">
     <div class="col-xs-12">
-      <h3 style="margin-bottom:0">Coverage Depth</h3>
-      {% include 'coverage_selectors.html' %}
-      <br/>
-      <div id="coverage_plot_container"></div>
-      <div id="gene_plot_container"></div>
+      <div class="panel panel-default" style="margin-bottom:10px">
+        <div class="panel-heading">
+         <h3 style="margin-bottom:0; margin-top:0">Coverage Depth</h3>
+        </div>
+        <div class="panel-body">
+          {% include 'coverage_selectors.html' %}
+          <br/>
+          <div id="coverage_plot_container"></div>
+          <div id="gene_plot_container"></div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="row">
     <div class="col-xs-12">
-      <h3>Variants</h3>
-      <p style="float:left;margin: 0 10px 5px">pos between
-        <input type="number" class="variant_table_filter" id="pos_ge" step=1000> and
-        <input type="number" class="variant_table_filter" id="pos_le" step=1000>
-      </p>
-      <p style="float:left;margin: 0 10px 5px">MAF between
-        <input type="number" class="variant_table_filter" id="maf_ge" value=0  min=0 max=50 step=1 style="width:5em">% and
-        <input type="number" class="variant_table_filter" id="maf_le" value=50 min=0 max=50 step=1 style="width:4em">%
-      </p>
-      <p style="float:left;margin:0 10px 5px">Quality Control: <select class='variant_table_filter' id='filter_value'><option value='*'>PASS+FAIL</option><option value='PASS'>PASS</option><option value='not PASS'>FAIL</option></select></p>
-      <div id="variant_plot_container"></div>
-      <table id="variant_table" class="table table-bordered table-hover table-condensed" cellspacing=0><tbody></tbody></table>
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 style="margin-bottom:0; margin-top:0">Variants</h3>
+        </div>
+        <div class="panel-body">
+          <p style="float:left;margin: 0 10px 5px">pos between
+            <input type="number" class="variant_table_filter" id="pos_ge" step=1000> and
+            <input type="number" class="variant_table_filter" id="pos_le" step=1000>
+          </p>
+          <p style="float:left;margin: 0 10px 5px">MAF between
+            <input type="number" class="variant_table_filter" id="maf_ge" value=0  min=0 max=50 step=1 style="width:5em">% and
+            <input type="number" class="variant_table_filter" id="maf_le" value=50 min=0 max=50 step=1 style="width:4em">%
+          </p>
+          <p style="float:left;margin:0 10px 5px">Quality Control: <select class='variant_table_filter' id='filter_value'><option value='*'>PASS+FAIL</option><option value='PASS'>PASS</option><option value='not PASS'>FAIL</option></select></p>
+          <div id="variant_plot_container"></div>
+          <table id="variant_table" class="table table-bordered table-hover table-condensed" cellspacing=0><tbody></tbody></table>
+        </div>
+      </div>
     </div>
   </div>
 </div>
