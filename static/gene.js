@@ -454,10 +454,11 @@ function create_variant_table() {
 
 create_coverage_plot();
 $(function() {
-    $('#pos_ge').val(window.model.start)
-    $('#pos_le').val(window.model.stop)
-    $('#pos_ge,#pos_le').attr('min', window.model.start)
-    $('#pos_ge,#pos_le').attr('max', window.model.stop)
+    $('#pos_ge').val(window.model.start);
+    $('#pos_le').val(window.model.stop);
+    $('#pos_ge,#pos_le').attr('min', window.model.start);
+    $('#pos_ge,#pos_le').attr('max', window.model.stop);
+    $('#pos_ge,#pos_le').attr('step', Math.ceil((window.model.stop - window.model.start) / 20));
     create_gene_plot();
     create_variant_plot();
     create_variant_table();
