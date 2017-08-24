@@ -239,7 +239,7 @@ function create_variant_plot() {
         if (csq.length > 15) { csq = csq.substr(0, 15) + '...'; } // because d3-tip tooltips fall off the page
         return group_thousands_html(d.pos) + '<br>' +
             csq + '<br>' +
-            (d.filter === 'PASS' ? '' : d.filter + '<br>') +
+            (d.filter === 'PASS' ? '' : 'FAIL<br>') +
             'MAF: ' + perc_sigfigs_html(d.allele_freq, 2);
         //return JSON.stringify(d);
     });
@@ -342,6 +342,7 @@ function create_variant_table() {
         },{
             title: 'QC', name: 'filter',
             data: 'filter', searchable:true, orderable:false, className: 'dt-center',
+            render: function(cell_data, type, row) { return (cell_data==='PASS') ? 'PASS' : fmt('<span data-tooltip="failed filters: {0}">FAIL</span>', cell_data); },
 
         },{
             title: 'N Alleles', name: 'allele_num',
