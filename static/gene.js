@@ -1,7 +1,7 @@
 var genome_coords_margin = {left: 80, right: 30};
 var coverage_plot_height = 100;
 var coverage_plot_margin = {top: 10, bottom: 20};
-var gene_plot_height = 10;
+var gene_plot_height = 15;
 var gene_plot_margin = {top: 0, bottom: 0};
 var variant_plot_height = 15;
 var variant_plot_margin = {top: 0, bottom: 0};
@@ -230,10 +230,9 @@ function create_variant_plot() {
         .attr('id', 'variant_plot_region_selector')
         .attr("y1", variant_plot_height/2)
         .attr("y2", variant_plot_height/2)
-        .attr("x1", 0)
-        .attr("x2", window.model.plot.genome_coords_width)
         .attr("stroke-width", 1)
         .attr("stroke", "black");
+    change_variant_plot_region_selector(window.model.start, window.model.stop)
 
     window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
         var csq = d.major_consequence.replace(/_/g, ' ');
@@ -248,9 +247,11 @@ function create_variant_plot() {
 }
 
 function change_variant_plot_region_selector(start, stop) {
+    var x1 = window.model.plot.x(start);
+    var x2 = window.model.plot.x(stop);
     d3.select('#variant_plot_region_selector')
-        .attr('x1', window.model.plot.x(start))
-        .attr('x2', window.model.plot.x(stop))
+        .attr('x1', x1)
+        .attr('x2', Math.max(x1, x2));
 }
 
 function change_variant_plot(variants) {
