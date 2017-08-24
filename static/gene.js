@@ -324,10 +324,7 @@ function create_variant_table() {
             searchable: false, orderable: false, className: 'dt-head-center',
             render: (function() {
                 var template = _.template(
-                    '<% if (variant.HGVS != "") { %>' +
-                    '<% if (variant.HGVS.length > 20) { %><%= variant.HGVS.slice(0,20) %>...<% } else { %><%= variant.HGVS %><% } %>' +
-                        '<% if (variant.CANONICAL !== "YES") { %><span class="tooltip-table-header" data-tooltip="Annotation is for non-canonical transcript">&dagger;</span><% } %>'+
-                        '<% } %>',
+                    '<% if (variant.HGVS.length > 20) { %><%= variant.HGVS.slice(0,20) %>...<% } else { %><%= variant.HGVS %><% } %>',
                     {variable:'variant'});
                 return function(cell_data, type, row) { return template(row); };
             })(),
