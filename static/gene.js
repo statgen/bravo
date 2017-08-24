@@ -34,12 +34,13 @@ function create_coverage_plot() {
 
         var svg = d3.select('#coverage_plot_container').append("svg")
             .attr("width", window.model.plot.svg_width)
-            .attr("height", coverage_plot_height + coverage_plot_margin.top + coverage_plot_margin.bottom)
-            .append("g")
+            .attr("height", coverage_plot_height + coverage_plot_margin.top + coverage_plot_margin.bottom);
+        var genome_g = svg.append("g")
             .attr('id', 'inner_graph')
+            .attr('class', 'genome_g')
             .attr("transform", "translate(" + genome_coords_margin.left + "," + coverage_plot_margin.top + ")");
 
-        svg.append('clipPath')
+        genome_g.append('clipPath')
             .attr('id', 'cov-plot-clip')
             .append('rect')
             .attr('x', 0)
@@ -47,16 +48,20 @@ function create_coverage_plot() {
             .attr('y', 0)
             .attr('height', coverage_plot_height);
 
-        svg.append("g")
+        genome_g.append("g")
             .attr("class", "x axis")
             .attr("transform", "translate(0," + coverage_plot_height + ")")
             .call(xAxis);
 
-        var cov_bar_g = svg.append('g')
+        var cov_bar_g = genome_g.append('g')
             .attr('clip-path', 'url(#cov-plot-clip)')
             .attr('id', 'cov-bar-g');
 
-        var loading_text = svg.append('text')
+        genome_g.append('rect').attr('class', 'mouse_guide')
+            .attr('x', -999).style('height', '100%').style('width', '1px')
+            .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
+
+        var loading_text = genome_g.append('text')
             .attr('text-anchor','middle').text('loading...')
             .attr('transform', fmt('translate({0},{1})', window.model.plot.genome_coords_width/2, coverage_plot_height/2))
 
@@ -64,13 +69,13 @@ function create_coverage_plot() {
             .done(function(coverage_stats) {
                 loading_text.remove();
                 window.model.coverage_stats = coverage_stats;
-                if (window.model.coverage_stats !== null) populate_coverage_plot(cov_bar_g, svg);
+                if (window.model.coverage_stats !== null) populate_coverage_plot(cov_bar_g, genome_g);
             })
             .fail(function() { console.error('coverage XHR failed'); });
     });
 }
 
-function populate_coverage_plot(cov_bar_g, svg) {
+function populate_coverage_plot(cov_bar_g, genome_g) {
     var metric = 'mean';
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
@@ -101,7 +106,7 @@ function populate_coverage_plot(cov_bar_g, svg) {
             return (coverage_plot_height - y(d[metric])) || 0;
         });
 
-    svg.append("g")
+    genome_g.append("g")
         .attr("class", "y axis")
         .call(yAxis);
 
@@ -173,19 +178,23 @@ function create_gene_plot() {
     var svg = d3.select('#gene_plot_container').append('svg')
         .attr('width', window.model.plot.svg_width)
         .attr('height', gene_plot_height)
-        .append('g')
+    var genome_g = svg.append('g')
+        .attr('class', 'genome_g')
         .attr('id', 'gene_track')
         .attr('transform', 'translate(' + genome_coords_margin.left+','+0+')');
 
+    genome_g.append('rect').attr('class', 'mouse_guide')
+        .attr('x', -999).style('height', '100%').style('width', '1px')
+        .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
+
     window.model.plot.exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
-        console.log(d);
         return (d.feature_type==='CDS'?'Coding Sequence':'UTR') + '<br>' +
             'start: ' + group_thousands_html(d.start) + '<br>' +
             'stop: ' + group_thousands_html(d.stop);
     });
     svg.call(window.model.plot.exon_tip);
 
-    svg.append('line')
+    genome_g.append('line')
         .attr("y1", gene_plot_height/2)
         .attr("y2", gene_plot_height/2)
         .attr("x1", 0)
@@ -193,7 +202,7 @@ function create_gene_plot() {
         .attr("stroke-width", 1)
         .attr("stroke", "lightsteelblue");
 
-    svg.selectAll('rect.exon')
+    genome_g.selectAll('rect.exon')
         .data(window.model.exons)
         .enter()
         .append('rect')
@@ -212,12 +221,17 @@ function create_variant_plot() {
 
     var svg = d3.select('#variant_plot_container').append("svg")
         .attr("width", window.model.plot.svg_width)
-        .attr("height", variant_plot_height)
-        .append("g")
+        .attr("height", variant_plot_height);
+    var genome_g = svg.append("g")
         .attr('id', 'variant_track')
+        .attr('class', 'genome_g')
         .attr("transform", "translate(" + genome_coords_margin.left + "," + 0 + ")");
 
-    svg.append("line")
+    genome_g.append('rect').attr('class', 'mouse_guide')
+        .attr('x', -999).style('height', '100%').style('width', '1px')
+        .style('fill', 'rgb(210,210,210)').style('fill-opacity', '85%');
+
+    genome_g.append("line")
         .attr("y1", variant_plot_height/2)
         .attr("y2", variant_plot_height/2)
         .attr("x1", 0)
@@ -226,7 +240,7 @@ function create_variant_plot() {
         .attr("stroke", "lightsteelblue")
         .style('opacity', 0.3);
 
-    svg.append("line")
+    genome_g.append("line")
         .attr('id', 'variant_plot_region_selector')
         .attr("y1", variant_plot_height/2)
         .attr("y2", variant_plot_height/2)
@@ -463,6 +477,15 @@ $(function() {
     create_gene_plot();
     create_variant_plot();
     create_variant_table();
+    d3.selectAll('.genome_g')
+        .on('mousemove', function() {
+            var coords = d3.mouse(d3.select(this).node());
+            d3.selectAll('.mouse_guide').attr('x', coords[0]);
+        })
+        .on('mouseleave', function() {
+            d3.selectAll('.mouse_guide').attr('x', -999);
+        })
+        .append('rect').style('width', '100%').style('height', '100%').style('opacity', 0); // recives mousemove and bubbles it up to `.genome_g`
 });
 
 function get_variant_plot_id(variant) { return 'variant-plot-'+get_variant_id(variant); }
