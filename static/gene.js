@@ -56,8 +56,13 @@ function create_coverage_plot() {
             .attr('clip-path', 'url(#cov-plot-clip)')
             .attr('id', 'cov-bar-g');
 
+        var loading_text = svg.append('text')
+            .attr('text-anchor','middle').text('loading...')
+            .attr('transform', fmt('translate({0},{1})', window.model.plot.genome_coords_width/2, coverage_plot_height/2))
+
         coverage_XHR
             .done(function(coverage_stats) {
+                loading_text.remove();
                 window.model.coverage_stats = coverage_stats;
                 if (window.model.coverage_stats !== null) populate_coverage_plot(cov_bar_g, svg);
             })
