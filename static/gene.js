@@ -20,14 +20,14 @@ function bootstrap_plot() {
     }
 }
 
-function create_coverage_chart(cov_data) {
+function create_coverage_chart() {
     bootstrap_plot();
 
     var metric = 'mean';
 
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
-        max_cov = d3.max(cov_data, function(d) { return d[metric]; });
+        max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
     }
 
     var y = d3.scale.linear()
@@ -62,7 +62,7 @@ function create_coverage_chart(cov_data) {
         .attr('id', 'cov-bar-g');
     cov_bar_g
         .selectAll("rect.cov_plot_bars")
-        .data(cov_data)
+        .data(window.model.coverage_stats)
         .enter()
         .append("rect")
         .attr('class', 'cov_plot_bars')
@@ -73,7 +73,7 @@ function create_coverage_chart(cov_data) {
         .attr("width", function(d) {
             return window.model.plot.x(d.end) - window.model.plot.x(d.start) + 1;
             // var length_in_bases = d.end - d.start + 1;
-            // var width_of_base = window.model.plot.genome_coords_width/cov_data.length;
+            // var width_of_base = window.model.plot.genome_coords_width/window.model.coverage_stats.length;
             // return length_in_bases * width_of_base;
         })
         .attr("y", function(d) {
@@ -103,13 +103,13 @@ function create_coverage_chart(cov_data) {
             $('#average_select_container').show();
             v = $("#average_select").val();
         }
-        change_coverage_chart_metric(window.model.coverage_stats, v);
+        change_coverage_chart_metric(v);
     });
     $('#over_x_select').change(function () {
-        change_coverage_chart_metric(window.model.coverage_stats, $(this).val().replace('X', ''));
+        change_coverage_chart_metric($(this).val().replace('X', ''));
     });
     $('#average_select').change(function () {
-        change_coverage_chart_metric(window.model.coverage_stats, $(this).val());
+        change_coverage_chart_metric($(this).val());
     });
 }
 
@@ -127,10 +127,10 @@ function _coverage_y_axis(y_scale, metric) {
     return yAxis;
 }
 
-function change_coverage_chart_metric(cov_data, metric) {
+function change_coverage_chart_metric(metric) {
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
-        max_cov = d3.max(cov_data, function(d) { return d[metric]; });
+        max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
     }
 
     var y = d3.scale.linear()
@@ -147,7 +147,7 @@ function change_coverage_chart_metric(cov_data, metric) {
 
     svg.select('#cov-bar-g')
         .selectAll("rect.cov_plot_bars")
-        .data(cov_data)
+        .data(window.model.coverage_stats)
         .transition()
         .duration(500)
         .attr("y", function(d) { return y(d[metric]); })
@@ -423,11 +423,18 @@ function create_variant_table() {
 }
 
 $(document).ready(function() {
+    $.getJSON(
+        fmt('/api/coverage/region/{0}-{1}-{2}',
+            window.model.chrom,
+            window.model.start,
+            window.model.stop))
+        .done(function(coverage_stats) {
+            window.model.coverage_stats = coverage_stats;
+            if (window.model.coverage_stats != null) create_coverage_chart();
+        })
+        .fail(function() { console.error('coverage XHR failed'); });
     create_gene_plot();
     create_variant_plot();
-    if (window.model.coverage_stats != null) {
-        create_coverage_chart(window.model.coverage_stats);
-    }
     create_variant_table();
     $('#pos_ge').val(window.model.start)
     $('#pos_le').val(window.model.stop)

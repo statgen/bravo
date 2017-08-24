@@ -8,7 +8,6 @@
 {% block in_head %}
 <script type="text/javascript">
  window.model = window.model || {};
- window.model.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
  window.model.gene = {{ gene|tojson(separators=(',',':'))|safe }};
  window.model.exons = {{ exons|tojson(separators=(',',':'))|safe }};
  window.model.chrom = {{ chrom|tojson|safe }};

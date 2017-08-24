@@ -442,9 +442,6 @@ def gene_page(gene_id):
 
         exons = lookups.get_exons_in_gene(db, gene_id)
 
-        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), gene['xstart'] - EXON_PADDING, gene['xstop'] + EXON_PADDING)
-        #coverage_stats = coverage_stats[::len(coverage_stats)/8]
-
         return render_template(
             'gene.html',
             gene=gene,
@@ -453,7 +450,6 @@ def gene_page(gene_id):
             stop=gene['stop'],
             exons=exons,
             num_variants_in_gene=num_variants_in_gene,
-            coverage_stats=coverage_stats,
             csq_order=csq_order,
         )
     except Exception, e:
