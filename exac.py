@@ -13,7 +13,7 @@ from utils import *
 from pycoverage import *
 import auth
 
-from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
+from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, make_response
 from flask_compress import Compress
 from flask_errormail import mail_on_500
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
@@ -444,6 +444,7 @@ def gene_page(gene_id):
 
         return render_template(
             'gene.html',
+            gene_id=gene_id,
             gene=gene,
             chrom=gene['chrom'],
             start=gene['start'],
@@ -455,7 +456,6 @@ def gene_page(gene_id):
     except Exception, e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
-
 
 @app.route('/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
@@ -486,13 +486,69 @@ def transcript_page(transcript_id):
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/api/variants_in_gene/<gene_id>')
+@app.route('/region/<region_id>')
 @require_agreement_to_terms_and_store_destination
-def variants_gene_api(gene_id):
+def region_page(region_id):
     db = get_db()
     try:
-        variants_in_gene = lookups.get_variants_in_gene(db, gene_id)
-        return jsonify(variants_in_gene)
+        region = region_id.split('-')
+        print 'Rendering region: %s' % region_id
+
+        if len(region) != 3:
+            return error_page("Sorry, '{}' doesn't look like a valid region. A valid region looks like 1-55530545-55531525.".format(region_id))
+
+        chrom, start, stop = region[0], int(region[1]), int(region[2])
+        if stop - start > REGION_LIMIT:
+            return error_page("The region you requested, '{}', is {:,} bases long.  We only accept regions shorter than {:,} bases.".format(region_id, stop - start, REGION_LIMIT))
+        if stop < start:
+            return error_page("The region you requested, '{}', stops before it starts.  Did you mean '{chrom}-{stop}-{start}'?".format(region_id, chrom=chrom, start=start, stop=stop))
+        if start == stop:
+            start -= 20
+            stop += 20
+
+        genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
+        variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
+        xstart = get_xpos(chrom, start)
+        xstop = get_xpos(chrom, stop)
+        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
+        #coverage_stats = coverage_stats[::len(coverage_stats)/8]
+        return render_template(
+            'region.html',
+            genes_in_region=genes_in_region,
+            variants_in_region=variants_in_region,
+            chrom=chrom,
+            start=start,
+            stop=stop,
+            coverage_stats=coverage_stats,
+            csq_order=csq_order,
+        )
+    except Exception, e:
+        print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
+        abort(404)
+
+
+@app.route('/download/gene/<gene_id>')
+@require_agreement_to_terms_and_store_destination
+def download_gene_variants(gene_id):
+    import io, csv
+    db = get_db()
+    try:
+        out = io.BytesIO()
+        writer = csv.writer(out)
+        fields = 'chrom pos ref alt rsids filter genes allele_num allele_count allele_freq hom_count site_quality quality_metrics.DP cadd_phred'.split()
+        writer.writerow(fields)
+        variants = lookups.get_variants_in_gene(db, gene_id)
+        for v in variants:
+            row = []
+            for field in fields:
+                if '.' in field: parts = field.split('.', 1); row.append(v.get(parts[0], {}).get(parts[1], ''))
+                elif field in ['rsids','genes']: row.append('|'.join(v.get(field, [])))
+                else: row.append(v.get(field, ''))
+            writer.writerow(row)
+        resp = make_response(out.getvalue())
+        resp.headers['Content-Disposition'] = 'attachment; filename={}.csv'.format(gene_id)
+        resp.mimetype='text/csv'
+        return resp
     except Exception as e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
@@ -560,46 +616,6 @@ def region_coverage_api(region_id):
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
         return jsonify(coverage_stats)
     except Exception as e:
-        print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
-        abort(404)
-
-@app.route('/region/<region_id>')
-@require_agreement_to_terms_and_store_destination
-def region_page(region_id):
-    db = get_db()
-    try:
-        region = region_id.split('-')
-        print 'Rendering region: %s' % region_id
-
-        if len(region) != 3:
-            return error_page("Sorry, '{}' doesn't look like a valid region. A valid region looks like 1-55530545-55531525.".format(region_id))
-
-        chrom, start, stop = region[0], int(region[1]), int(region[2])
-        if stop - start > REGION_LIMIT:
-            return error_page("The region you requested, '{}', is {:,} bases long.  We only accept regions shorter than {:,} bases.".format(region_id, stop - start, REGION_LIMIT))
-        if stop < start:
-            return error_page("The region you requested, '{}', stops before it starts.  Did you mean '{chrom}-{stop}-{start}'?".format(region_id, chrom=chrom, start=start, stop=stop))
-        if start == stop:
-            start -= 20
-            stop += 20
-
-        genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
-        variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
-        xstart = get_xpos(chrom, start)
-        xstop = get_xpos(chrom, stop)
-        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
-        #coverage_stats = coverage_stats[::len(coverage_stats)/8]
-        return render_template(
-            'region.html',
-            genes_in_region=genes_in_region,
-            variants_in_region=variants_in_region,
-            chrom=chrom,
-            start=start,
-            stop=stop,
-            coverage_stats=coverage_stats,
-            csq_order=csq_order,
-        )
-    except Exception, e:
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
 
