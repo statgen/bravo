@@ -318,7 +318,7 @@ function create_variant_table() {
         },{
             title: 'CADD', name:'cadd_phred',
             data: 'cadd_phred', orderable:true, orderSequence:['desc', 'asc'], className: 'dt-right',
-            render: function(cell_data, type, row) { return cell_data.toFixed(0); },
+            render: function(cell_data, type, row) { return (cell_data===null)?'':cell_data.toFixed(0); },
 
         },{
             title: 'QC', name: 'filter',
