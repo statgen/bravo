@@ -29,9 +29,9 @@
         {% endif %}
         <div class="row" id="home-titlebox">
             <div class="col-xs-12">
-                <h1>{{ config['BROWSER_NAME'] }}</h1>
+                <br><img src="/static/img/bravo_logo.png" width="200px" />
                 {% if config['SHOW_POWERED_BY'] %}
-                <h2>Powered by {{ config['DATASET_NAME'] }}</h2>
+                <h3>Powered by {{ config['DATASET_NAME'] }}</h3>
                 {% endif %}
             </div>
         </div>
@@ -47,7 +47,7 @@
                     </form>
                     <p class="text-muted">
                         Examples -
-                        Gene: <a href="/awesome?query=PPARA">PPARA</a>,
+                        Gene: <a href="/awesome?query=PCSK9">PCSK9</a>,
                         Transcript: <a href="/transcript/ENST00000407236">ENST00000407236</a>,
                         Variant: <a href="/variant/22-16389447-A-G">22-16389447-A-G</a>,
                         Region: <a href="/region/22-46546424-46639653">22:46546424-46639653</a>
