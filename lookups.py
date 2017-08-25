@@ -338,16 +338,6 @@ def get_variants_in_transcript(db, transcript_id):
         variants.append(variant)
     return variants
 
-def get_most_important_variants_in_transcript(db, transcript_id):
-    variants = []
-    for variant in db.variants.find({'transcripts': transcript_id, 'sometimes_missense_or_lof': 1}, projection={'_id': False}):
-        variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Feature'] == transcript_id]
-        add_consequence_to_variant(variant)
-        if variant['category'] in ['lof_variant', 'missense_variant']:
-            remove_extraneous_information(variant)
-            variants.append(variant)
-    return variants
-
 def get_num_variants_in_transcript(db, transcript_id):
     return db.variants.find({'transcripts': transcript_id}, projection={'_id': False}).count()
 
