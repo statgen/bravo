@@ -29,7 +29,7 @@ import functools
 import contextlib
 
 app = Flask(__name__)
-app.config.from_object('flask_config.BravoFreeze65kAlphaConfig')
+app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
 mail_on_500(app, app.config['ADMINS'])
 app.config['COMPRESS_LEVEL'] = 2 # Since we don't cache, faster=better
 Compress(app)
