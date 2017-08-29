@@ -637,6 +637,12 @@ def error_page(message):
         message=message
     ), 404
 
+
+@app.route('/download')
+@require_agreement_to_terms_and_store_destination
+def download_page():
+    return render_template('download.html')
+
 @app.route('/about')
 def about_page():
     db = get_db()
