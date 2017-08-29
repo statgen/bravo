@@ -436,7 +436,11 @@ def gene_page(gene_id):
             stop=gene['stop'],
             exons=exons,
             num_variants_in_gene=num_variants_in_gene,
-            csq_order=Consequence.csqs,
+            csq = {'order':Consequence.csqs,
+                   'n_lof':len(Consequence._lof_csqs),
+                   'n_lof_mis':len(Consequence._lof_csqs)+len(Consequence._missense_csqs),
+                   'n_lof_mis_syn':len(Consequence._lof_csqs)+len(Consequence._missense_csqs)+len(Consequence._synonymous_csqs),
+            },
         )
     except Exception, e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
