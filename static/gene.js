@@ -454,7 +454,10 @@ function create_variant_table() {
             },
         },
 
-        order: [[columns.map(function(d){return d.name==='csq'}).indexOf(true), 'asc']],
+        order: [
+            [columns.map(function(d){return d.name==='csq'}).indexOf(true), 'asc'],
+            [columns.map(function(d){return d.name==='cadd_phred'}).indexOf(true), 'desc'],
+        ],
         columns: columns,
 
         dom: '<ipl>rft', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
