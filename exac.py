@@ -237,21 +237,6 @@ def load_dbsnp_file():
     else:
         raise Exception("dbsnp file %s(dbsnp_file)s not found." % locals())
 
-
-def precalculate_whether_variant_is_ever_missense_or_lof():
-    missense_and_lof_csqs = csq_order[:csq_order.index('MISSENSE_THRESHOLD')]
-    missense_and_lof_csqs.remove('LOF_THRESHOLD')
-    regex = r'(^|&)({})(&|$)'.format('|'.join(missense_and_lof_csqs))
-    db = get_db()
-    print('Updating all {:,} variants for all {} missense/LoF consequences...'.format(db.variants.count(), len(missense_and_lof_csqs)))
-    start_time = time.time()
-    result = db.variants.update_many(
-        {'vep_annotations.Consequence': {'$regex': regex}},
-        {'$set': {'sometimes_missense_or_lof': 1}}
-    )
-    print "updated {:,} documents in {:,.0f} seconds".format(result.matched_count, time.time() - start_time)
-
-
 def precalculate_metrics():
     import numpy
     db = get_db()

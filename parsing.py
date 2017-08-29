@@ -3,17 +3,20 @@ Utils for reading flat files that are loaded into database
 """
 import re
 import traceback
+import itertools
+import boltons.iterutils
 from utils import *
 
-POPS = {
-    'AFR': 'African',
-    'AMR': 'Latino',
-    'EAS': 'East Asian',
-    'FIN': 'European (Finnish)',
-    'NFE': 'European (Non-Finnish)',
-    'SAS': 'South Asian',
-    'OTH': 'Other'
-}
+#Peter: this is no longer used.
+# POPS = {
+#     'AFR': 'African',
+#     'AMR': 'Latino',
+#     'EAS': 'East Asian',
+#     'FIN': 'European (Finnish)',
+#     'NFE': 'European (Non-Finnish)',
+#     'SAS': 'South Asian',
+#     'OTH': 'Other'
+# }
 
 
 def get_base_coverage_from_file(base_coverage_file):
@@ -41,7 +44,7 @@ def get_base_coverage_from_file(base_coverage_file):
             continue
         fields = line.strip('\n').split('\t')
         d = {
-            'xpos': get_xpos(fields[0], int(fields[1])),
+            'xpos': Xpos.from_chrom_pos(fields[0], int(fields[1])),
             'pos': int(fields[1]),
         }
         for i, k in enumerate(float_header_fields):
@@ -122,7 +125,7 @@ def get_variants_from_sites_vcf(sites_vcf):
                 else:
                    variant['rsids'] = []
 
-                variant['xpos'] = get_xpos(variant['chrom'], variant['pos'])
+                variant['xpos'] = Xpos.from_chrom_pos(variant['chrom'], variant['pos'])
                 variant['ref'] = ref
                 variant['alt'] = alt
                 variant['xstart'] = variant['xpos']
@@ -149,18 +152,20 @@ def get_variants_from_sites_vcf(sites_vcf):
                 variant['allele_freq'] = float(info_field['AF'].split(',')[i])
                 assert variant['allele_freq'] != 0, variant
 
-                # DT: variant['pop_acs'] = dict([(POPS[x], int(info_field['AC_%s' % x].split(',')[i])) for x in POPS])
-                variant['pop_acs'] = dict([(POPS[x], 0) for x in POPS])
-                # DT: variant['pop_ans'] = dict([(POPS[x], int(info_field['AN_%s' % x])) for x in POPS])
-                variant['pop_ans'] = dict([(POPS[x], 0) for x in POPS])
-                # DT: variant['pop_homs'] = dict([(POPS[x], int(info_field['Hom_%s' % x].split(',')[i])) for x in POPS])
-                variant['pop_homs'] = dict([(POPS[x], 0) for x in POPS])
-                # DT: variant['hom_count'] = sum(variant['pop_homs'].values())
-                variant['hom_count'] = int(info_field['Hom'].split(',')[i])
-                if variant['chrom'] in ('X', 'Y'):
-                # DT: variant['pop_hemis'] = dict([(POPS[x], int(info_field['Hemi_%s' % x].split(',')[i])) for x in POPS])
-                    variant['pop_hemis'] = dict([(POPS[x], 0) for x in POPS])
-                    variant['hemi_count'] = sum(variant['pop_hemis'].values())
+                # Peter: these are always zero, so just use get_pop_afs() below.
+                # # DT: variant['pop_acs'] = dict([(POPS[x], int(info_field['AC_%s' % x].split(',')[i])) for x in POPS])
+                # variant['pop_acs'] = dict([(POPS[x], 0) for x in POPS])
+                # # DT: variant['pop_ans'] = dict([(POPS[x], int(info_field['AN_%s' % x])) for x in POPS])
+                # variant['pop_ans'] = dict([(POPS[x], 0) for x in POPS])
+                # # DT: variant['pop_homs'] = dict([(POPS[x], int(info_field['Hom_%s' % x].split(',')[i])) for x in POPS])
+                # variant['pop_homs'] = dict([(POPS[x], 0) for x in POPS])
+                # # DT: variant['hom_count'] = sum(variant['pop_homs'].values())
+                # variant['hom_count'] = int(info_field['Hom'].split(',')[i])
+                # if variant['chrom'] in ('X', 'Y'):
+                # # DT: variant['pop_hemis'] = dict([(POPS[x], int(info_field['Hemi_%s' % x].split(',')[i])) for x in POPS])
+                #     variant['pop_hemis'] = dict([(POPS[x], 0) for x in POPS])
+                #     variant['hemi_count'] = sum(variant['pop_hemis'].values())
+
                 variant['quality_metrics'] = dict([(x, info_field[x]) for x in METRICS if x in info_field])
 
                 variant['genes'] = list({annotation['Gene'] for annotation in vep_annotations})
@@ -177,11 +182,129 @@ def get_variants_from_sites_vcf(sites_vcf):
                 # DT: variant['genotype_depths'] = [zip(dp_mids, map(int, x.split('|'))) for x in hists_all]
                 # DT: variant['genotype_qualities'] = [zip(gq_mids, map(int, x.split('|'))) for x in hists_all] 
 
+                clean_annotation_consequences_for_variant(variant)
+                pop_afs = get_pop_afs(variant)
+                if pop_afs: variant['pop_afs'] = pop_afs
+                keep_only_needed_annotation_fields(variant)
                 yield variant
         except Exception:
             print("Error parsing vcf line: " + line)
             traceback.print_exc()
-            break
+            raise
+
+def get_minimal_representation(pos, ref, alt):
+    """
+    Get the minimal representation of a variant, based on the ref + alt alleles in a VCF
+    This is used to make sure that multiallelic variants in different datasets,
+    with different combinations of alternate alleles, can always be matched directly.
+    """
+    pos = int(pos)
+    # If it's a simple SNV, don't remap anything
+    if len(ref) == 1 and len(alt) == 1:
+        return (pos, ref, alt)
+    else:
+        # strip off identical suffixes
+        while(alt[-1] == ref[-1] and min(len(alt),len(ref)) > 1):
+            alt = alt[:-1]
+            ref = ref[:-1]
+        # strip off identical prefixes and increment position
+        while(alt[0] == ref[0] and min(len(alt),len(ref)) > 1):
+            alt = alt[1:]
+            ref = ref[1:]
+            pos += 1
+        return (pos, ref, alt)
+
+def clean_annotation_consequences_for_variant(variant):
+    if len(variant['vep_annotations']) == 0:
+        raise Exception('why no annos for {!r}?'.format(variant))
+    for anno in variant['vep_annotations']:
+        anno['CANONICAL'] = (anno['CANONICAL'] == 'YES')
+        anno['worst_csqidx'] = _get_worst_csqidx_for_annotation(anno)
+    variant['vep_annotations'] = sorted(variant['vep_annotations'], key=_annotation_severity)
+    worst_anno = variant['vep_annotations'][0]
+    variant['worst_csqidx'] = worst_anno['worst_csqidx']
+    variant['worst_csq_HGVS'] = HGVSGetter.get_hgvs(worst_anno)
+    variant['worst_csq_CANONICAL'] = worst_anno['CANONICAL']
+    # TODO: make variant['vep_annotations'][*]['HGVS']
+    # TODO: drop variant['vep_annotations'][*][unused_keys]
+    #  - gene.html uses worst_csqidx, worst_csq_hgvs, worst_csq_canonical
+    #  - variant.html header uses: stuff from drilldown
+    #  - variant.html drilldown uses: variant['vep_annotations'][*][HGVS,Gene,SYMBOL,Feature,CANONICAL]
+    #  - variant.html pop af table uses: variant['vep_annotations'][any][*_AF]
+def _get_worst_csqidx_for_annotation(annotation):
+    try:
+        return min(Consequence.csqidxs[csq] for csq in annotation['Consequence'].split('&'))
+    except KeyError as exc:
+        raise Exception("failed to get csqidx for {!r} with error: {}".format(annotation['Consequence'], traceback.format_exc()))
+def _annotation_severity(annotation):
+    "higher is more deleterious"
+    rv = -annotation['worst_csqidx']
+    if annotation['CANONICAL']: rv += 0.1
+    return rv
+class HGVSGetter(object):
+    protein_letters_1to3 = {
+        'A': 'Ala', 'C': 'Cys', 'D': 'Asp', 'E': 'Glu',
+        'F': 'Phe', 'G': 'Gly', 'H': 'His', 'I': 'Ile',
+        'K': 'Lys', 'L': 'Leu', 'M': 'Met', 'N': 'Asn',
+        'P': 'Pro', 'Q': 'Gln', 'R': 'Arg', 'S': 'Ser',
+        'T': 'Thr', 'V': 'Val', 'W': 'Trp', 'Y': 'Tyr',
+        'X': 'Ter', '*': 'Ter', 'U': 'Sec'
+    }
+    @staticmethod
+    def get_hgvs(annotation):
+        # Needs major_consequence
+        if any(annotation['worst_csqidx'] == Consequence.csqidxs[csq] for csq in ['splice_donor_variant', 'splice_acceptor_variant', 'splice_region_variant']):
+            # transcript HGVS
+            return annotation['HGVSc'].split(':')[-1]
+        else:
+            # protein HGVS
+            if '%3D' in annotation['HGVSp']: # "%3D" is "="
+                try:
+                    amino_acids = ''.join([HGVSGetter.protein_letters_1to3[x] for x in annotation['Amino_acids']])
+                    return "p." + amino_acids + annotation['Protein_position'] + amino_acids
+                except Exception, e:
+                    print 'Could not create HGVS for: %s' % annotation
+            return annotation['HGVSp'].split(':')[-1]
+
+POP_AFS_1000G = {
+    "EAS_AF": "1000G East Asian",
+    "AFR_AF": "1000G African",
+    "EUR_AF": "1000G European",
+    "SAS_AF": "1000G South Asian",
+    "AMR_AF": "1000G American"
+}
+def get_pop_afs(variant):
+    """
+    Convert the nasty output of VEP into a decent dictionary of population AFs.
+    """
+    # TODO: Ideally, this should check for non-zero numbers in each of the populations, and then report numbers for all 5 populations.
+    # Instead, I'm just going to try things and fail fast if they don't work, because annotations are super weird.
+    if 'vep_annotations' not in variant or len(variant['vep_annotations']) == 0:
+        return {}
+    try:
+        pop_afs = {}
+        for pop in POP_AFS_1000G:
+            af_strings = [ann[pop] for ann in variant['vep_annotations'] if ann['Allele'] == variant['alt'] or ann['Allele'] == '-']
+            for af_string in af_strings:
+                if '&' in af_string:
+                    assert boltons.iterutils.same(af_string.split('&'))
+            af_strings = list(itertools.chain.from_iterable(af_s.split('&') for af_s in af_strings))
+            assert boltons.iterutils.same(af_strings)
+            if af_strings and af_strings[0] != '':
+                pop_afs[pop] = float(af_strings[0])
+        if all(v==0 for v in pop_afs.values()):
+            return {}
+        return pop_afs
+    except Exception as exc:
+        print('failed in get_pop_afs() for variant {!r} with error:'.format(variant, traceback.format_exc()))
+        raise
+
+def keep_only_needed_annotation_fields(variant):
+    needed_fields = ['CANONICAL', 'Gene', 'SYMBOL', 'worst_csqidx', 'Feature']
+    for anno in variant['vep_annotations']:
+        for unused_field in [field for field in anno if field not in needed_fields]:
+            del anno[unused_field]
+
 
 
 def get_canonical_transcripts(canonical_transcript_file):
@@ -227,8 +350,8 @@ def get_genes_from_gencode_gtf(gtf_file):
             'start': start,
             'stop': stop,
             'strand': fields[6],
-            'xstart': get_xpos(chrom, start),
-            'xstop': get_xpos(chrom, stop),
+            'xstart': Xpos.from_chrom_pos(chrom, start),
+            'xstop': Xpos.from_chrom_pos(chrom, stop),
         }
         yield gene
 
@@ -261,8 +384,8 @@ def get_transcripts_from_gencode_gtf(gtf_file):
             'start': start,
             'stop': stop,
             'strand': fields[6],
-            'xstart': get_xpos(chrom, start),
-            'xstop': get_xpos(chrom, stop),
+            'xstart': Xpos.from_chrom_pos(chrom, start),
+            'xstop': Xpos.from_chrom_pos(chrom, stop),
         }
         yield gene
 
@@ -297,8 +420,8 @@ def get_exons_from_gencode_gtf(gtf_file):
             'start': start,
             'stop': stop,
             'strand': fields[6],
-            'xstart': get_xpos(chrom, start),
-            'xstop': get_xpos(chrom, stop),
+            'xstart': Xpos.from_chrom_pos(chrom, start),
+            'xstop': Xpos.from_chrom_pos(chrom, stop),
         }
         yield exon
 
@@ -333,7 +456,7 @@ def get_snp_from_dbsnp_file(dbsnp_file):
         if chrom == 'PAR': continue
         start = int(fields[2]) + 1
         snp = {
-            'xpos': get_xpos(chrom, start),
+            'xpos': Xpos.from_chrom_pos(chrom, start),
             'rsid': rsid
         }
         yield snp
