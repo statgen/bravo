@@ -159,12 +159,13 @@ def get_variants_from_sites_vcf(sites_vcf):
                 # variant['pop_ans'] = dict([(POPS[x], 0) for x in POPS])
                 # # DT: variant['pop_homs'] = dict([(POPS[x], int(info_field['Hom_%s' % x].split(',')[i])) for x in POPS])
                 # variant['pop_homs'] = dict([(POPS[x], 0) for x in POPS])
-                # # DT: variant['hom_count'] = sum(variant['pop_homs'].values())
-                # variant['hom_count'] = int(info_field['Hom'].split(',')[i])
-                # if variant['chrom'] in ('X', 'Y'):
-                # # DT: variant['pop_hemis'] = dict([(POPS[x], int(info_field['Hemi_%s' % x].split(',')[i])) for x in POPS])
-                #     variant['pop_hemis'] = dict([(POPS[x], 0) for x in POPS])
-                #     variant['hemi_count'] = sum(variant['pop_hemis'].values())
+
+                # DT: variant['hom_count'] = sum(variant['pop_homs'].values())
+                variant['hom_count'] = int(info_field['Hom'].split(',')[i])
+                if variant['chrom'] in ('X', 'Y'):
+                # DT: variant['pop_hemis'] = dict([(POPS[x], int(info_field['Hemi_%s' % x].split(',')[i])) for x in POPS])
+                    variant['pop_hemis'] = dict([(POPS[x], 0) for x in POPS])
+                    variant['hemi_count'] = sum(variant['pop_hemis'].values())
 
                 variant['quality_metrics'] = dict([(x, info_field[x]) for x in METRICS if x in info_field])
 
@@ -252,7 +253,6 @@ class HGVSGetter(object):
     }
     @staticmethod
     def get_hgvs(annotation):
-        # Needs major_consequence
         if any(annotation['worst_csqidx'] == Consequence.csqidxs[csq] for csq in ['splice_donor_variant', 'splice_acceptor_variant', 'splice_region_variant']):
             # transcript HGVS
             return annotation['HGVSc'].split(':')[-1]

@@ -351,9 +351,7 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
     # 1. match what the user asked for - using [chrom, start_pos, end_pos, filter_info]
     # 2. project to just keys for sorting, sort, and get `_id`s - using [order]
     # 3. get `n_filtered` and `length`-many `_id`s - using [skip, length]
-    # 4. look up those `_id`s and project to keys we'll need to make the final result - using [columns_to_return]
-    # 5. do modifications ("annotations") in python (LATER: just put [HGVS csq] in mongo) - using [columns_to_return]
-    # 6. project to just fields that we return - using [columns_to_return]
+    # 4. look up those `_id`s and project - using [columns_to_return]
     st = time.time()
 
     mongo_match = [{'xpos': {'$gte': Xpos.from_chrom_pos(chrom, start_pos), '$lte': Xpos.from_chrom_pos(chrom, end_pos)}}]
@@ -368,11 +366,13 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
     if isinstance(filter_info.get('maf_le',None),(float,int)):
         assert 0 <= filter_info['maf_le'] <= 0.5
         if filter_info['maf_le'] < 0.5: mongo_match.append({'$or': [{'allele_freq': {'$lte': filter_info['maf_le']}},{'allele_freq': {'$gte': 1-filter_info['maf_le']}}]})
+    if filter_info.get('category',None) is not None:
+        if filter_info['category'].strip() == 'LoF': mongo_match.append({'worst_csqidx': {'$lt': len(Consequence._lof_csqs)}})
+        elif filter_info['category'].strip() == 'LoF+Missense': mongo_match.append({'worst_csqidx': {'$lt': len(Consequence._lof_csqs)+len(Consequence._missense_csqs)}})
 
     cols = {
         # after pre-processing, these will look like:
-        # <name>: {'sort': {'project': <projection>, 'sort_key': <key>}, 'return': {'project': <projection>, 'to_client': [<key>, ...]}}
-        # TODO: `to_client` should just be `project.keys()`?
+        # <name>: {'sort': {'project': <projection>, 'sort_key': <key>}, 'return': {'project': <projection>}}
         'allele': {'return': ['rsids', 'ref', 'alt']},
         'pos': {'sort': 'xpos'},
         'hgvs': {'return':{'project': {'HGVS':'$worst_csq_HGVS'}}},
@@ -381,7 +381,7 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         'allele_count': {'sort': True},
         'allele_num': {'sort': True},
         'het': {'sort': {'project': {'het': {'$subtract':['$allele_count',{'$multiply':[2,'$hom_count']}]}}, 'sort_key': 'het'},
-                'return': {'project': {'het': {'$subtract':['$allele_count',{'$multiply':[2,'$hom_count']}]}}, 'to_client': ['het']}},
+                'return': {'project': {'het': {'$subtract':['$allele_count',{'$multiply':[2,'$hom_count']}]}}}},
         'hom_count': {'sort': True},
         'allele_freq': {'sort': True},
         'cadd_phred': {'sort': True},
@@ -394,8 +394,7 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
             assert col['sort'] == False or isinstance(col['sort']['project'], dict) and isinstance(col['sort']['sort_key'], str)
             if 'return' not in col: col['return'] = [name]
             if isinstance(col['return'], list): col['return'] = {'project': {k:1 for k in col['return']}}
-            if 'to_client' not in col['return']: col['return']['to_client'] = list(col['return']['project'].keys())
-            assert isinstance(col['return']['project'], dict) and isinstance(col['return']['to_client'], list)
+            assert isinstance(col['return']['project'], dict)
         except:
             print('COL = ', col)
             raise
@@ -408,8 +407,7 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         mongo_projection_before_sort.update(col['sort']['project'])
         mongo_sort[col['sort']['sort_key']] = direction
 
-    mongo_projection = mkdict(*[cols[ctr['name']]['return']['project'] for ctr in columns_to_return])
-    keys_to_return = set(itertools.chain.from_iterable(cols[ctr['name']]['return']['to_client'] for ctr in columns_to_return))
+    mongo_projection = mkdict(*[cols[ctr['name']]['return']['project'] for ctr in columns_to_return], _id=False)
 
     v_ids_curs = db.variants.aggregate([
         {'$match': {'$and': mongo_match}},
@@ -430,10 +428,6 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         v_ids = [v['_id'] for v in v_ids_result[0]['ids']]
         variants = [next(db.variants.aggregate([{'$match': {'_id': vid}}, {'$project': mongo_projection}])) for vid in v_ids] # b/c fancy projections require .aggregate()
         print '## {:0.3f} sec:'.format(time.time()-st), 'len(variants)={}'.format(len(variants)); st = time.time()
-
-        for variant in variants:
-            for key in [key for key in variant if key not in keys_to_return]: del variant[key]
-        print '## {:0.3f} sec:'.format(time.time()-st), 'minified'; st = time.time()
 
     return {
         'recordsFiltered': n_filtered,

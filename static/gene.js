@@ -263,8 +263,8 @@ function create_variant_plot() {
     change_variant_plot_region_selector(window.model.start, window.model.stop)
 
     window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
-        var csq = d.major_consequence.replace(/_/g, ' ');
-        if (csq.length > 15) { csq = csq.substr(0, 15) + '...'; } // because d3-tip tooltips fall off the page
+        var csq = window.model.csq_order[d.worst_csqidx].replace(/_/g, ' ');
+        if (csq.length > 20) { csq = csq.substr(0, 20) + '...'; } // because d3-tip tooltips fall off the page
         return group_thousands_html(d.pos) + '<br>' +
             csq + '<br>' +
             (d.filter === 'PASS' ? '' : 'FAIL<br>') +
@@ -358,7 +358,7 @@ function create_variant_table() {
             })(),
 
         },{
-            title: 'Annotation', name: 'csq',
+            title: 'Consequence', name: 'csq',
             data: 'worst_csqidx', searchable:true, orderable:true, className: 'dt-center',
             render: function(cell_data, type, row) { return fmt_annotation(window.model.csq_order[cell_data]); },
 
@@ -377,15 +377,15 @@ function create_variant_table() {
             data: 'allele_num', searchable:true, orderable:true, className: 'dt-right',
             render: function(cell_data, type, row) {return group_thousands_html(cell_data);},
 
-        },{
-            title: 'Het', name: 'het',
-            data: 'het', searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
-            render: function(cell_data, type, row) {return group_thousands_html(cell_data);},
+        // },{
+        //     title: 'Het', name: 'het',
+        //     data: 'het', searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
+        //     render: function(cell_data, type, row) {return group_thousands_html(cell_data);},
 
-        },{
-            title: 'HomAlt', name: 'hom_count',
-            searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
-            render: function(cell_data, type, row) {return group_thousands_html(row.hom_count);},
+        // },{
+        //     title: 'HomAlt', name: 'hom_count',
+        //     searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
+        //     render: function(cell_data, type, row) {return group_thousands_html(row.hom_count);},
 
         },{
             title: 'Frequency', name: 'allele_freq',
@@ -429,7 +429,7 @@ function create_variant_table() {
             },
         },
 
-        order: [[columns.map(function(d){return d.name==='cadd_phred'}).indexOf(true), 'desc']],
+        order: [[columns.map(function(d){return d.name==='csq'}).indexOf(true), 'asc']],
         columns: columns,
 
         dom: '<ipl>rft', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
@@ -473,6 +473,7 @@ function create_variant_table() {
         window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val()) / 100; // %
         window.model.filter_info.maf_le = parseFloat($('input#maf_le').val()) / 100; // %
         window.model.filter_info.filter_value = $('select#filter_value').val();
+        window.model.filter_info.category = $('#vtf_category > .btn.active').text();
         window.model.tbl.draw();
     });
 

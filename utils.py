@@ -22,7 +22,7 @@ class Consequence(object):
     # The ordering of the LoF variants is from snpEff's recommendations - see http://snpeff.sourceforge.net/VCFannotationformat_v1.0.pdf
     # To find all variants that are used, run:
     # mongo --eval 'db.variants.distinct("vep_annotations.Consequence").forEach(printjson)' topmed | tr -d '",' | tr "&" "\n" | sort -u
-    lof_csqs = [
+    _lof_csqs = [
         "transcript_ablation",
         "frameshift_variant",
         "stop_gained",
@@ -32,19 +32,19 @@ class Consequence(object):
         "splice_donor_variant",
         "transcript_amplification",
     ]
-    missense_csqs = [
+    _missense_csqs = [
         "inframe_insertion",
         "inframe_deletion",
         "missense_variant",
         "protein_altering_variant",
     ]
-    synonymous_csqs = [
+    _synonymous_csqs = [
         "splice_region_variant",
         "incomplete_terminal_codon_variant",
         "stop_retained_variant",
         "synonymous_variant",
     ]
-    other_csqs = [
+    _other_csqs = [
         "coding_sequence_variant",
         "mature_miRNA_variant",
         "5_prime_UTR_variant",
@@ -65,7 +65,7 @@ class Consequence(object):
         "feature_truncation",
         "intergenic_variant",
     ]
-    csqs = lof_csqs + missense_csqs + synonymous_csqs + other_csqs
+    csqs = _lof_csqs + _missense_csqs + _synonymous_csqs + _other_csqs
     assert len(csqs) == len(set(csqs)) # No dupes!
     csqidxs = {csq:i for i,csq in enumerate(csqs)}
 
@@ -89,16 +89,14 @@ class Xpos:
 
 def get_consequences_drilldown_for_variant(variant):
     """
-    Adds 'major_consequence' to each annotation.
     Returns something like {"frameshift": {"ENSG00001234": [{"SYMBOL": "APOL1", "Gene": "ENSG00001234", "Feature": "ENST00002345", ...}]}}
     """
     if 'vep_annotations' not in variant:
         return {}
-    variant['vep_annotations'] = order_vep_by_csq(variant['vep_annotations'])  # Adds major_consequence
     consequences = OrderedDict()
     for annotation in variant['vep_annotations']:
         annotation['HGVS'] = get_proper_hgvs(annotation)
-        consequences.setdefault(annotation['major_consequence'], {}).setdefault(annotation['Gene'], []).append(annotation)
+        consequences.setdefault(Consequence.csqs[annotation['worst_csqidx']], {}).setdefault(annotation['Gene'], []).append(annotation)
     # Sort the consequences
     for csq in consequences:
         for gene in consequences[csq]:
