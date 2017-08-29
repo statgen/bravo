@@ -3,8 +3,8 @@ var coverage_plot_height = 100;
 var coverage_plot_margin = {top: 10, bottom: 20};
 var gene_plot_height = 15;
 var gene_plot_margin = {top: 0, bottom: 0};
-var variant_plot_height = 15;
-var variant_plot_margin = {top: 0, bottom: 0};
+var variant_plot_height = 20;
+var variant_plot_margin = {top: -3, bottom: 0};
 
 function bootstrap_plot() {
     window.model = window.model || {};
@@ -189,8 +189,6 @@ function create_gene_plot() {
         .attr('y', 0)
         .attr('height', gene_plot_height);
 
-    genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#gene-plot-clip)');
-
     window.model.plot.exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
         return (d.feature_type==='CDS'?'Coding Sequence':'UTR') + '<br>' +
             'start: ' + group_thousands_html(d.start) + '<br>' +
@@ -220,6 +218,8 @@ function create_gene_plot() {
         .attr('width', function(d) { return window.model.plot.x(d.stop)-window.model.plot.x(d.start) })
         .on('mouseover', window.model.plot.exon_tip.show)
         .on('mouseout', window.model.plot.exon_tip.hide)
+
+    genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#gene-plot-clip)');
 }
 
 function create_variant_plot() {
@@ -290,6 +290,9 @@ function change_variant_plot(variants) {
         .attr('rx', 6)
         .attr('cy', variant_plot_height/2)
         .attr('cx', function(d) { return window.model.plot.x(d.pos); })
+        .style('fill', variant_color)
+        .style('stroke', 'orange')
+        .style('stroke-width', 0)
         .attr('id', get_variant_plot_id)
         .on('mouseover', function(variant) {
             window.model.plot.oval_tip.show(variant);
@@ -324,14 +327,12 @@ function change_variant_plot(variants) {
 function variant_plot_default_style(selection) {
     if (typeof selection === "undefined") { selection = d3.selectAll('.variant-circle'); }
     return selection
-        .style('opacity', 0.6)
-        .style('fill', variant_color);
+        .style('stroke-width', 0);
 }
 
 function variant_plot_hilited_style(selection) {
     return selection
-        .style('opacity', 1)
-        .style('fill', 'orange');
+        .style('stroke-width', '3px');
 }
 
 
@@ -474,6 +475,7 @@ function create_variant_table() {
     $('#variant_table tbody').on('mouseleave', 'tr', function() {
         var variant = window.model.tbl.row(this).data();
         if (variant) { variant_plot_default_style(d3.select('#' + get_variant_plot_id(variant))); }
+        mouse_guide.hide();
     });
     $('#variant_table tbody').on('mouseenter', 'tr', function() {
         var variant = window.model.tbl.row(this).data();
@@ -482,6 +484,7 @@ function create_variant_table() {
             var selection = d3.select('#' + get_variant_plot_id(variant));
             selection.moveToFront();
             variant_plot_hilited_style(selection);
+            mouse_guide.show_at(selection.attr('cx'));
         }
     });
 
@@ -501,10 +504,15 @@ $(function() {
     create_variant_plot();
     create_variant_table();
     d3.selectAll('.genome_g')
-        .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node());d3.selectAll('.mouse_guide').attr('x', coords[0]);})
-        .on('mouseleave', function() {d3.selectAll('.mouse_guide').attr('x', -999);})
+        .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node()); mouse_guide.show_at(coords[0]); })
+        .on('mouseleave', mouse_guide.hide)
         .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recives mousemove and bubbles it up to `.genome_g`
 });
+
+var mouse_guide = {
+    show_at: function(x) { d3.selectAll('.mouse_guide').attr('x', x - 1); },
+    hide: function(x) { d3.selectAll('.mouse_guide').attr('x', -999); },
+};
 
 function get_variant_plot_id(variant) { return 'variant-plot-'+get_variant_id(variant); }
 function get_variant_id(variant) { return ''+variant.pos+'-'+variant.ref+'-'+variant.alt; }
