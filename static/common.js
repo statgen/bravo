@@ -1,18 +1,15 @@
 window.model = window.model || {};
 window._debug = window._debug || {};
 
-function get_af_bounds(data) {
-    // Removing AC_Adj = 0 cases
-    var min_af = d3.min(data, function(d) {
-        if (d.allele_freq > 0) {
-            return d.allele_freq;
-        } else {
-            return 1;
-        }
-    });
-    // Should this be 1?
-    var max_af = d3.max(data, function(d) { return d.allele_freq; });
-    return [min_af, max_af];
+function variant_color(d) {
+    /* Accepts either a variant or that variant's .worst_csqidx */
+    if (typeof d === "object") d = d.worst_csqidx;
+    if (window.model.csq) {
+        if (d < window.model.csq.n_lof) return '#cd2932';
+        else if (d < window.model.csq.n_lof_mis) return '#a96500';
+        else if (d < window.model.csq.n_lof_mis_syn) return '#157e28';
+    }
+    return 'grey';
 }
 
 (function() {
@@ -158,8 +155,11 @@ function leftpad(str, len, padding) {
 function rightpad(str, len, padding) {
     str = String(str); len = len>>0; if (str.length >= len) return str; return str + padding.repeat(len - str.length);
 }
-function fmt_annotation(anno) {
-    return anno.replace('_variant', '').replace(/_/g, ' ').replace('utr', 'UTR').replace('3 prime', "3'").replace('5 prime', "5'").replace('nc ', "non-coding ");
+function fmt_annotation(csqidx, maxlen) {
+    if (typeof csqidx === "object") { csqidx = csqidx.worst_csqidx; }
+    var csq_string = window.model.csq.order[csqidx].replace('_variant', '').replace(/_/g, ' ').replace('utr', 'UTR').replace('3 prime', "3'").replace('5 prime', "5'").replace('nc ', "non-coding ");
+    if (typeof maxlen === "number" && csq_string.length > maxlen) { csq_string = csq_string.substr(0, maxlen-3) + '...'; }
+    return fmt('<span style="color:{0}">{1}</span>', variant_color(csqidx), csq_string);
 }
 
 if (d3 && d3.selection) {

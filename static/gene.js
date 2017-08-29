@@ -243,30 +243,27 @@ function create_variant_plot() {
 
     genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#variant-plot-clip)');
 
-    var data_g = genome_g.append('g');
-
-    data_g.append("line")
+    genome_g.append("line")
         .attr("y1", variant_plot_height/2)
         .attr("y2", variant_plot_height/2)
         .attr("x1", 0)
         .attr("x2", window.model.plot.genome_coords_width)
         .attr("stroke-width", 1)
-        .attr("stroke", "lightsteelblue")
-        .style('opacity', 0.3);
+        .attr("stroke", "#dfe6ef");
 
-    data_g.append("line")
+    genome_g.append("line")
         .attr('id', 'variant_plot_region_selector')
         .attr("y1", variant_plot_height/2)
         .attr("y2", variant_plot_height/2)
         .attr("stroke-width", 1)
         .attr("stroke", "black");
+
+    var data_g = genome_g.append('g').attr('class','data_g');
     change_variant_plot_region_selector(window.model.start, window.model.stop)
 
     window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
-        var csq = window.model.csq_order[d.worst_csqidx].replace(/_/g, ' ');
-        if (csq.length > 20) { csq = csq.substr(0, 20) + '...'; } // because d3-tip tooltips fall off the page
         return group_thousands_html(d.pos) + '<br>' +
-            csq + '<br>' +
+            fmt_annotation(d, 20) + '<br>' +
             (d.filter === 'PASS' ? '' : 'FAIL<br>') +
             'MAF: ' + perc_sigfigs_html(d.allele_freq, 2);
         //return JSON.stringify(d);
@@ -283,14 +280,12 @@ function change_variant_plot_region_selector(start, stop) {
 }
 
 function change_variant_plot(variants) {
-    var selection = d3.select('#variant_track')
+    var selection = d3.select('#variant_track .data_g')
         .selectAll('.variant-circle')
         .data(variants, get_variant_id); // define data-joining 2nd method to allow move-to-front
-    selection.enter()
+    var variant_circles = selection.enter()
         .append('ellipse')
         .attr('class', 'variant-circle')
-        .style('opacity', 0.3)
-        .style('fill', 'blue')
         .attr('ry', 6)
         .attr('rx', 6)
         .attr('cy', variant_plot_height/2)
@@ -298,8 +293,8 @@ function change_variant_plot(variants) {
         .attr('id', get_variant_plot_id)
         .on('mouseover', function(variant) {
             window.model.plot.oval_tip.show(variant);
-            $('.variant-circle').css('fill', 'blue').css('opacity', 0.3);
-            $(this).css('fill', 'orange').css('opacity', 1);
+            variant_plot_default_style();
+            variant_plot_hilited_style(d3.select(this));
             window.model.tbl.rows()[0].forEach(function(row_idx) {
                 $(window.model.tbl.row(row_idx).nodes()).removeClass('highlight');
             });
@@ -312,7 +307,7 @@ function change_variant_plot(variants) {
             d3.select(this).moveToFront();
         })
         .on('mouseout', function(variant) {
-            $(this).css('fill', 'blue').css('opacity', 0.3);
+            variant_plot_default_style(d3.select(this));
             window.model.plot.oval_tip.hide(variant);
             window.model.tbl.rows()[0].forEach(function(row_idx) {
                 var cur_var = window.model.tbl.row(row_idx).data();
@@ -321,9 +316,24 @@ function change_variant_plot(variants) {
                 }
             });
         })
+    variant_plot_default_style(variant_circles);
     selection.exit()
         .remove()
 }
+
+function variant_plot_default_style(selection) {
+    if (typeof selection === "undefined") { selection = d3.selectAll('.variant-circle'); }
+    return selection
+        .style('opacity', 0.6)
+        .style('fill', variant_color);
+}
+
+function variant_plot_hilited_style(selection) {
+    return selection
+        .style('opacity', 1)
+        .style('fill', 'orange');
+}
+
 
 
 function create_variant_table() {
@@ -360,7 +370,7 @@ function create_variant_table() {
         },{
             title: 'Consequence', name: 'csq',
             data: 'worst_csqidx', searchable:true, orderable:true, className: 'dt-center',
-            render: function(cell_data, type, row) { return fmt_annotation(window.model.csq_order[cell_data]); },
+            render: function(cell_data, type, row) { return fmt_annotation(cell_data); },
 
         },{
             title: 'CADD', name:'cadd_phred',
@@ -368,7 +378,7 @@ function create_variant_table() {
             render: function(cell_data, type, row) { return (cell_data===null)?'':cell_data.toFixed(0); },
 
         },{
-            title: 'QC', name: 'filter',
+            title: 'Quality', name: 'filter',
             data: 'filter', searchable:true, orderable:false, className: 'dt-center',
             render: function(cell_data, type, row) { return (cell_data==='PASS') ? 'PASS' : fmt('<span data-tooltip="failed filters: {0}">FAIL</span>', cell_data); },
 
@@ -401,6 +411,16 @@ function create_variant_table() {
     window.model.filter_info.stop = window.model.stop;
     window.model.filter_info.chrom = window.model.chrom;
 
+    var update_filter_info = function() {
+        window.model.filter_info.pos_ge = parseInt($('input#pos_ge').val());
+        window.model.filter_info.pos_le = parseInt($('input#pos_le').val());
+        window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val()) / 100; // %
+        window.model.filter_info.maf_le = parseFloat($('input#maf_le').val()) / 100; // %
+        window.model.filter_info.filter_value = $('select#filter_value').val();
+        window.model.filter_info.category = $('#vtf_category > .btn.active').text();
+    };
+    update_filter_info();
+
     window.model.tbl = $('#variant_table').DataTable({
         serverSide: true, /* API does all the real work */
 
@@ -409,7 +429,8 @@ function create_variant_table() {
 
         paging: true,
         pagingType: 'full', /* [first, prev, next, last] */
-        pageLength: 10,
+        pageLength: 100,
+        lengthMenu: [10, 100, 1000],
 
         searching: false,
 
@@ -444,37 +465,21 @@ function create_variant_table() {
 
     });
 
+    $('.variant_table_filter').on('change', function() { update_filter_info(); window.model.tbl.draw(); });
+
     // hilite corresponding variant-plot circle
     $('#variant_table tbody').on('mouseleave', 'tr', function() {
         var variant = window.model.tbl.row(this).data();
-        if (variant) {
-            $('#' + get_variant_plot_id(variant))
-            .css('fill', 'blue')
-            .css('opacity', 0.3);
-        }
+        if (variant) { variant_plot_default_style(d3.select('#' + get_variant_plot_id(variant))); }
     });
     $('#variant_table tbody').on('mouseenter', 'tr', function() {
         var variant = window.model.tbl.row(this).data();
-        $('.variant-circle')
-            .css('fill', 'blue')
-            .css('opacity', 0.3);
+        variant_plot_default_style();
         if (variant) {
-            var vid = '#' + get_variant_plot_id(variant);
-            d3.select(vid).moveToFront();
-            $(vid)
-                .css('fill', 'orange')
-                .css('opacity', 1);
+            var selection = d3.select('#' + get_variant_plot_id(variant));
+            selection.moveToFront();
+            variant_plot_hilited_style(selection);
         }
-    });
-
-    $('.variant_table_filter').on('change', function() {
-        window.model.filter_info.pos_ge = parseInt($('input#pos_ge').val());
-        window.model.filter_info.pos_le = parseInt($('input#pos_le').val());
-        window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val()) / 100; // %
-        window.model.filter_info.maf_le = parseFloat($('input#maf_le').val()) / 100; // %
-        window.model.filter_info.filter_value = $('select#filter_value').val();
-        window.model.filter_info.category = $('#vtf_category > .btn.active').text();
-        window.model.tbl.draw();
     });
 
     $('input#pos_le,input#pos_ge').change(function() {
