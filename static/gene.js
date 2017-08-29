@@ -455,8 +455,8 @@ function create_variant_table() {
         },
 
         order: [
-            [columns.map(function(d){return d.name==='csq'}).indexOf(true), 'asc'],
-            [columns.map(function(d){return d.name==='cadd_phred'}).indexOf(true), 'desc'],
+            [columns.findIndex(function(d){return d.name==='csq'}), 'asc'],
+            [columns.findIndex(function(d){return d.name==='cadd_phred'}), 'desc'],
         ],
         columns: columns,
 
