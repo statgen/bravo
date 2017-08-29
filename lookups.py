@@ -375,8 +375,8 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         # <name>: {'sort': {'project': <projection>, 'sort_key': <key>}, 'return': {'project': <projection>}}
         'allele': {'return': ['rsids', 'ref', 'alt']},
         'pos': {'sort': 'xpos'},
-        'hgvs': {'return':{'project': {'HGVS':'$worst_csq_HGVS'}}},
-        'csq': {'sort': 'worst_csqidx', 'return':['worst_csqidx']},
+#        'hgvs': {'return':{'project': {'HGVS':'$worst_csq_HGVS'}}},
+        'csq': {'sort': 'worst_csqidx', 'return':{'project': {'worst_csqidx':1, 'HGVS':'$worst_csq_HGVS'}}},
         'filter': {},
         'allele_count': {'sort': True},
         'allele_num': {'sort': True},

@@ -357,20 +357,23 @@ function create_variant_table() {
             data: 'pos', searchable: true,  orderable: true, className: 'dt-right',
             render: function(cell_data, type, row) { return group_thousands_html(cell_data); },
 
-        },{
-            title: 'HGVS', name: 'hgvs',
-            searchable: false, orderable: false, className: 'dt-head-center',
-            render: (function() {
-                var template = _.template(
-                    '<% if (variant.HGVS.length > 20) { %><%= variant.HGVS.slice(0,20) %>...<% } else { %><%= variant.HGVS %><% } %>',
-                    {variable:'variant'});
-                return function(cell_data, type, row) { return template(row); };
-            })(),
+        // },{
+        //     title: 'HGVS', name: 'hgvs',
+        //     searchable: false, orderable: false, className: 'dt-head-center',
+        //     render: (function() {
+        //         var template = _.template(
+        //             '<% if (variant.HGVS.length > 20) { %><%= variant.HGVS.slice(0,20) %>...<% } else { %><%= variant.HGVS %><% } %>',
+        //             {variable:'variant'});
+        //         return function(cell_data, type, row) { return template(row); };
+        //     })(),
 
         },{
             title: 'Consequence', name: 'csq',
-            data: 'worst_csqidx', searchable:true, orderable:true, className: 'dt-center',
-            render: function(cell_data, type, row) { return fmt_annotation(cell_data); },
+            data: 'worst_csqidx', searchable:true, orderable:true, className: 'dt-pad-left',
+            render: function(cell_data, type, row) {
+                return '<b>' + fmt_annotation(cell_data) + '</b>' +
+                    (row.HGVS ? ' ('+row.HGVS+')' : '');
+            },
 
         },{
             title: 'CADD', name:'cadd_phred',
