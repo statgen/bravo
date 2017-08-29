@@ -13,6 +13,7 @@
  window.model.chrom = {{ chrom|tojson|safe }};
  window.model.start = {{ start|tojson(separators=(',',':'))|safe }};
  window.model.stop = {{ stop|tojson(separators=(',',':'))|safe }};
+ window.model.csq_order = {{ csq_order|tojson(separators=(',',':'))|safe }};
 </script>
 <script type="text/javascript" src="{{ url_for('static', filename='gene.js') }}"></script>
 <style type="text/css">

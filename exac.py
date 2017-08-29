@@ -436,7 +436,7 @@ def gene_page(gene_id):
             stop=gene['stop'],
             exons=exons,
             num_variants_in_gene=num_variants_in_gene,
-            csq_order=csq_order,
+            csq_order=Consequence.csqs,
         )
     except Exception, e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
@@ -493,8 +493,8 @@ def region_page(region_id):
 
         genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
         variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
-        xstart = get_xpos(chrom, start)
-        xstop = get_xpos(chrom, stop)
+        xstart = Xpos.from_chrom_pos(chrom, start)
+        xstop = Xpos.from_chrom_pos(chrom, stop)
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
         #coverage_stats = coverage_stats[::len(coverage_stats)/8]
         return render_template(
@@ -551,8 +551,8 @@ def variants_table_api():
         chrom = filter_info['chrom'].encode()
         start_pos = int(filter_info['start'])
         end_pos = int(filter_info['stop'])
-        xstart = get_xpos(chrom, start_pos)
-        xend = get_xpos(chrom, end_pos)
+        xstart = Xpos.from_chrom_pos(chrom, start_pos)
+        xend = Xpos.from_chrom_pos(chrom, end_pos)
 
         ret = lookups.get_variants_for_table(
             db,
@@ -597,7 +597,7 @@ def region_coverage_api(region_id):
     try:
         chrom, start, stop = region_id.split('-')
         start, stop = int(start), int(stop)
-        xstart, xstop = get_xpos(chrom, start), get_xpos(chrom, stop)
+        xstart, xstop = Xpos.from_chrom_pos(chrom, start), Xpos.from_chrom_pos(chrom, stop)
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
         return jsonify(coverage_stats)
     except Exception as e:

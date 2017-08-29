@@ -359,8 +359,8 @@ function create_variant_table() {
 
         },{
             title: 'Annotation', name: 'csq',
-            data: 'major_consequence', searchable:true, orderable:false, className: 'dt-center',
-            render: function(cell_data, type, row) { return fmt_annotation(cell_data); },
+            data: 'worst_csqidx', searchable:true, orderable:true, className: 'dt-center',
+            render: function(cell_data, type, row) { return fmt_annotation(window.model.csq_order[cell_data]); },
 
         },{
             title: 'CADD', name:'cadd_phred',

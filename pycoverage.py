@@ -3,6 +3,7 @@ import pysam
 from intervaltree import IntervalTree
 import sys
 import utils
+from utils import Xpos
 
 # TODO:
 # - organize first by contig, then by lengths.
@@ -33,10 +34,9 @@ class Coverage(object):
         return [json.loads(row[2]) for row in handler.fetch(contig, start, end + 1, parser = pysam.asTuple())]
 
     def getCoverageX(self, xstart, xend):
-        contig = utils.CHROMOSOME_NUMBER_TO_CODE[xstart // int(1e9)]
+        contig, start = Xpos.to_chrom_pos(xstart)
+        _, end = Xpos.to_chrom_pos(xend)
         if contig.startswith('chr'): contig = contig[3:] # TODO: this is gross, why do I need to do this?
-        start = xstart % int(1e9)
-        end = xend % int(1e9)
         return self.getCoverage(contig, start, end)
 
 

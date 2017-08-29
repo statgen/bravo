@@ -43,7 +43,7 @@ def get_variant_by_variant_id(db, variant_id, default_to_boring_variant=False):
     try:
         chrom, pos, ref, alt = variant_id.split('-')
         pos = int(pos)
-        xpos = get_xpos(chrom, pos)
+        xpos = Xpos.from_chrom_pos(chrom, pos)
     except:
         return None
     v = get_variant(db, xpos, ref, alt)
@@ -70,7 +70,6 @@ def get_variants_by_rsid(db, rsid):
         return None
     variants = list(db.variants.find({'rsids': rsid}, projection={'_id': False}))
     for variant in variants:
-        add_consequence_to_variant(variant)
         remove_some_extraneous_information(variant)
     return variants
 
@@ -87,7 +86,6 @@ def get_variants_from_dbsnp(db, rsid):
         variants = list(db.variants.find({'xpos': {'$lte': position['xpos'], '$gte': position['xpos']}}, projection={'_id': False}))
         if variants:
             for variant in variants:
-                add_consequence_to_variant(variant)
                 remove_some_extraneous_information(variant)
             return variants
     return []
@@ -215,8 +213,8 @@ def get_genes_in_region(db, chrom, start, stop):
     """
     Genes that overlap a region
     """
-    xstart = get_xpos(chrom, start)
-    xstop = get_xpos(chrom, stop)
+    xstart = Xpos.from_chrom_pos(chrom, start)
+    xstop = Xpos.from_chrom_pos(chrom, stop)
     genes = db.genes.find({
         'xstart': {'$lte': xstop},
         'xstop': {'$gte': xstart},
@@ -229,13 +227,12 @@ def get_variants_in_region(db, chrom, start, stop):
     Variants that overlap a region
     Unclear if this will include CNVs
     """
-    xstart = get_xpos(chrom, start)
-    xstop = get_xpos(chrom, stop)
+    xstart = Xpos.from_chrom_pos(chrom, start)
+    xstop = Xpos.from_chrom_pos(chrom, stop)
     variants = list(db.variants.find({
         'xpos': {'$lte': xstop, '$gte': xstart}
     }, projection={'_id': False}, limit=SEARCH_LIMIT))
     for variant in variants:
-        add_consequence_to_variant(variant)
         remove_extraneous_information(variant)
     return list(variants)
 
@@ -304,14 +301,12 @@ def remove_extraneous_information(variant):
 def get_variants_in_gene(db, gene_id):
     for variant in db.variants.find({'genes': gene_id}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
-        add_consequence_to_variant(variant)
         yield variant
 
 def get_most_important_variants_in_gene(db, gene_id):
     variants = []
     for variant in db.variants.find({'genes': gene_id, 'sometimes_missense_or_lof':1}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
-        add_consequence_to_variant(variant)
         if variant['category'] in ['lof_variant', 'missense_variant']:
             remove_extraneous_information(variant)
             variants.append(variant)
@@ -333,7 +328,6 @@ def get_variants_in_transcript(db, transcript_id):
     variants = []
     for variant in db.variants.find({'transcripts': transcript_id}, projection={'_id': False}):
         variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Feature'] == transcript_id]
-        add_consequence_to_variant(variant)
         remove_extraneous_information(variant)
         variants.append(variant)
     return variants
@@ -377,11 +371,12 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
 
     cols = {
         # after pre-processing, these will look like:
-        # <name>: {'sort': {'project': <projection>, 'sort_key': <key>}, 'return': {'project': <projection>, 'annotate': [<annotator>, ...], 'to_client': [<key>, ...]}}
+        # <name>: {'sort': {'project': <projection>, 'sort_key': <key>}, 'return': {'project': <projection>, 'to_client': [<key>, ...]}}
+        # TODO: `to_client` should just be `project.keys()`?
         'allele': {'return': ['rsids', 'ref', 'alt']},
         'pos': {'sort': 'xpos'},
-        'hgvs': {'return': {'project': {'vep_annotations':1}, 'annotate': ['add_csq'], 'to_client':['HGVS']}},
-        'csq': {'return': {'project': {'vep_annotations':1}, 'annotate': ['add_csq'], 'to_client':['major_consequence']}},
+        'hgvs': {'return':{'project': {'HGVS':'$worst_csq_HGVS'}}},
+        'csq': {'sort': 'worst_csqidx', 'return':['worst_csqidx']},
         'filter': {},
         'allele_count': {'sort': True},
         'allele_num': {'sort': True},
@@ -391,7 +386,6 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         'allele_freq': {'sort': True},
         'cadd_phred': {'sort': True},
     }
-    annotators = {'add_csq': add_consequence_to_variant}
     for name, col in cols.items():
         try:
             if 'sort' not in col: col['sort'] = False
@@ -399,9 +393,9 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
             if isinstance(col['sort'], str): col['sort'] = {'project': {col['sort']:1}, 'sort_key':col['sort']}
             assert col['sort'] == False or isinstance(col['sort']['project'], dict) and isinstance(col['sort']['sort_key'], str)
             if 'return' not in col: col['return'] = [name]
-            if isinstance(col['return'], list): col['return'] = {'project': {k:1 for k in col['return']}, 'to_client': col['return']}
+            if isinstance(col['return'], list): col['return'] = {'project': {k:1 for k in col['return']}}
+            if 'to_client' not in col['return']: col['return']['to_client'] = list(col['return']['project'].keys())
             assert isinstance(col['return']['project'], dict) and isinstance(col['return']['to_client'], list)
-            assert all(ann in annotators for ann in col['return'].get('annotate', []))
         except:
             print('COL = ', col)
             raise
@@ -415,7 +409,6 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         mongo_sort[col['sort']['sort_key']] = direction
 
     mongo_projection = mkdict(*[cols[ctr['name']]['return']['project'] for ctr in columns_to_return])
-    annotators_to_run = [annotators[ann] for ann in set(itertools.chain.from_iterable(cols[ctr['name']]['return'].get('annotate',[]) for ctr in columns_to_return))]
     keys_to_return = set(itertools.chain.from_iterable(cols[ctr['name']]['return']['to_client'] for ctr in columns_to_return))
 
     v_ids_curs = db.variants.aggregate([
@@ -439,9 +432,8 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         print '## {:0.3f} sec:'.format(time.time()-st), 'len(variants)={}'.format(len(variants)); st = time.time()
 
         for variant in variants:
-            for ann in annotators_to_run: ann(variant)
             for key in [key for key in variant if key not in keys_to_return]: del variant[key]
-        print '## {:0.3f} sec:'.format(time.time()-st), 'annotated'; st = time.time()
+        print '## {:0.3f} sec:'.format(time.time()-st), 'minified'; st = time.time()
 
     return {
         'recordsFiltered': n_filtered,
