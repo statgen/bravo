@@ -391,15 +391,15 @@ function create_variant_table() {
             data: 'allele_num', searchable:true, orderable:true, className: 'dt-right',
             render: function(cell_data, type, row) {return group_thousands_html(cell_data);},
 
-        // },{
-        //     title: 'Het', name: 'het',
-        //     data: 'het', searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
-        //     render: function(cell_data, type, row) {return group_thousands_html(cell_data);},
+        },{
+            title: 'Het', name: 'het',
+            data: 'het', searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
+            render: function(cell_data, type, row) {return group_thousands_html(cell_data);},
 
-        // },{
-        //     title: 'HomAlt', name: 'hom_count',
-        //     searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
-        //     render: function(cell_data, type, row) {return group_thousands_html(row.hom_count);},
+        },{
+            title: 'HomAlt', name: 'hom_count',
+            searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-right',
+            render: function(cell_data, type, row) {return group_thousands_html(row.hom_count);},
 
         },{
             title: 'Frequency', name: 'allele_freq',
