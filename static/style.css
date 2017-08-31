@@ -66,21 +66,6 @@
   color: #999;
 }
 
-.lof_variant {
-    color: #cd2932 !important;
-    fill: #cd2932 !important;
-}
-
-.missense_variant {
-    color: #a96500 !important;
-    fill: #a96500 !important;
-}
-
-.synonymous_variant {
-    color: #157e28 !important;
-    fill: #157e28 !important;
-}
-
 .section_header {
     font-weight: bold;
     font-size: 24px;
