@@ -5,7 +5,6 @@ import re
 import traceback
 import itertools
 import boltons.iterutils
-import urllib
 from utils import *
 
 #Peter: this is no longer used.
@@ -248,13 +247,11 @@ def _annotation_severity(annotation):
     if annotation['CANONICAL']: rv += 0.1
     return rv
 def _get_hgvs(annotation):
-    # Note: we can't just use annotation['worst_csqidx'] because some variants are both stop_lost and splice_*_variant,
-    #       so their worst_consequence is not splicing but their amino acid list doesn't work with our protein HGVS code
-    if annotation['HGVSp'] == '': return urllib.unquote(annotation['HGVSc'].split(':',1)[-1])
-    if annotation['HGVSc'] == '': return urllib.unquote(annotation['HGVSp'].split(':',1)[-1])
-    if any(csq in annotation['Consequence'].split('&') for csq in ['splice_donor_variant', 'splice_acceptor_variant', 'splice_region_variant']):
-        return urllib.unquote(annotation['HGVSc'].split(':', 1)[-1])
-    return urllib.unquote(annotation['HGVSp'].split(':', 1)[-1])
+    # ExAC code did fancy things, but I just include protein HGVS if nonsynonymous, otherwise nucleotide HGVS
+    from urllib import unquote
+    hgvsp = unquote(annotation['HGVSp']).split(':',1)[-1]
+    hgvsc = unquote(annotation['HGVSc']).split(':',1)[-1]
+    return hgvsp if hgvsp != '' and '=' not in hgvsp else hgvsc
 
 POP_AFS_1000G = {
     "EAS_AF": "1000G East Asian",
