@@ -14,6 +14,7 @@
  window.model.csq = {{ csq|tojson(separators=(',',':'))|safe }};
  window.model.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
 </script>
+<script type="text/javascript" src="{{ url_for('static', filename='plot.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='region.js') }}"></script>
 <style type="text/css">
  .dataTable { font-size: 12px; }
