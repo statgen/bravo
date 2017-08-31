@@ -386,10 +386,7 @@ def variant_page(variant_str):
         base_coverage = lookups.get_coverage_for_bases(get_coverages(), variant['xpos'], variant['xpos'] + len(variant['ref']) - 1)
         metrics = lookups.get_metrics(db, variant)
 
-        pop_afs = get_pop_afs(variant)
-        if pop_afs:
-            variant['pop_afs'] = pop_afs
-            variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
+        if 'pop_afs' in variant: variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
 
         lookups.remove_some_extraneous_information(variant)
 
