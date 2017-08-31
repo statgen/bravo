@@ -1,6 +1,7 @@
 /* Reconcile bootstrap3 to typeahead.js (the real Typeahead, not bootstrap-typeahead) */
 .twitter-typeahead {
   width: 100%;
+  display: table-cell !important;
 }
 .tt-menu {
   margin-top: 2px;

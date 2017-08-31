@@ -36,15 +36,19 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-xs-12">
+            <div class="col-xs-10 col-xs-offset-1">
                 <div id="home-searchbox">
                     <form action="/awesome">
-                       <fieldset>
-                          <div class="form-group">
+                       <!-- <fieldset> -->
+                          <div class="input-group">
                             <input name="query" class="form-control typeahead" type="text" placeholder="Search for a gene or variant or region" autofocus />
-                          </div>
-                       </fieldset>
+                            <span class="input-group-btn">
+			       <button class="btn btn-primary" type="submit">Search</button>
+                            </span>
+ 			  </div>
+                       <!-- </fieldset> -->
                     </form>
+                </div>
                     <p class="text-muted">
                         Examples -
                         Gene: <a href="/awesome?query=PPARA">PPARA</a>,
@@ -52,7 +56,7 @@
                         Variant: <a href="/variant/22-16389447-A-G">22-16389447-A-G</a>,
                         Region: <a href="/region/22-46546424-46639653">22:46546424-46639653</a>
                     </p>
-                </div>
+
             </div>
         </div>
     </div>
