@@ -151,7 +151,7 @@ class ConsequenceDrilldown(object):
             return None, []
         annotation_drilldowns_for_top_csq = gene_drilldowns_for_top_csq.values()[0]
         gene_symbol_for_top_csq = annotation_drilldowns_for_top_csq[0].get('SYMBOL') or gene_drilldowns_for_top_csq.keys()[0]
-        HGVSs_for_top_csq = sorted({ann['HGVS'].lstrip('p.') for ann in annotation_drilldowns_for_top_csq if ann.get('HGVS')})
+        HGVSs_for_top_csq = sorted({ann['HGVS'] for ann in annotation_drilldowns_for_top_csq if ann.get('HGVS')})
         return gene_symbol_for_top_csq, sorted(HGVSs_for_top_csq)
 
 class defaultdict_that_passes_key_to_default_factory(dict):
