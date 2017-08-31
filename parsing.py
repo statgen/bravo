@@ -247,11 +247,14 @@ def _annotation_severity(annotation):
     if annotation['CANONICAL']: rv += 0.1
     return rv
 def _get_hgvs(annotation):
-    # ExAC code did fancy things, but I just include protein HGVS if nonsynonymous, otherwise nucleotide HGVS
+    # ExAC code did fancy things, but this feels okay to me.
     from urllib import unquote
     hgvsp = unquote(annotation['HGVSp']).split(':',1)[-1]
     hgvsc = unquote(annotation['HGVSc']).split(':',1)[-1]
-    return hgvsp if hgvsp != '' and '=' not in hgvsp else hgvsc
+    if hgvsp and '=' not in hgvsp: return hgvsp
+    if hgvsc: return hgvsc
+    if hgvsp: return hgvsp
+    return ''
 
 POP_AFS_1000G = {
     "EAS_AF": "1000G East Asian",
