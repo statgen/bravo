@@ -8,12 +8,12 @@
 {% block in_head %}
 <script type="text/javascript">
  window.model = window.model || {};
- window.model.gene = {{ gene|tojson(separators=(',',':'))|safe }};
- window.model.exons = {{ exons|tojson(separators=(',',':'))|safe }};
  window.model.chrom = {{ chrom|tojson|safe }};
  window.model.start = {{ start|tojson(separators=(',',':'))|safe }};
  window.model.stop = {{ stop|tojson(separators=(',',':'))|safe }};
  window.model.csq = {{ csq|tojson(separators=(',',':'))|safe }};
+ window.model.gene = {{ gene|tojson(separators=(',',':'))|safe }};
+ window.model.exons = {{ exons|tojson(separators=(',',':'))|safe }};
 </script>
 <script type="text/javascript" src="{{ url_for('static', filename='gene.js') }}"></script>
 <style type="text/css">
@@ -115,7 +115,7 @@
        </div>
     </div>
     <div class="col-xs-12 col-md-6">
-      <a class="btn btn-default" href="{{ url_for('download_gene_variants', gene_id=gene_id) }}">Download all {{ num_variants_in_gene }} variants</a>
+      <a class="btn btn-default" href="{{ url_for('download_gene_variants', gene_id=gene_id) }}">Download all {{ num_variants }} variants</a>
     </div>
   </div>
   <div class="row">

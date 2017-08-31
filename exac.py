@@ -423,7 +423,7 @@ def gene_page(gene_id):
             return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
                 app.config['DATASET_NAME'], gene['chrom']))
         print 'Rendering gene: %s' % gene_id
-        num_variants_in_gene = lookups.get_num_variants_in_gene(db, gene_id)
+        num_variants = lookups.get_num_variants_in_gene(db, gene_id)
 
         exons = lookups.get_exons_in_gene(db, gene_id)
 
@@ -435,7 +435,7 @@ def gene_page(gene_id):
             start=gene['start'],
             stop=gene['stop'],
             exons=exons,
-            num_variants_in_gene=num_variants_in_gene,
+            num_variants=num_variants,
             csq = {'order':Consequence.csqs,
                    'n_lof':len(Consequence._lof_csqs),
                    'n_lof_mis':len(Consequence._lof_csqs)+len(Consequence._missense_csqs),
@@ -496,20 +496,19 @@ def region_page(region_id):
             stop += 20
 
         genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
-        variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
-        xstart = Xpos.from_chrom_pos(chrom, start)
-        xstop = Xpos.from_chrom_pos(chrom, stop)
-        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
-        #coverage_stats = coverage_stats[::len(coverage_stats)/8]
+        num_variants = lookups.get_num_variants_in_region(db, chrom, start, stop)
         return render_template(
             'region.html',
-            genes_in_region=genes_in_region,
-            variants_in_region=variants_in_region,
             chrom=chrom,
             start=start,
             stop=stop,
-            coverage_stats=coverage_stats,
-            csq_order=csq_order,
+            genes_in_region=genes_in_region,
+            num_variants=num_variants,
+            csq = {'order':Consequence.csqs,
+                   'n_lof':len(Consequence._lof_csqs),
+                   'n_lof_mis':len(Consequence._lof_csqs)+len(Consequence._missense_csqs),
+                   'n_lof_mis_syn':len(Consequence._lof_csqs)+len(Consequence._missense_csqs)+len(Consequence._synonymous_csqs),
+            },
         )
     except Exception, e:
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
@@ -540,6 +539,33 @@ def download_gene_variants(gene_id):
         return resp
     except Exception as e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
+        abort(404)
+
+@app.route('/download/region/<chrom>-<start>-<stop>')
+@require_agreement_to_terms_and_store_destination
+def download_region_variants(chrom, start, stop):
+    import io, csv
+    db = get_db()
+    try:
+        start, stop = int(start), int(stop)
+        out = io.BytesIO()
+        writer = csv.writer(out)
+        fields = 'chrom pos ref alt rsids filter genes allele_num allele_count allele_freq hom_count site_quality quality_metrics.DP cadd_phred'.split()
+        writer.writerow(fields)
+        variants = lookups.get_variants_in_region(db, chrom, start, stop)
+        for v in variants:
+            row = []
+            for field in fields:
+                if '.' in field: parts = field.split('.', 1); row.append(v.get(parts[0], {}).get(parts[1], ''))
+                elif field in ['rsids','genes']: row.append('|'.join(v.get(field, [])))
+                else: row.append(v.get(field, ''))
+            writer.writerow(row)
+        resp = make_response(out.getvalue())
+        resp.headers['Content-Disposition'] = 'attachment; filename=chr{}-{}-{}.csv'.format(chrom, start, stop)
+        resp.mimetype='text/csv'
+        return resp
+    except Exception as e:
+        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
 
 @app.route('/api/variants_for_table', methods=['POST'])

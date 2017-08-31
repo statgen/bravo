@@ -312,8 +312,13 @@ def get_most_important_variants_in_gene(db, gene_id):
             variants.append(variant)
     return variants
 
+def get_num_variants_in_region(db, chrom, start, stop):
+    xstart, xstop = Xpos.from_chrom_pos(chrom, start), Xpos.from_chrom_pos(chrom, stop)
+    return db.variants.find({'xpos': {'$gte':xstart, '$lte':xstop}}).count()
 def get_num_variants_in_gene(db, gene_id):
-    return db.variants.find({'genes': gene_id}, projection={'_id': False}).count()
+    return db.variants.find({'genes': gene_id}).count()
+def get_num_variants_in_transcript(db, transcript_id):
+    return db.variants.find({'transcripts': transcript_id}).count()
 
 
 def get_transcripts_in_gene(db, gene_id):
@@ -331,9 +336,6 @@ def get_variants_in_transcript(db, transcript_id):
         remove_extraneous_information(variant)
         variants.append(variant)
     return variants
-
-def get_num_variants_in_transcript(db, transcript_id):
-    return db.variants.find({'transcripts': transcript_id}, projection={'_id': False}).count()
 
 
 def get_exons_in_transcript(db, transcript_id):

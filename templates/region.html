@@ -8,19 +8,40 @@
 {% block in_head %}
 <script type="text/javascript">
  window.model = window.model || {};
- window.model.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
- window.model.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
  window.model.chrom = {{ chrom|tojson|safe }};
  window.model.start = {{ start|tojson(separators=(',',':'))|safe }};
  window.model.stop = {{ stop|tojson(separators=(',',':'))|safe }};
+ window.model.csq = {{ csq|tojson(separators=(',',':'))|safe }};
+ window.model.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
 </script>
 <script type="text/javascript" src="{{ url_for('static', filename='region.js') }}"></script>
 <style type="text/css">
- .dataTables_info { float: left; }
+ .dataTable { font-size: 12px; }
+ .dataTables_info { display: inline-block; }
  .dataTable { font-family: Arial, Sans-serif; /* Arial handles figure-space correctly */ }
+ .dataTable .dt-pad-left { padding-left: 1.2em; }
  .dataTable .dt-right { text-align: right; padding-right: 0.7em; }
  .dataTable .dt-center { text-align: center; }
+ .dataTables_length { display:inline-block; float: right; margin-left: 3em; }
+ .dataTables_paginate { display:inline-block; float: right; margin-left: 3em !important; }
+ .dataTables_processing {
+    position: absolute; top: 50%; left: 50%; width: 100%; height: 40px; padding-top: 20px; margin-left: -50%; margin-top: -25px;
+    text-align: center; font-size: 1.2em;
+    background-color: white;
+    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 25%, rgba(255,255,255,0.9) 75%, rgba(255,255,255,0) 100%);
+ }
+
  .d3-tip { font-family: Arial, Sans-serif; /* Helvetica Neue ignores thinspace */ }
+ #coverage_plot_container .axis path { fill: None; stroke: black; }
+ #variant_table .highlight { background-color: orange !important }
+ .table-hover>tbody>tr:hover { background-color: orange !important }
+
+ input[type=number].variant_table_filter { padding: 0; }
+
+ .mouse_guide { height: 100%; width: 2px; fill: orange; fill-opacity: 0.85; pointer-events: none; }
+ .genome_g_mouse_catcher { width: 100%; height: 100%; opacity: 0; }
+
+ .numsep { margin-left: 0.1em; margin-right: 0.1em; }
 </style>
 {% endblock %}
 
@@ -29,37 +50,69 @@
 <div class="container-fluid">
   <div class="row">
     <div class="col-xs-12">
-        <h1>Region: {{ chrom }} / {{ start }} / {{ stop }}</h1>
+        <h1>Region: chr{{ chrom }} : {{ start }} - {{ stop }}</h1>
     </div>
   </div>
   {% if genes_in_region %}
-    <div class="row">
-      <div class="col-xs-12">
-        <h3>Genes in this region:</h3>
-        <ul>
-          {% for gene in genes_in_region %}
-            <li><a href="/gene/{{ gene.gene_id }}">{{ gene.gene_id }}</a></li>
-          {% endfor %}
-        </ul>
-        <br/>
-      </div>
+  <div class="row">
+    <div class="col-xs-12 col-md-6">
+      <h3>Genes in this region:</h3>
+      <ul>
+        {% for gene in genes_in_region %}
+          <li><a href="/gene/{{ gene.gene_id }}">{{ gene.gene_id }}</a></li>
+        {% endfor %}
+      </ul>
+      <br/>
     </div>
+    <div class="col-xs-12 col-md-6">
+      <a class="btn btn-default" href="{{ url_for('download_region_variants', chrom=chrom, start=start, stop=stop) }}">Download all {{ num_variants }} variants</a>
+    </div>
+  </div>
   {% endif %}
   <div class="row">
     <div class="col-xs-12">
-      <h3>Coverage</h3>
-      {% include 'coverage_selectors.html' %}
-      <br/>
-      <div id="coverage_plot_container"></div>
+      <div class="panel panel-default" style="margin-bottom:10px">
+        <div class="panel-heading">
+         <h3 style="margin-bottom:0; margin-top:0">Coverage Depth</h3>
+        </div>
+        <div class="panel-body">
+          {% include 'coverage_selectors.html' %}
+          <br/>
+          <div id="coverage_plot_container"></div>
+          <div id="gene_plot_container"></div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="row">
     <div class="col-xs-12">
-      <h3>Variants</h3>
-      <div id="variant_plot_container"></div>
-      <p>pos between <input type="number" class="dt_filter" id="pos_ge"> and <input type="number" class="dt_filter" id="pos_le"></p>
-      <p>QC = <select class='variant_table_filter' id='filter_value'><option value='*'>any</option><option value='PASS'>PASS</option><option value='not PASS'>not PASS</option><option value='DISC'>DISC</option><option value=EXHET>EXHET</option><option value=SVM>SVM</option><option value=CEN>CEN</option><option value=CHRXHET>CHRXHET</option></select></select></p>
-      <table id="variant_table" class="table table-bordered table-hover table-condensed" cellspacing=0><tbody></tbody></table>
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 style="margin-bottom:0; margin-top:0">Variants</h3>
+        </div>
+        <div class="panel-body">
+          <p style="display: inline-block;margin:0 10px 5px"><span class="btn-group btn-group-sm" data-toggle="buttons" id="vtf_category">
+              <button class="btn btn-primary variant_table_filter"><input type="radio" name="i1">LoF</input></button>
+              <button class="btn btn-primary variant_table_filter"><input type="radio" name="i1">LoF+Missense</input></button>
+              <button class="btn btn-primary variant_table_filter active"><input type="radio" name="i1">All</input></button>
+            </span></p>
+          <p style="display:inline-block;margin: 0 10px 5px">pos between
+            <input type="number" class="variant_table_filter" id="pos_ge" step=1000> and
+            <input type="number" class="variant_table_filter" id="pos_le" step=1000>
+          </p>
+          <p style="display:inline-block;margin: 0 10px 5px">MAF between
+            <input type="number" class="variant_table_filter" id="maf_ge" value=0  min=0 max=50 step=1 style="width:5em">% and
+            <input type="number" class="variant_table_filter" id="maf_le" value=50 min=0 max=50 step=1 style="width:4em">%
+          </p>
+          <p style="display:inline-block;margin:0 10px 5px">Quality: <select class='variant_table_filter' id='filter_value'>
+              <option value='*'>PASS+FAIL</option>
+              <option selected value='PASS'>PASS</option>
+              <option value='not PASS'>FAIL</option>
+          </select></p>
+          <div id="variant_plot_container"></div>
+          <table id="variant_table" class="table table-bordered table-hover table-condensed" cellspacing=0><tbody></tbody></table>
+        </div>
+      </div>
     </div>
   </div>
 </div>
