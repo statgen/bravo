@@ -5,6 +5,7 @@ import re
 import traceback
 import itertools
 import boltons.iterutils
+import urllib
 from utils import *
 
 #Peter: this is no longer used.
@@ -188,7 +189,7 @@ def get_variants_from_sites_vcf(sites_vcf):
                 if pop_afs: variant['pop_afs'] = pop_afs
                 keep_only_needed_annotation_fields(variant)
                 yield variant
-        except Exception:
+        except:
             print("Error parsing vcf line: " + line)
             traceback.print_exc()
             raise
@@ -216,55 +217,44 @@ def get_minimal_representation(pos, ref, alt):
         return (pos, ref, alt)
 
 def clean_annotation_consequences_for_variant(variant):
+    '''
+    add variant.vep_annotions[*].{HGVS,worst_csqidx}
+    sort variant.vep_annotations by severity.
+    add variant.worst_csq*.
+    '''
     if len(variant['vep_annotations']) == 0:
         raise Exception('why no annos for {!r}?'.format(variant))
+
     for anno in variant['vep_annotations']:
         anno['CANONICAL'] = (anno['CANONICAL'] == 'YES')
         anno['worst_csqidx'] = _get_worst_csqidx_for_annotation(anno)
-    variant['vep_annotations'] = sorted(variant['vep_annotations'], key=_annotation_severity)
+        anno['HGVS'] = _get_hgvs(anno)
+    variant['vep_annotations'] = sorted(variant['vep_annotations'], key=_annotation_severity, reverse=True)
+
+    # TODO: should we just query on `variant.vep_annotations[0].worst_csqidx`? or make `variant.worst_annotation = variant.vep_annotations[0]`?
     worst_anno = variant['vep_annotations'][0]
-    variant['worst_csqidx'] = worst_anno['worst_csqidx']
-    variant['worst_csq_HGVS'] = HGVSGetter.get_hgvs(worst_anno)
     variant['worst_csq_CANONICAL'] = worst_anno['CANONICAL']
-    # TODO: make variant['vep_annotations'][*]['HGVS']
-    # TODO: drop variant['vep_annotations'][*][unused_keys]
-    #  - gene.html uses worst_csqidx, worst_csq_hgvs, worst_csq_canonical
-    #  - variant.html header uses: stuff from drilldown
-    #  - variant.html drilldown uses: variant['vep_annotations'][*][HGVS,Gene,SYMBOL,Feature,CANONICAL]
-    #  - variant.html pop af table uses: variant['vep_annotations'][any][*_AF]
+    variant['worst_csqidx'] = worst_anno['worst_csqidx']
+    variant['worst_csq_HGVS'] = worst_anno['HGVS']
+
 def _get_worst_csqidx_for_annotation(annotation):
     try:
         return min(Consequence.csqidxs[csq] for csq in annotation['Consequence'].split('&'))
-    except KeyError as exc:
+    except KeyError:
         raise Exception("failed to get csqidx for {!r} with error: {}".format(annotation['Consequence'], traceback.format_exc()))
 def _annotation_severity(annotation):
     "higher is more deleterious"
     rv = -annotation['worst_csqidx']
     if annotation['CANONICAL']: rv += 0.1
     return rv
-class HGVSGetter(object):
-    protein_letters_1to3 = {
-        'A': 'Ala', 'C': 'Cys', 'D': 'Asp', 'E': 'Glu',
-        'F': 'Phe', 'G': 'Gly', 'H': 'His', 'I': 'Ile',
-        'K': 'Lys', 'L': 'Leu', 'M': 'Met', 'N': 'Asn',
-        'P': 'Pro', 'Q': 'Gln', 'R': 'Arg', 'S': 'Ser',
-        'T': 'Thr', 'V': 'Val', 'W': 'Trp', 'Y': 'Tyr',
-        'X': 'Ter', '*': 'Ter', 'U': 'Sec'
-    }
-    @staticmethod
-    def get_hgvs(annotation):
-        if any(annotation['worst_csqidx'] == Consequence.csqidxs[csq] for csq in ['splice_donor_variant', 'splice_acceptor_variant', 'splice_region_variant']):
-            # transcript HGVS
-            return annotation['HGVSc'].split(':')[-1]
-        else:
-            # protein HGVS
-            if '%3D' in annotation['HGVSp']: # "%3D" is "="
-                try:
-                    amino_acids = ''.join([HGVSGetter.protein_letters_1to3[x] for x in annotation['Amino_acids']])
-                    return "p." + amino_acids + annotation['Protein_position'] + amino_acids
-                except Exception, e:
-                    print 'Could not create HGVS for: %s' % annotation
-            return annotation['HGVSp'].split(':')[-1]
+def _get_hgvs(annotation):
+    # Note: we can't just use annotation['worst_csqidx'] because some variants are both stop_lost and splice_*_variant,
+    #       so their worst_consequence is not splicing but their amino acid list doesn't work with our protein HGVS code
+    if annotation['HGVSp'] == '': return urllib.unquote(annotation['HGVSc'])
+    if annotation['HGVSc'] == '': return urllib.unquote(annotation['HGVSp'])
+    if any(csq in annotation['Consequence'].split('&') for csq in ['splice_donor_variant', 'splice_acceptor_variant', 'splice_region_variant']):
+        return urllib.unquote(annotation['HGVSc'].split(':', 1)[-1])
+    return urllib.unquote(annotation['HGVSp'].split(':', 1)[-1])
 
 POP_AFS_1000G = {
     "EAS_AF": "1000G East Asian",
@@ -277,8 +267,6 @@ def get_pop_afs(variant):
     """
     Convert the nasty output of VEP into a decent dictionary of population AFs.
     """
-    # TODO: Ideally, this should check for non-zero numbers in each of the populations, and then report numbers for all 5 populations.
-    # Instead, I'm just going to try things and fail fast if they don't work, because annotations are super weird.
     if 'vep_annotations' not in variant or len(variant['vep_annotations']) == 0:
         return {}
     try:
@@ -295,15 +283,16 @@ def get_pop_afs(variant):
         if all(v==0 for v in pop_afs.values()):
             return {}
         return pop_afs
-    except Exception as exc:
+    except:
         print('failed in get_pop_afs() for variant {!r} with error:'.format(variant, traceback.format_exc()))
         raise
 
 def keep_only_needed_annotation_fields(variant):
-    needed_fields = ['CANONICAL', 'Gene', 'SYMBOL', 'worst_csqidx', 'Feature']
-    for anno in variant['vep_annotations']:
-        for unused_field in [field for field in anno if field not in needed_fields]:
-            del anno[unused_field]
+    pass # keep everything for now.
+    # needed_fields = ['CANONICAL', 'Gene', 'SYMBOL', 'worst_csqidx', 'Feature']
+    # for anno in variant['vep_annotations']:
+    #     for unused_field in [field for field in anno if field not in needed_fields]:
+    #         del anno[unused_field]
 
 
 

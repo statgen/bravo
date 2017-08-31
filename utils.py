@@ -93,15 +93,14 @@ def get_consequences_drilldown_for_variant(variant):
     """
     if 'vep_annotations' not in variant:
         return {}
-    consequences = OrderedDict()
+    consequences_drilldown = OrderedDict()
     for annotation in variant['vep_annotations']:
-        annotation['HGVS'] = get_proper_hgvs(annotation)
-        consequences.setdefault(Consequence.csqs[annotation['worst_csqidx']], {}).setdefault(annotation['Gene'], []).append(annotation)
+        consequences_drilldown.setdefault(Consequence.csqs[annotation['worst_csqidx']], {}).setdefault(annotation['Gene'], []).append(annotation)
     # Sort the consequences
-    for csq in consequences:
-        for gene in consequences[csq]:
-            consequences[csq][gene] = sorted(consequences[csq][gene], key=lambda ann: (ann.get('HGVS'), ann.get('Feature')))
-    return consequences
+    for csq in consequences_drilldown:
+        for gene in consequences_drilldown[csq]:
+            consequences_drilldown[csq][gene] = sorted(consequences_drilldown[csq][gene], key=lambda ann: (ann.get('HGVS'), ann.get('Feature')))
+    return consequences_drilldown
 
 def split_consequence_drilldown_into_two_columns(consequences):
         '''
