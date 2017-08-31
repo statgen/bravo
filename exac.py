@@ -13,7 +13,7 @@ from utils import *
 from pycoverage import *
 import auth
 
-from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, make_response
+from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, make_response, send_from_directory
 from flask_compress import Compress
 from flask_errormail import mail_on_500
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
@@ -646,6 +646,20 @@ def error_page(message):
 @require_agreement_to_terms_and_store_destination
 def download_page():
     return render_template('download.html')
+
+
+@app.route('/download/all')
+@require_agreement_to_terms_and_store_destination
+def download_full_vcf():
+    try:
+        file_dir='/var/bravo_downloads/'
+        file_name='ALL.TOPMed_freeze5_hg38_dbSNP.vcf.gz'
+        response = make_response(send_from_directory(file_dir, file_name, as_attachment = True, mimetype='application/gzip'))
+        return response
+    except Exception as e:
+        print 'Failed during full VCF download;Error=', traceback.format_exc()
+        abort(404)
+
 
 @app.route('/about')
 def about_page():
