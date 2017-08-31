@@ -87,65 +87,72 @@ class Xpos:
     def to_pos(xpos):
         return xpos % int(1e9)
 
-def get_consequences_drilldown_for_variant(variant):
-    """
-    Returns something like {"frameshift": {"ENSG00001234": [{"SYMBOL": "APOL1", "Gene": "ENSG00001234", "Feature": "ENST00002345", ...}]}}
-    """
-    if 'vep_annotations' not in variant:
-        return {}
-    consequences_drilldown = OrderedDict()
-    for annotation in variant['vep_annotations']:
-        consequences_drilldown.setdefault(Consequence.csqs[annotation['worst_csqidx']], {}).setdefault(annotation['Gene'], []).append(annotation)
-    # Sort the consequences
-    for csq in consequences_drilldown:
-        for gene in consequences_drilldown[csq]:
-            consequences_drilldown[csq][gene] = sorted(consequences_drilldown[csq][gene], key=lambda ann: (ann.get('HGVS'), ann.get('Feature')))
-    return consequences_drilldown
+class ConsequenceDrilldown(object):
+    @staticmethod
+    def from_variant(variant):
+        """
+        Returns something like {"frameshift": {"ENSG00001234": [{"SYMBOL": "APOL1", "Gene": "ENSG00001234", "Feature": "ENST00002345", ...}]}}
+        """
+        if 'vep_annotations' not in variant:
+            return {}
+        consequences_drilldown = OrderedDict()
+        for annotation in variant['vep_annotations']:
+            consequences_drilldown.setdefault(Consequence.csqs[annotation['worst_csqidx']], {}).setdefault(annotation['Gene'], []).append(annotation)
+        # Sort the consequences
+        for csq in consequences_drilldown:
+            for gene in consequences_drilldown[csq]:
+                consequences_drilldown[csq][gene] = sorted(consequences_drilldown[csq][gene], key=lambda ann: (ann.get('HGVS'), ann.get('Feature')))
+        return consequences_drilldown
 
-def split_consequence_drilldown_into_two_columns(consequences):
+    @staticmethod
+    def split_into_two_columns(consequences):
+            '''
+            Try to make two columns of similar height, but with the first a little taller.
+            Returns the names of the consequences (ie, the keys), but not the values (because that'd be a pain to use).
+            '''
+            if len(consequences) == 0:
+                return ([], [])
+            elif len(consequences) == 1:
+                return (consequences.keys(), [])
+            consequence_heights = [0]
+            for annotations in consequences.values()[0].values():
+                consequence_heights[0] += len(annotations) # The number of annotations in this gene (because all are shown in the first consequence)
+                # TODO: check for the other things displayed in variant_details.html
+            for csq in consequences.values()[1:]:
+                consequence_heights.append(len(csq)) # The number of genes in this consequence (because annotations are collapsed in these consequences)
+            index = ConsequenceDrilldown._get_midpoint_index(consequence_heights)
+            return (consequences.keys()[:index],
+                    consequences.keys()[index:])
+
+    @staticmethod
+    def _get_midpoint_index(lst):
         '''
-        Try to make two columns of similar height, but with the first a little taller.
-        Returns the names of the consequences (ie, the keys), but not the values (because that'd be a pain to use).
+        for test_lst in [[1], [1,2,3], [3,1,1], [3,1,1,1], [3,1,1,1,1]]:
+            index = get_midpoint_index(test_lst)
+            assert 0 < index <= len(test_lst)
+            assert sum(test_lst[:index]) >= sum(test_lst[index:])
+            assert sum(test_lst[:index-1]) < sum(test_lst[index-1:])
         '''
-        if len(consequences) == 0:
-            return ([], [])
-        elif len(consequences) == 1:
-            return (consequences.keys(), [])
-        consequence_heights = [0]
-        for annotations in consequences.values()[0].values():
-            consequence_heights[0] += len(annotations) # The number of annotations in this gene (because all are shown in the first consequence)
-            # TODO: check for the other things displayed in variant_details.html
-        for csq in consequences.values()[1:]:
-            consequence_heights.append(len(csq)) # The number of genes in this consequence (because annotations are collapsed in these consequences)
-        index = get_midpoint_index(consequence_heights)
-        return (consequences.keys()[:index],
-                consequences.keys()[index:])
+        half = sum(lst) / 2.0
+        acc = 0
+        for index, num in enumerate(lst):
+            if acc >= half:
+                return index
+            acc += num
+        return len(lst)
 
-def get_midpoint_index(lst):
-    half = sum(lst) / 2.0
-    acc = 0
-    for index, num in enumerate(lst):
-        if acc >= half:
-            return index
-        acc += num
-    return len(lst)
-for test_lst in [[1], [1,2,3], [3,1,1], [3,1,1,1], [3,1,1,1,1]]:
-    index = get_midpoint_index(test_lst)
-    assert 0 < index <= len(test_lst)
-    assert sum(test_lst[:index]) >= sum(test_lst[index:])
-    assert sum(test_lst[:index-1]) < sum(test_lst[index-1:])
-
-def get_top_gene_and_top_hgvss_for_consequences_drilldown(consequences):
-    """Returns something like ("APOL1", ["Gly70Ter", "Gly88Ter"])"""
-    if not consequences:
-        return None, []
-    top_csq = consequences.values()[0]
-    if len(top_csq) != 1: # we need exactly one gene
-        return None, []
-    annotations_for_top_csq = top_csq.values()[0]
-    gene_for_top_csq = annotations_for_top_csq[0].get('SYMBOL') or top_csq.keys()[0]
-    top_HGVSs = sorted({ann['HGVS'].lstrip('p.') for ann in annotations_for_top_csq if ann.get('HGVS')})
-    return gene_for_top_csq, top_HGVSs
+    @staticmethod
+    def get_top_gene_and_HGVSs(consequences_drilldown):
+        """Returns something like ("APOL1", ["Gly70Ter", "Gly88Ter"])"""
+        if not consequences_drilldown:
+            return None, []
+        gene_drilldowns_for_top_csq = consequences_drilldown.values()[0]
+        if len(gene_drilldowns_for_top_csq) != 1: # we need exactly one gene
+            return None, []
+        annotation_drilldowns_for_top_csq = gene_drilldowns_for_top_csq.values()[0]
+        gene_symbol_for_top_csq = annotation_drilldowns_for_top_csq[0].get('SYMBOL') or gene_drilldowns_for_top_csq.keys()[0]
+        HGVSs_for_top_csq = sorted({ann['HGVS'].lstrip('p.') for ann in annotation_drilldowns_for_top_csq if ann.get('HGVS')})
+        return gene_symbol_for_top_csq, sorted(HGVSs_for_top_csq)
 
 class defaultdict_that_passes_key_to_default_factory(dict):
     "A class like collections.defaultdict, but where the default_factory takes the missing key as an argument."

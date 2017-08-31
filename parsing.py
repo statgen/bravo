@@ -250,8 +250,8 @@ def _annotation_severity(annotation):
 def _get_hgvs(annotation):
     # Note: we can't just use annotation['worst_csqidx'] because some variants are both stop_lost and splice_*_variant,
     #       so their worst_consequence is not splicing but their amino acid list doesn't work with our protein HGVS code
-    if annotation['HGVSp'] == '': return urllib.unquote(annotation['HGVSc'])
-    if annotation['HGVSc'] == '': return urllib.unquote(annotation['HGVSp'])
+    if annotation['HGVSp'] == '': return urllib.unquote(annotation['HGVSc'].split(':',1)[-1])
+    if annotation['HGVSc'] == '': return urllib.unquote(annotation['HGVSp'].split(':',1)[-1])
     if any(csq in annotation['Consequence'].split('&') for csq in ['splice_donor_variant', 'splice_acceptor_variant', 'splice_region_variant']):
         return urllib.unquote(annotation['HGVSc'].split(':', 1)[-1])
     return urllib.unquote(annotation['HGVSp'].split(':', 1)[-1])

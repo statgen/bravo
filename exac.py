@@ -379,17 +379,14 @@ def variant_page(variant_str):
     try:
         variant = lookups.get_variant_by_variant_id(db, variant_str, default_to_boring_variant=True)
 
-        consequences = get_consequences_drilldown_for_variant(variant)
-        gene_for_top_csq, top_HGVSs = get_top_gene_and_top_hgvss_for_consequences_drilldown(consequences)
-        consequence_columns = split_consequence_drilldown_into_two_columns(consequences)
+        consequence_drilldown = ConsequenceDrilldown.from_variant(variant)
+        gene_for_top_csq, top_HGVSs = ConsequenceDrilldown.get_top_gene_and_HGVSs(consequence_drilldown)
+        consequence_drilldown_columns = ConsequenceDrilldown.split_into_two_columns(consequence_drilldown)
 
         base_coverage = lookups.get_coverage_for_bases(get_coverages(), variant['xpos'], variant['xpos'] + len(variant['ref']) - 1)
         metrics = lookups.get_metrics(db, variant)
 
-        pop_afs = get_pop_afs(variant)
-        if pop_afs:
-            variant['pop_afs'] = pop_afs
-            variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
+        if 'pop_afs' in variant: variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
 
         lookups.remove_some_extraneous_information(variant)
 
@@ -398,8 +395,8 @@ def variant_page(variant_str):
             'variant.html',
             variant=variant,
             base_coverage=base_coverage,
-            consequences=consequences,
-            consequence_columns=consequence_columns,
+            consequences=consequence_drilldown,
+            consequence_columns=consequence_drilldown_columns,
             any_covered=bool(base_coverage),
             metrics=metrics,
             top_HGVSs=top_HGVSs,
