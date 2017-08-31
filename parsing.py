@@ -272,11 +272,7 @@ def get_pop_afs(variant):
     try:
         pop_afs = {}
         for pop in POP_AFS_1000G:
-            af_strings = [ann[pop] for ann in variant['vep_annotations'] if ann['Allele'] == variant['alt'] or ann['Allele'] == '-']
-            for af_string in af_strings:
-                if '&' in af_string:
-                    assert boltons.iterutils.same(af_string.split('&'))
-            af_strings = list(itertools.chain.from_iterable(af_s.split('&') for af_s in af_strings))
+            af_strings = [ann[pop].split('&')[0] for ann in variant['vep_annotations'] if ann['Allele'] == variant['alt'] or ann['Allele'] == '-']
             assert boltons.iterutils.same(af_strings)
             if af_strings and af_strings[0] != '':
                 pop_afs[pop] = float(af_strings[0])
