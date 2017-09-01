@@ -371,12 +371,12 @@ def awesome():
         raise Exception
 
 
-@app.route('/variant/<variant_str>')
+@app.route('/variant/<variant_id>')
 @require_agreement_to_terms_and_store_destination
-def variant_page(variant_str):
+def variant_page(variant_id):
     db = get_db()
     try:
-        variant = lookups.get_variant_by_variant_id(db, variant_str, default_to_boring_variant=True)
+        variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant=True)
 
         consequence_drilldown = ConsequenceDrilldown.from_variant(variant)
         gene_for_top_csq, top_HGVSs = ConsequenceDrilldown.get_top_gene_and_HGVSs(consequence_drilldown)
@@ -389,7 +389,7 @@ def variant_page(variant_str):
 
         lookups.remove_some_extraneous_information(variant)
 
-        print 'Rendering variant: %s' % variant_str
+        print 'Rendering variant: %s' % variant_id
         return render_template(
             'variant.html',
             variant=variant,
@@ -402,7 +402,7 @@ def variant_page(variant_str):
             gene_for_top_csq=gene_for_top_csq,
         )
     except Exception, e:
-        print 'Failed on variant:', variant_str, '; Error=', traceback.format_exc()
+        print 'Failed on variant:', variant_id, '; Error=', traceback.format_exc()
         abort(404)
 
 
