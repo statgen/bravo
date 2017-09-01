@@ -274,7 +274,6 @@ def remove_some_extraneous_information(variant):
     """Remove information not needed by variant.html or any other page"""
     for key in [
             'xpos',
-            'xstart',
             'xstop',
             'vep_annotations',
             'pop_acs',
@@ -292,7 +291,6 @@ def remove_extraneous_information(variant):
             'genotype_qualities',
             'transcripts',
             'genes',
-            'orig_alt_alleles',
             'site_quality',
             'quality_metrics',
     ]:

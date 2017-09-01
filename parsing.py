@@ -63,7 +63,6 @@ def get_variants_from_sites_vcf(sites_vcf):
     #gq_mids = map(float, '2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5'.split('|'))
     #hists_all = ['0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0', '0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0']
 
-    contains_avgdp = False
     vep_field_names = None
     for line in sites_vcf:
         try:
@@ -71,70 +70,48 @@ def get_variants_from_sites_vcf(sites_vcf):
             if line.startswith('##INFO=<ID=CSQ'):
                 vep_field_names = line.split('Format: ')[-1].strip('">').split('|')
             if line.startswith('##INFO=<ID=DP_HIST'):
-                dp_mids = map(float, line.split('Mids: ')[-1].strip('">').split('|'))
+                dp_mids = [float(x) for x in line.split('Mids: ')[-1].strip('">').split('|')]
             if line.startswith('##INFO=<ID=GQ_HIST'):
-                gq_mids = map(float, line.split('Mids: ')[-1].strip('">').split('|'))
-            # PJVH: Freeze3a contains a header for AVGDP but doesn't have it in INFO.
-            # if line.startswith('##INFO=<ID=AVGDP'):
-            #     contains_avgdp = True
+                gq_mids = [float(x) for x in line.split('Mids: ')[-1].strip('">').split('|')]
             if line.startswith('#'):
                 continue
 
-            # If we get here, it's a variant line
+            # It's a variant line
+
             if vep_field_names is None:
                 raise Exception("VEP_field_names is None. Make sure VCF header is present.")
             # This elegant parsing code below is copied from https://github.com/konradjk/loftee
             fields = line.split('\t')
             info_field = dict(x.split('=', 1) if '=' in x else (x, x) for x in re.split(';(?=\w)', fields[7]))
-            csq_values_array = (csq.split('|') for csq in info_field['CSQ'].split(',')) if 'CSQ' in info_field else []
-            annotations = [dict(zip(vep_field_names, csq_values)) for csq_values in csq_values_array if len(vep_field_names) == len(csq_values)]
-            #DT: we will store anotations for all variants (not only for exonic)
-            #coding_annotations = [ann for ann in annotations if ann['Feature'].startswith('ENST')]
 
-            alt_alleles = fields[4].split(',')
+            annotation_arrays = [anno_array.split('|') for anno_array in info_field['CSQ'].split(',')] if 'CSQ' in info_field else []
+            for anno_array in annotation_arrays: assert len(vep_field_names) == len(anno_array), (vep_field_names, anno_array)
+            annotations = [dict(zip(vep_field_names, anno_array)) for anno_array in annotation_arrays]
 
-            # different variant for each alt allele
-            # we could do the parsing only once, but multi-allelic variants are rare so who cares
-            for i, alt_allele in enumerate(alt_alleles):
+            # make a different variant for each alt allele
+            # we could do the parsing all at once, but multi-allelic variants are rare so who cares
+            for i, alt_allele in enumerate(fields[4].split(',')):
 
-                #DT: we will store anotations for all variants (not only for exonic)
-                #vep_annotations = [ann for ann in coding_annotations if int(ann['ALLELE_NUM']) == i + 1]
                 vep_annotations = [ann for ann in annotations if int(ann['ALLELE_NUM']) == i + 1]
 
-                # Variant is just a dict
-                # Make a copy of the info_field dict - so all the original data remains
-                # Add some new keys that are allele-specific
-                pos, ref, alt = get_minimal_representation(fields[1], fields[3], alt_allele)
-
                 variant = {}
-                #variant['chrom'] = fields[0]
-		variant['chrom'] = fields[0][3:] if fields[0].startswith('chr') else fields[0]
-                variant['pos'] = pos
+                variant['chrom'] = fields[0][3:] if fields[0].startswith('chr') else fields[0]
+                variant['pos'], variant['ref'], variant['alt'] = get_minimal_representation(fields[1], fields[3], alt_allele)
 
-                #DT: We will take rsIds and CADD from the VEP annotation
+                variant['cadd_raw'] = float(info_field['CADD_RAW'].split(',')[i]) if 'CADD_RAW' in info_field else None
+                variant['cadd_phred'] = float(info_field['CADD_PHRED'].split(',')[i]) if 'CADD_PHRED' in info_field else None
+                if 'AVGDP' in info_field: variant['avgdp'] = float(info_field['AVGDP'])
+
+                #DT: We will take rsIds from the VEP annotation
                 #variant['rsid'] = fields[2]
-
-                variant['cadd_raw'] = None if not 'CADD_RAW' in info_field else float(info_field['CADD_RAW'].split(',')[i])
-                variant['cadd_phred'] = None if not 'CADD_PHRED' in info_field else float(info_field['CADD_PHRED'].split(',')[i])
-                if contains_avgdp:
-                    variant['avgdp'] = float(info_field['AVGDP'])
-
-
                 if vep_annotations:
-                   variant['rsids'] = list(rsid for rsid in vep_annotations[0]['Existing_variation'].split('&') if rsid.startswith("rs"))
+                   variant['rsids'] = [rsid for rsid in vep_annotations[0]['Existing_variation'].split('&') if rsid.startswith("rs")]
                 else:
                    variant['rsids'] = []
 
                 variant['xpos'] = Xpos.from_chrom_pos(variant['chrom'], variant['pos'])
-                variant['ref'] = ref
-                variant['alt'] = alt
-                variant['xstart'] = variant['xpos']
                 variant['xstop'] = variant['xpos'] + len(variant['alt']) - len(variant['ref'])
                 variant['variant_id'] = '{}-{}-{}-{}'.format(variant['chrom'], variant['pos'], variant['ref'], variant['alt'])
-                variant['orig_alt_alleles'] = [
-                    '{}-{}-{}-{}'.format(variant['chrom'], *get_minimal_representation(fields[1], fields[3], x))
-                    for x in alt_alleles
-                ]
                 variant['site_quality'] = float(fields[5])
                 variant['filter'] = fields[6]
                 variant['vep_annotations'] = vep_annotations
@@ -152,7 +129,7 @@ def get_variants_from_sites_vcf(sites_vcf):
                 variant['allele_freq'] = float(info_field['AF'].split(',')[i])
                 assert variant['allele_freq'] != 0, variant
 
-                # Peter: these are always zero, so just use get_pop_afs() below.
+                #PJVH: these are always zero, so just use get_pop_afs() below.
                 # # DT: variant['pop_acs'] = dict([(POPS[x], int(info_field['AC_%s' % x].split(',')[i])) for x in POPS])
                 # variant['pop_acs'] = dict([(POPS[x], 0) for x in POPS])
                 # # DT: variant['pop_ans'] = dict([(POPS[x], int(info_field['AN_%s' % x])) for x in POPS])
@@ -162,10 +139,10 @@ def get_variants_from_sites_vcf(sites_vcf):
 
                 # DT: variant['hom_count'] = sum(variant['pop_homs'].values())
                 variant['hom_count'] = int(info_field['Hom'].split(',')[i])
-                if variant['chrom'] in ('X', 'Y'):
-                # DT: variant['pop_hemis'] = dict([(POPS[x], int(info_field['Hemi_%s' % x].split(',')[i])) for x in POPS])
-                    variant['pop_hemis'] = dict([(POPS[x], 0) for x in POPS])
-                    variant['hemi_count'] = sum(variant['pop_hemis'].values())
+                #if variant['chrom'] in ('X', 'Y'):
+                    # DT: variant['pop_hemis'] = dict([(POPS[x], int(info_field['Hemi_%s' % x].split(',')[i])) for x in POPS])
+                    #PJVH: variant['pop_hemis'] = dict([(POPS[x], 0) for x in POPS])
+                    #PJVH: variant['hemi_count'] = sum(variant['pop_hemis'].values())
 
                 variant['quality_metrics'] = dict([(x, info_field[x]) for x in METRICS if x in info_field])
 

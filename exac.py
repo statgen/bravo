@@ -104,7 +104,6 @@ def load_variants_file():
     print("Dropped db.variants")
 
     db.variants.ensure_index('xpos')
-    db.variants.ensure_index('xstart')
     db.variants.ensure_index('xstop')
     db.variants.ensure_index('rsids')
     db.variants.ensure_index('genes')

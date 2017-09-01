@@ -47,20 +47,6 @@
                   {% endif %}
                 </h1>
             </div>
-            <div class="col-xs-12">
-            {% if variant.orig_alt_alleles|length > 1 %}
-                <h5><span class="label label-info">Note:</span> This variant is multiallelic! The other alt alleles are:</h5>
-                <ul>
-                    {% for allele in variant.orig_alt_alleles %}
-                        {% if allele != variant.variant_id %}
-                            <li>
-                                <a href="/variant/{{ allele }}">{{ allele }}</a>
-                            </li>
-                        {% endif %}
-                    {% endfor %}
-                </ul>
-            {% endif %}
-            </div>
         </div>
         <hr/>
 

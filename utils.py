@@ -13,7 +13,21 @@ METRICS = [
     'MQRankSum',
     'QD',
     'ReadPosRankSum',
-    'VQSLOD'
+    'VQSLOD',
+    'SVM',
+    'FIBC_P',
+    'FIBC_I',
+    'HWE_SLP_P',
+    'HWE_SLP_I',
+    'ABE',
+    'ABZ',
+    'BQZ',
+    'CYZ',
+    'STZ',
+    'IOR',
+    'NM0',
+    'NM1',
+    'NMZ',
 ]
 
 
