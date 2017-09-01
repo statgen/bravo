@@ -84,6 +84,8 @@ def get_variants_from_sites_vcf(sites_vcf):
             fields = line.split('\t')
             info_field = dict(x.split('=', 1) if '=' in x else (x, x) for x in re.split(';(?=\w)', fields[7]))
 
+            if 'DP_HIST' not in info_field: continue # This skips weird lines introduced by some kind of bug.  TODO: fix that bug.
+
             annotation_arrays = [anno_array.split('|') for anno_array in info_field['CSQ'].split(',')] if 'CSQ' in info_field else []
             for anno_array in annotation_arrays: assert len(vep_field_names) == len(anno_array), (vep_field_names, anno_array)
             annotations = [dict(zip(vep_field_names, anno_array)) for anno_array in annotation_arrays]
