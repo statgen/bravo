@@ -640,7 +640,7 @@ def not_found_page(query):
     )
 
 @bp.route('/error/<message>')
-@app.errorhandler(404)
+@bp.errorhandler(404)
 def error_page(message):
     return render_template(
         'error.html',
@@ -683,7 +683,7 @@ def terms_page():
 google_sign_in = auth.GoogleSignIn(app)
 
 lm = LoginManager(app)
-lm.login_view = 'homepage'
+lm.login_view = 'bp.homepage'
 
 class User(UserMixin):
     "A user's id is their email address."
@@ -794,13 +794,13 @@ def oauth_callback_google():
 
     return redirect(url_for('.get_authorized'))
 
-@app.after_request
+@bp.after_request
 def apply_caching(response):
     # prevent click-jacking vulnerability identified by BITs
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
-app.register_blueprint(bp, url_prefix = '/hg38')
+app.register_blueprint(bp, url_prefix = '/freeze5/hg38')
 
 if __name__ == "__main__":
     import argparse

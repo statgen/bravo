@@ -16,6 +16,11 @@
     <script type="text/javascript" src="{{ url_for('.static', filename='vendor/d3.v3.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('.static', filename='vendor/d3-tip.js') }}"></script>
 
+    <script type="text/javascript">
+        window.model = window.model || {};
+        window.model.dataset_name = "{{ config['DATASET_NAME'] }}";
+        window.model.url_prefix = {{ url_for('.homepage')|tojson|safe }};
+    </script>
     <link rel="stylesheet" href="{{ url_for('.static', filename='common.css') }}">
     <script type="text/javascript" src="{{ url_for('.static', filename='common.js') }}"></script>
     <script>
@@ -26,11 +31,6 @@
 
         ga('create', '{{ config['GOOGLE_ANALYTICS_TRACKING_ID'] }}', 'auto');
         ga('send', 'pageview');
-    </script>
-    <script type="text/javascript">
-        window.model = window.model || {};
-        window.model.dataset_name = "{{ config['DATASET_NAME'] }}";
-        window.model.url_prefix = {{ url_for('.homepage')|tojson|safe }};
     </script>
     {% block in_head %}{% endblock %}
 </head>
