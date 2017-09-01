@@ -12,7 +12,7 @@
       window.any_covered = {{ any_covered|tojson(separators=(',',':'))|safe }};
       window.metrics = {{ metrics|tojson(separators=(',',':'))|safe }};
     </script>
-    <script type="text/javascript" src="{{ url_for('static', filename='variant.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('.static', filename='variant.js') }}"></script>
     <style>
     .d3_graph {
         font: 10px sans-serif;

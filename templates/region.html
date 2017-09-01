@@ -14,8 +14,8 @@
  window.model.csq = {{ csq|tojson(separators=(',',':'))|safe }};
  window.model.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
 </script>
-<script type="text/javascript" src="{{ url_for('static', filename='plot.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='region.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('.static', filename='plot.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('.static', filename='region.js') }}"></script>
 <style type="text/css">
  .dataTable { font-size: 12px; }
  .dataTables_info { display: inline-block; }
@@ -60,13 +60,13 @@
       <h3>Genes in this region:</h3>
       <ul>
         {% for gene in genes_in_region %}
-          <li><a href="{{ url_for('gene_page', gene_id=gene.gene_id) }}">{{ gene.gene_id }}</a></li>
+          <li><a href="{{ url_for('.gene_page', gene_id=gene.gene_id) }}">{{ gene.gene_id }}</a></li>
         {% endfor %}
       </ul>
       <br/>
     </div>
     <div class="col-xs-12 col-md-6">
-      <a class="btn btn-default" href="{{ url_for('download_region_variants', chrom=chrom, start=start, stop=stop) }}">Download all {{ num_variants }} variants</a>
+      <a class="btn btn-default" href="{{ url_for('.download_region_variants', chrom=chrom, start=start, stop=stop) }}">Download all {{ num_variants }} variants</a>
     </div>
   </div>
   {% endif %}

@@ -21,7 +21,7 @@
         <div class="jumbotron" style="margin-top:3em">
           <p>To protect the privacy of our study participants, you must log in to view our data.</p>
           <br>
-          <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('login_with_google') }}">Click here to login with Google</a><p>
+          <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('.login_with_google') }}">Click here to login with Google</a><p>
           <p>
             If your work email is not connected to a Google account, please <a href="https://accounts.google.com/SignUpWithoutGmail">create a Google account</a>.
           </p>
@@ -49,10 +49,10 @@
                 </div>
                 <p class="text-muted">
                     Examples -
-                    Gene: <a href="{{ url_for('gene_page', gene_id='ENSG00000186951') }}">PPARA</a>,
-                    Transcript: <a href="{{ url_for('transcript_page', transcript_id='ENST00000407236') }}">ENST00000407236</a>,
-                    Variant: <a href="{{ url_for('variant_page', variant_id='22-16389447-A-G') }}">chr22-16389447-A-G</a>,
-                    Region: <a href="{{ url_for('region_page', chrom='22', start=46546424, stop=46639653) }}">chr22:46546424-46639653</a></p>
+                    Gene: <a href="{{ url_for('.gene_page', gene_id='ENSG00000186951') }}">PPARA</a>,
+                    Transcript: <a href="{{ url_for('.transcript_page', transcript_id='ENST00000407236') }}">ENST00000407236</a>,
+                    Variant: <a href="{{ url_for('.variant_page', variant_id='22-16389447-A-G') }}">chr22-16389447-A-G</a>,
+                    Region: <a href="{{ url_for('.region_page', chrom='22', start=46546424, stop=46639653) }}">chr22:46546424-46639653</a></p>
                 </p>
             </div>
         </div>

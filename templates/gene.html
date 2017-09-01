@@ -15,8 +15,8 @@
  window.model.gene = {{ gene|tojson(separators=(',',':'))|safe }};
  window.model.exons = {{ exons|tojson(separators=(',',':'))|safe }};
 </script>
-<script type="text/javascript" src="{{ url_for('static', filename='plot.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='gene.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('.static', filename='plot.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('.static', filename='gene.js') }}"></script>
 <style type="text/css">
  .dataTable { font-size: 12px; }
  .dataTables_info { display: inline-block; }
@@ -60,7 +60,7 @@
        {% if gene.full_gene_name %}
        <p><span class="gene-name">{{ gene.gene_name }}</span>: {{ gene.full_gene_name }}</p>
        {% endif %}
-       <p>region: <a href="{{ url_for('region_page', chrom=chrom, start=start - 1, stop=stop - 1) }}" target="_blank">chr{{ chrom }}:{{ start - 1 }}-{{ stop - 1 }} (GRCh38)</a></p>
+       <p>region: <a href="{{ url_for('.region_page', chrom=chrom, start=start - 1, stop=stop - 1) }}" target="_blank">chr{{ chrom }}:{{ start - 1 }}-{{ stop - 1 }} (GRCh38)</a></p>
        <div class="dropdown">
            <button class="btn btn-default dropdown-toggle" type="button" id="external_ref_dropdown" data-toggle="dropdown">
                External References
@@ -116,7 +116,7 @@
        </div>
     </div>
     <div class="col-xs-12 col-md-6">
-      <a class="btn btn-default" href="{{ url_for('download_gene_variants', gene_id=gene.gene_id) }}">Download all {{ num_variants }} variants</a>
+      <a class="btn btn-default" href="{{ url_for('.download_gene_variants', gene_id=gene.gene_id) }}">Download all {{ num_variants }} variants</a>
     </div>
   </div>
   <div class="row">

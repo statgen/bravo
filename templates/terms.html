@@ -21,7 +21,7 @@
                   {% if current_user.agreed_to_terms: %}
                   <p><b>You've already agreed to these terms.</b></p>
                   {% else %}
-                  <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('agree_to_terms') }}">I agree to the terms</a><p>
+                  <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('.agree_to_terms') }}">I agree to the terms</a><p>
                   {% endif %}
                 {% endif %}
             </div>
