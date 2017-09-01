@@ -241,60 +241,38 @@ def get_metrics(db, variant):
     if 'allele_count' not in variant or variant['allele_num'] == 0:
         return None
     metrics = {}
-    for metric in METRICS:
-        metrics[metric] = db.metrics.find_one({'metric': metric}, projection={'_id': False})
+    for metric_key, metric_metadata in METRICS.items():
+        metric_name = metric_metadata['name']
+        if metric_key in variant['quality_metrics']:
+            variant['quality_metrics'][metric_name] = variant['quality_metrics'].pop(metric_key)
+        x = db.metrics.find_one({'metric': metric_key}, projection={'_id': False})
+        if x is not None:
+            metrics[metric_name] = x
+            metrics[metric_name]['metric'] = metric_name
 
-    # Rename
-    for old_name, new_name in [("DP", "Total Depth"), ("MQ", "Mapping Quality")]:
-        if old_name in metrics and old_name in variant['quality_metrics']:
-            metrics[new_name] = metrics[old_name]
-            metrics[new_name]['metric'] = new_name
-            del metrics[old_name]
-            variant['quality_metrics'][new_name] = variant['quality_metrics'][old_name]
-            del variant['quality_metrics'][old_name]
-        elif old_name in metrics != old_name in variant['quality_metrics']:
-            print('ERROR: problems with {!r} in metrics for variant {!r}'.format(old_name, variant.get('variant_id')))
-
-    metric = None
+    freq_metric = None
     if variant['allele_count'] == 1:
-        metric = 'singleton'
+        freq_metric = 'singleton'
     elif variant['allele_count'] == 2:
-        metric = 'doubleton'
+        freq_metric = 'doubleton'
     else:
         for af in AF_BUCKETS:
             if float(variant['allele_count'])/variant['allele_num'] < af:
-                metric = af
+                freq_metric = af
                 break
-    if metric is not None:
-        metrics['Site Quality'] = db.metrics.find_one({'metric': 'binned_%s' % metric}, projection={'_id': False})
+    if freq_metric is not None:
+        metrics['Site Quality'] = db.metrics.find_one({'metric': 'binned_%s' % freq_metric}, projection={'_id': False})
     return metrics
 
 
 def remove_some_extraneous_information(variant):
     """Remove information not needed by variant.html or any other page"""
-    for key in [
-            'xpos',
-            'xstop',
-            'vep_annotations',
-            'pop_acs',
-            'pop_ans',
-            'pop_homs',
-            'sometimes_missense_or_lof',
-    ]:
-        variant.pop(key, None)
+    for key in ['xpos','xstop','vep_annotations',]: variant.pop(key, None)
 
 def remove_extraneous_information(variant):
     """Remove information not needed by gene.html, transcript.html or region.html"""
     remove_some_extraneous_information(variant)
-    for key in [
-            'genotype_depths',
-            'genotype_qualities',
-            'transcripts',
-            'genes',
-            'site_quality',
-            'quality_metrics',
-    ]:
-        variant.pop(key, None)
+    for key in ['genotype_depths','genotype_qualities','transcripts','genes','site_quality','quality_metrics',]: variant.pop(key, None)
 
 def get_variants_in_gene(db, gene_id):
     for variant in db.variants.find({'genes': gene_id}, projection={'_id': False}):

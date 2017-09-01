@@ -3,32 +3,33 @@ from operator import itemgetter
 import traceback
 
 AF_BUCKETS = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]
-METRICS = [
-    'BaseQRankSum',
-    'ClippingRankSum',
-    'DP',
-    'FS',
-    'InbreedingCoeff',
-    'MQ',
-    'MQRankSum',
-    'QD',
-    'ReadPosRankSum',
-    'VQSLOD',
-    'SVM',
-    'FIBC_P',
-    'FIBC_I',
-    'HWE_SLP_P',
-    'HWE_SLP_I',
-    'ABE',
-    'ABZ',
-    'BQZ',
-    'CYZ',
-    'STZ',
-    'IOR',
-    'NM0',
-    'NM1',
-    'NMZ',
-]
+METRICS = {
+    'BaseQRankSum':{},
+    'ClippingRankSum':{},
+    'DP':{'name':'Total Depth'},
+    'FS':{},
+    'InbreedingCoeff':{},
+    'MQ':{'name':'Mapping Quality'},
+    'MQRankSum':{},
+    'QD':{},
+    'ReadPosRankSum':{},
+    'VQSLOD':{},
+    'SVM':{'name':'SVM Score'},
+    'FIBC_P':{'name':'In-Breeding Coefficient'},
+    'FIBC_I':{'name':'In-Breeding Coefficient (pop-adjusted)'},
+    'HWE_SLP_P':{'name':'HWE p-value'},
+    'HWE_SLP_I':{'name':'HWE p-value (pop-adjusted)'},
+    'ABE':{'name':'Expected Allele Balance'},
+    'ABZ':{'name':'Allele Balance Z-score'},
+    'BQZ':{'name':'BaseQual-Allele correlation'},
+    'CYZ':{'name':'Cycle-Allele correlation'},
+    'STZ':{'name':'Strand-Allele correlation'},
+    'IOR':{'name':'Inflated Rate of Observing other alleles (log10)'},
+    'NM0':{'name':'Avg num mismatches in reads with ref alleles'},
+    'NM1':{'name':'Avg num mismatches in reads with alt alleles'},
+    'NMZ':{'name':'Mismatches/read-Allele correlation'},
+}
+for k,v in METRICS.items(): v.setdefault('name',k)
 
 
 class Consequence(object):
