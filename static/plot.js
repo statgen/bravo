@@ -26,7 +26,7 @@ function get_variant_id(variant) { return ''+variant.pos+'-'+variant.ref+'-'+var
 
 
 function create_coverage_plot() {
-    var coverage_XHR = $.getJSON(fmt('/api/coverage/region/{0}-{1}-{2}', window.model.chrom, window.model.start, window.model.stop));
+    var coverage_XHR = $.getJSON(window.model.url_prefix + fmt('api/coverage/region/{0}-{1}-{2}', window.model.chrom, window.model.start, window.model.stop));
 
     $(function() {
         bootstrap_plot();
@@ -298,7 +298,7 @@ function create_variant_table() {
             searchable: false, orderable: false,
             render: (function() {
                 var template = _.template(
-                    '<a href="/variant/<%= window.model.chrom %>-<%= variant.pos %>-<%= variant.ref %>-<%= variant.alt %>" target="_blank">'+
+                    '<a href="<%= window.model.url_prefix %>variant/<%= window.model.chrom %>-<%= variant.pos %>-<%= variant.ref %>-<%= variant.alt %>" target="_blank">'+
                         '<% if (variant.ref.length > 20) { %><%= variant.ref.slice(0,20) %>...<% } else { %><%= variant.ref %><% } %> / '+
                         '<% if (variant.alt.length > 20) { %><%= variant.alt.slice(0,20) %>...<% } else { %><%= variant.alt %><% } %>'+
                         '<% if (variant.rsids.length) { %> (<%= variant.rsids.join(", ") %>)<% } %>'+
@@ -393,7 +393,7 @@ function create_variant_table() {
         searching: false,
 
         ajax: {
-            url: '/api/variants_for_table',
+            url: window.model.url_prefix+'api/variants_for_table',
             type: 'POST',
             data: function(args) { /* modify request form parameters */
                 return {

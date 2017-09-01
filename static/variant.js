@@ -419,11 +419,11 @@ $(function() {
 var af_buckets = [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1];
 function get_af_bucket_text(bin) {
     if (bin == 'singleton' || bin == 'doubleton') {
-        return 'This is the site quality distribution for all ' + bin + 's in ' + window.dataset_name + '.';
+        return 'This is the site quality distribution for all ' + bin + 's in ' + window.model.dataset_name + '.';
     } else if (bin == '0.0001') {
-        return 'This is the site quality distribution for all variants with AF < ' + bin + ' in ' + window.dataset_name + '.';
+        return 'This is the site quality distribution for all variants with AF < ' + bin + ' in ' + window.model.dataset_name + '.';
     } else {
-        return 'This is the site quality distribution for all variants with ' + af_buckets[af_buckets.indexOf(parseFloat(bin)) - 1] + ' < AF < ' + bin + ' in ' + window.dataset_name + '.';
+        return 'This is the site quality distribution for all variants with ' + af_buckets[af_buckets.indexOf(parseFloat(bin)) - 1] + ' < AF < ' + bin + ' in ' + window.model.dataset_name + '.';
     }
 }
 

@@ -28,7 +28,9 @@
         ga('send', 'pageview');
     </script>
     <script type="text/javascript">
-        window.dataset_name = "{{ config['DATASET_NAME'] }}";
+        window.model = window.model || {};
+        window.model.dataset_name = "{{ config['DATASET_NAME'] }}";
+        window.model.url_prefix = {{ url_for('.homepage')|tojson|safe }};
     </script>
     {% block in_head %}{% endblock %}
 </head>
