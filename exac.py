@@ -413,7 +413,7 @@ def gene_page(gene_id):
         if gene['chrom'] not in allowed_chroms:
             return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
                 app.config['DATASET_NAME'], gene['chrom']))
-        num_variants = lookups.get_num_variants_in_gene(db, gene_id)
+        num_variants = lookups.get_num_variants_in_region(db, gene['chrom'], gene['start'], gene['stop'])
         exons = lookups.get_exons_in_gene(db, gene_id)
 
         return render_template(
@@ -447,7 +447,7 @@ def transcript_page(transcript_id):
             return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
                 app.config['DATASET_NAME'], gene['chrom']))
         gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
-        num_variants = lookups.get_num_variants_in_transcript(db, transcript_id)
+        num_variants = lookups.get_num_variants_in_region(db, transcript['chrom'], transcript['start'], transcript['stop'])
         exons = lookups.get_exons_in_transcript(db, transcript_id)
 
         return render_template(
@@ -469,22 +469,18 @@ def transcript_page(transcript_id):
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/region/<region_id>')
+@app.route('/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
-def region_page(region_id):
+def region_page(chrom, start, stop):
     db = get_db()
     try:
-        region = region_id.split('-')
-        print 'Rendering region: %s' % region_id
+        print 'Rendering region:', chrom, start, stop
 
-        if len(region) != 3:
-            return error_page("Sorry, '{}' doesn't look like a valid region. A valid region looks like 1-55530545-55531525.".format(region_id))
-
-        chrom, start, stop = region[0], int(region[1]), int(region[2])
+        start, stop = int(start), int(stop)
         if stop - start > REGION_LIMIT:
-            return error_page("The region you requested, '{}', is {:,} bases long.  We only accept regions shorter than {:,} bases.".format(region_id, stop - start, REGION_LIMIT))
+            return error_page("The region you requested, '{chrom}-{start}-{stop}', is {:,} bases long.  We only accept regions shorter than {:,} bases.".format(stop - start, REGION_LIMIT, chrom=chrom, start=start, stop=stop))
         if stop < start:
-            return error_page("The region you requested, '{}', stops before it starts.  Did you mean '{chrom}-{stop}-{start}'?".format(region_id, chrom=chrom, start=start, stop=stop))
+            return error_page("The region you requested, '{chrom}-{start}-{stop}', stops before it starts.  Did you mean '{chrom}-{stop}-{start}'?".format(region_id, chrom=chrom, start=start, stop=stop))
         if start == stop:
             start -= 20
             stop += 20
@@ -505,62 +501,66 @@ def region_page(region_id):
             },
         )
     except Exception, e:
-        print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
+        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
 
 
 @app.route('/download/gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
 def download_gene_variants(gene_id):
-    import io, csv
     db = get_db()
     try:
-        out = io.BytesIO()
-        writer = csv.writer(out)
-        fields = 'chrom pos ref alt rsids filter genes allele_num allele_count allele_freq hom_count site_quality quality_metrics.DP cadd_phred'.split()
-        writer.writerow(fields)
-        variants = lookups.get_variants_in_gene(db, gene_id)
-        for v in variants:
-            row = []
-            for field in fields:
-                if '.' in field: parts = field.split('.', 1); row.append(v.get(parts[0], {}).get(parts[1], ''))
-                elif field in ['rsids','genes']: row.append('|'.join(v.get(field, [])))
-                else: row.append(v.get(field, ''))
-            writer.writerow(row)
-        resp = make_response(out.getvalue())
-        resp.headers['Content-Disposition'] = 'attachment; filename={}.csv'.format(gene_id)
-        resp.mimetype='text/csv'
+        gene = lookups.get_gene(db, gene_id)
+        resp = _get_variants_csv_for_region(gene['chrom'], gene['start'], gene['stop'], '{}.csv'.format(gene_id))
         return resp
     except Exception as e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
 
+@app.route('/download/transcript/<transcript_id>')
+@require_agreement_to_terms_and_store_destination
+def download_transcript_variants(transcript_id):
+    db = get_db()
+    try:
+        transcript = lookups.get_transcript(db, transcript_id)
+        resp = _get_variants_csv_for_region(transcript['chrom'], transcript['start'], transcript['stop'], '{}.csv'.format(transcript_id))
+        return resp
+    except Exception as e:
+        print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
+        abort(404)
+
 @app.route('/download/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def download_region_variants(chrom, start, stop):
-    import io, csv
     db = get_db()
     try:
         start, stop = int(start), int(stop)
-        out = io.BytesIO()
-        writer = csv.writer(out)
-        fields = 'chrom pos ref alt rsids filter genes allele_num allele_count allele_freq hom_count site_quality quality_metrics.DP cadd_phred'.split()
-        writer.writerow(fields)
-        variants = lookups.get_variants_in_region(db, chrom, start, stop)
-        for v in variants:
-            row = []
-            for field in fields:
-                if '.' in field: parts = field.split('.', 1); row.append(v.get(parts[0], {}).get(parts[1], ''))
-                elif field in ['rsids','genes']: row.append('|'.join(v.get(field, [])))
-                else: row.append(v.get(field, ''))
-            writer.writerow(row)
-        resp = make_response(out.getvalue())
-        resp.headers['Content-Disposition'] = 'attachment; filename=chr{}-{}-{}.csv'.format(chrom, start, stop)
-        resp.mimetype='text/csv'
+        resp = _get_variants_csv_for_region(chrom, start, stop, 'chr{}-{}-{}.csv'.format(chrom, start, stop))
         return resp
     except Exception as e:
         print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
+
+def _get_variants_csv_for_region(chrom, start, stop, filename):
+    import io, csv
+    db = get_db()
+    out = io.BytesIO()
+    writer = csv.writer(out)
+    fields = 'chrom pos ref alt rsids filter genes allele_num allele_count allele_freq hom_count site_quality quality_metrics.DP cadd_phred'.split()
+    writer.writerow(fields)
+    variants = lookups.get_variants_in_region(db, chrom, start, stop)
+    for v in variants:
+        row = []
+        for field in fields:
+            if '.' in field: parts = field.split('.', 1); row.append(v.get(parts[0], {}).get(parts[1], ''))
+            elif field in ['rsids','genes']: row.append('|'.join(v.get(field, [])))
+    else: row.append(v.get(field, ''))
+    writer.writerow(row)
+    resp = make_response(out.getvalue())
+    resp.headers['Content-Disposition'] = 'attachment; filename={}'.format(filename)
+    resp.mimetype='text/csv'
+    return resp
+
 
 @app.route('/api/variants_for_table', methods=['POST'])
 @require_agreement_to_terms_and_store_destination

@@ -274,11 +274,6 @@ def remove_extraneous_information(variant):
     remove_some_extraneous_information(variant)
     for key in ['genotype_depths','genotype_qualities','transcripts','genes','site_quality','quality_metrics',]: variant.pop(key, None)
 
-def get_variants_in_gene(db, gene_id):
-    for variant in db.variants.find({'genes': gene_id}, projection={'_id': False}):
-        variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
-        yield variant
-
 def get_most_important_variants_in_gene(db, gene_id):
     variants = []
     for variant in db.variants.find({'genes': gene_id, 'sometimes_missense_or_lof':1}, projection={'_id': False}):
@@ -291,28 +286,10 @@ def get_most_important_variants_in_gene(db, gene_id):
 def get_num_variants_in_region(db, chrom, start, stop):
     xstart, xstop = Xpos.from_chrom_pos(chrom, start), Xpos.from_chrom_pos(chrom, stop)
     return db.variants.find({'xpos': {'$gte':xstart, '$lte':xstop}}).count()
-def get_num_variants_in_gene(db, gene_id):
-    return db.variants.find({'genes': gene_id}).count()
-def get_num_variants_in_transcript(db, transcript_id):
-    return db.variants.find({'transcripts': transcript_id}).count()
 
 
 def get_transcripts_in_gene(db, gene_id):
-    """
-    """
     return list(db.transcripts.find({'gene_id': gene_id}, projection={'_id': False}))
-
-
-def get_variants_in_transcript(db, transcript_id):
-    """
-    """
-    variants = []
-    for variant in db.variants.find({'transcripts': transcript_id}, projection={'_id': False}):
-        variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Feature'] == transcript_id]
-        remove_extraneous_information(variant)
-        variants.append(variant)
-    return variants
-
 
 def get_exons_in_transcript(db, transcript_id):
     return sorted(list(db.exons.find({'transcript_id': transcript_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])
