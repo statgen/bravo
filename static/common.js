@@ -222,7 +222,7 @@ window._debug = window._debug || {};
         });
 
         $('.typeahead').bind('typeahead:select', function(ev, suggestion) {
-            window.location.href = '/awesome?query=' + suggestion.value;
+            window.location.href = window.model.url_prefix+'awesome?query=' + suggestion.value;
         });
     });
 })();

@@ -47,7 +47,7 @@
             {% block navbar_left %}
             <a class="navbar-brand" href="{{ url_for('.homepage') }}" style="color: #333; font-weight: bold; float: left; font-size: 15px;">{{ config['BROWSER_NAME'] }}</a>
             <div class="navbar-left" id="navbar_form_container">
-                <form action="/awesome" class="navbar-form input-group" role="search">
+                <form action="{{ url_for('.awesome') }}" class="navbar-form input-group" role="search">
                     <div class="form-group" id="navbar-awesomebar">
                         <input id="navbar-searchbox-input" name="query" class="form-control typeahead" type="text" size="40" placeholder="Gene, transcript, variant, or region"/>
                         <div class="input-group-btn">
