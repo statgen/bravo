@@ -60,7 +60,7 @@
        {% if gene.full_gene_name %}
        <p><span class="gene-name">{{ gene.gene_name }}</span>: {{ gene.full_gene_name }}</p>
        {% endif %}
-       <p>region: <a href="/region/{{ chrom }}-{{ start - 1 }}-{{ stop - 1 }}" target="_blank">chr{{ chrom }}:{{ start - 1 }}-{{ stop - 1 }} (GRCh38)</a></p>
+       <p>region: <a href="{{ url_for('region_page', chrom=chrom, start=start - 1, stop=stop - 1) }}" target="_blank">chr{{ chrom }}:{{ start - 1 }}-{{ stop - 1 }} (GRCh38)</a></p>
        <div class="dropdown">
            <button class="btn btn-default dropdown-toggle" type="button" id="external_ref_dropdown" data-toggle="dropdown">
                External References

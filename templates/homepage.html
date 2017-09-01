@@ -49,10 +49,10 @@
                 </div>
                 <p class="text-muted">
                     Examples -
-                    Gene: <a href="/awesome?query=PPARA">PPARA</a>,
-                    Transcript: <a href="/transcript/ENST00000407236">ENST00000407236</a>,
-                    Variant: <a href="/variant/22-16389447-A-G">22-16389447-A-G</a>,
-                    Region: <a href="/region/22-46546424-46639653">22:46546424-46639653</a>
+                    Gene: <a href="{{ url_for('gene_page', gene_id='ENSG00000186951') }}">PPARA</a>,
+                    Transcript: <a href="{{ url_for('transcript_page', transcript_id='ENST00000407236') }}">ENST00000407236</a>,
+                    Variant: <a href="{{ url_for('variant_page', variant_id='22-16389447-A-G') }}">chr22-16389447-A-G</a>,
+                    Region: <a href="{{ url_for('region_page', chrom='22', start=46546424, stop=46639653) }}">chr22:46546424-46639653</a></p>
                 </p>
             </div>
         </div>

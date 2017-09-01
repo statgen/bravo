@@ -346,23 +346,9 @@ def autocomplete():
 def awesome():
     db = get_db()
     query = request.args.get('query')
-    datatype, identifier = lookups.get_awesomebar_result(db, query)
-
-    print "Searched for %s: %s" % (datatype, identifier)
-    if datatype == 'gene':
-        return redirect('/gene/{}'.format(identifier))
-    elif datatype == 'transcript':
-        return redirect('/transcript/{}'.format(identifier))
-    elif datatype == 'variant':
-        return redirect('/variant/{}'.format(identifier))
-    elif datatype == 'region':
-        return redirect('/region/{}'.format(identifier))
-    elif datatype == 'dbsnp_variant_set':
-        return redirect('/dbsnp/{}'.format(identifier))
-    elif datatype == 'not_found':
-        return redirect('/not_found/{}'.format(identifier))
-    else:
-        raise Exception
+    datatype, redirect_args = lookups.get_awesomebar_result(db, query)
+    print "Searched for %s: %s" % (datatype, redirect_args)
+    return redirect(url_for('{}_page'.format(datatype), **redirect_args))
 
 
 @app.route('/variant/<variant_id>')
@@ -480,7 +466,7 @@ def region_page(chrom, start, stop):
         if stop - start > REGION_LIMIT:
             return error_page("The region you requested, '{chrom}-{start}-{stop}', is {:,} bases long.  We only accept regions shorter than {:,} bases.".format(stop - start, REGION_LIMIT, chrom=chrom, start=start, stop=stop))
         if stop < start:
-            return error_page("The region you requested, '{chrom}-{start}-{stop}', stops before it starts.  Did you mean '{chrom}-{stop}-{start}'?".format(region_id, chrom=chrom, start=start, stop=stop))
+            return error_page("The region you requested, '{chrom}-{start}-{stop}', stops before it starts.  Did you mean '{chrom}-{stop}-{start}'?".format(chrom=chrom, start=start, stop=stop))
         if start == stop:
             start -= 20
             stop += 20
@@ -601,37 +587,35 @@ def variants_transcript_api(transcript_id):
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/api/variants_in_region/<region_id>')
+@app.route('/api/variants_in_region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
-def variants_region_api(region_id):
+def variants_region_api(chrom, start, stop):
     db = get_db()
     try:
-        chrom, start, stop = region_id.split('-')
         start, stop = int(start), int(stop)
         variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
         return jsonify(variants_in_region)
     except Exception as e:
-        print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
+        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/api/coverage/region/<region_id>')
+@app.route('/api/coverage/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
-def region_coverage_api(region_id):
+def region_coverage_api(chrom, start, stop):
     db = get_db()
     try:
-        chrom, start, stop = region_id.split('-')
         start, stop = int(start), int(stop)
         xstart, xstop = Xpos.from_chrom_pos(chrom, start), Xpos.from_chrom_pos(chrom, stop)
         coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
         return jsonify(coverage_stats)
     except Exception as e:
-        print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
+        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
 
 
-@app.route('/dbsnp/<rsid>')
+@app.route('/multi_variant_rsid/<rsid>')
 @require_agreement_to_terms_and_store_destination
-def dbsnp_page(rsid):
+def multi_variant_rsid_page(rsid):
     db = get_db()
     try:
         print 'Rendering multi-variant rsid: %s' % rsid

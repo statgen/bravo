@@ -62,11 +62,7 @@ def get_variant_by_variant_id(db, variant_id, default_to_boring_variant=False):
 
 
 def get_variants_by_rsid(db, rsid):
-    if not rsid.startswith('rs'):
-        return None
-    try:
-        int(rsid.lstrip('rs'))
-    except Exception, e:
+    if not rsid.startswith('rs') or not rsid[2:].isdigit():
         return None
     variants = list(db.variants.find({'rsids': rsid}, projection={'_id': False}))
     for variant in variants:
@@ -75,11 +71,7 @@ def get_variants_by_rsid(db, rsid):
 
 
 def get_variants_from_dbsnp(db, rsid):
-    if not rsid.startswith('rs'):
-        return None
-    try:
-        rsid = int(rsid.lstrip('rs'))
-    except Exception, e:
+    if not rsid.startswith('rs') or not rsid[2:].isdigit():
         return None
     position = db.dbsnp.find_one({'rsid': rsid})
     if position:
@@ -153,60 +145,64 @@ def get_awesomebar_result(db, query):
     query = query.strip()
     print 'Query: %s' % query
 
-    # Variant
+    # rsid
     variants = get_variants_by_rsid(db, query.lower())
     if variants:
         if len(variants) == 1:
-            return 'variant', variants[0]['variant_id']
+            return 'variant', {'variant_id': variants[0]['variant_id']}
         else:
             if query.lower() not in variants[0]['rsids']:
                 print('Warning: get_variants_by_rsid(db, "{query_lower!r}") returned ({variants!r}) but {query_lower!r} is not in {variants[0].rsids!r}.'.format(
                     query_lower=query.lower(), variants=variants))
-            return 'dbsnp_variant_set', query.lower()
-    variant = get_variants_from_dbsnp(db, query.lower())
-    if variant:
-        return 'variant', variant[0]['variant_id']
-    # variant = get_variant(db, )
-    # TODO - https://github.com/brettpthomas/exac_browser/issues/14
+            return 'multi_variant_rsid', {'rsid': query.lower()}
+    variants = get_variants_from_dbsnp(db, query.lower())
+    if variants:
+        if len(variants) == 1:
+            return 'variant', {'variant_id': variants[0]['variant_id']}
+        else:
+            return 'multi_variant_rsid', {'rsid': query.lower()}
 
+    # gene symbol
     gene = get_gene_by_name(db, query)
     if gene:
-        return 'gene', gene['gene_id']
+        return 'gene', {'gene_id': gene['gene_id']}
 
     # From here out, all should be uppercase (gene, tx, region, variant_id)
     query = query.upper()
+
+    # uppercase gene symbol
     gene = get_gene_by_name(db, query)
     if gene:
-        return 'gene', gene['gene_id']
+        return 'gene', {'gene_id': gene['gene_id']}
 
-    # Ensembl formatted queries
-    if query.startswith('ENS'):
-        # Gene
+    # ENSG
+    if query.startswith('ENSG'):
         gene = get_gene(db, query)
         if gene:
-            return 'gene', gene['gene_id']
+            return 'gene', {'gene_id': gene['gene_id']}
 
-        # Transcript
+    # ENST
+    if query.startswith('ENST'):
         transcript = get_transcript(db, query)
         if transcript:
-            return 'transcript', transcript['transcript_id']
+            return 'transcript', {'transcript_id': transcript['transcript_id']}
 
-    # Region
+    # Region (chrom , chrom-pos , chrom-start-stop) or Variant (chrom-pos-ref-alt)
     match = _regex_chr.match(query) or _regex_chr_pos.match(query) or _regex_chr_start_end.match(query) or _regex_chr_pos_ref_alt.match(query)
     if match is not None:
         num_groups = len([g for g in match.groups() if g is not None])
         chrom = match.groups()[0]
         if num_groups == 1:
-            return 'region', '{}'.format(chrom)
+            return 'not_found', {'query': query}
         pos = int(match.groups()[1].replace(',',''))
         if num_groups == 2:
-            return 'region', '{}-{}-{}'.format(chrom, pos, pos)
+            return 'region', {'chrom': chrom, 'start':pos, 'stop':pos}
         if num_groups == 3:
             end = int(match.groups()[2].replace(',',''))
-            return 'region', '{}-{}-{}'.format(chrom, pos, end)
-        return 'variant', '{}-{}-{}-{}'.format(chrom, pos, match.groups()[2], match.groups()[3])
+            return 'region', {'chrom': chrom, 'start':pos, 'stop':end}
+        return 'variant', {'variant_id': '{}-{}-{}-{}'.format(chrom, pos, match.groups()[2], match.groups()[3])}
 
-    return 'not_found', query
+    return 'not_found', {'query': query}
 
 
 def get_genes_in_region(db, chrom, start, stop):
