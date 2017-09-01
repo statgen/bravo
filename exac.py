@@ -240,19 +240,14 @@ def precalculate_metrics():
     import numpy
     db = get_db()
     print 'Reading %s variants...' % db.variants.count()
-    # For some reason using Counter() gives this linear performance, whereas it was slowing down 10X towards the end of 150M variants with just list.append().
-    metrics_to_use_with_counter = {'DP', 'site_quality'}
-    metrics = defaultdict_that_passes_key_to_default_factory(lambda key: Counter() if key in metrics_to_use_with_counter else list())
+    metrics = defaultdict(Counter)
     qualities_by_af = defaultdict(Counter)
     start_time = time.time()
     for variant_i, variant in enumerate(db.variants.find(projection=['quality_metrics', 'site_quality', 'allele_num', 'allele_count'])):
         if 'DP' in variant['quality_metrics'] and float(variant['quality_metrics']['DP']) == 0:
             print('Warning: variant with id {} has depth of 0'.format(variant['_id']))
         for metric, value in variant['quality_metrics'].iteritems():
-            if metric in metrics_to_use_with_counter:
-                metrics[metric][float(value)] += 1
-            else:
-                metrics[metric].append(float(value))
+            metrics[metric][float(value)] += 1
         qual = float(variant['site_quality'])
         metrics['site_quality'][qual] += 1
         if variant['allele_num'] == 0: continue
@@ -274,8 +269,7 @@ def precalculate_metrics():
     for metric in metrics:
         bin_range = None
         data = metrics[metric]
-        if metric in metrics_to_use_with_counter:
-            data = list(data.elements())
+        data = list(data.elements()) # TODO: avoid this.
         if metric == 'DP':
             data = map(numpy.log, data)
         if metric == 'FS':
@@ -376,6 +370,7 @@ def awesome():
 def variant_page(variant_id):
     db = get_db()
     try:
+        print 'Rendering variant: %s' % variant_id
         variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant=True)
 
         consequence_drilldown = ConsequenceDrilldown.from_variant(variant)
@@ -389,7 +384,6 @@ def variant_page(variant_id):
 
         lookups.remove_some_extraneous_information(variant)
 
-        print 'Rendering variant: %s' % variant_id
         return render_template(
             'variant.html',
             variant=variant,
@@ -411,6 +405,7 @@ def variant_page(variant_id):
 def gene_page(gene_id):
     db = get_db()
     try:
+        print 'Rendering gene: %s' % gene_id
         gene = lookups.get_gene(db, gene_id)
         if gene is None:
             abort(404)
@@ -418,9 +413,7 @@ def gene_page(gene_id):
         if gene['chrom'] not in allowed_chroms:
             return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
                 app.config['DATASET_NAME'], gene['chrom']))
-        print 'Rendering gene: %s' % gene_id
         num_variants = lookups.get_num_variants_in_gene(db, gene_id)
-
         exons = lookups.get_exons_in_gene(db, gene_id)
 
         return render_template(
@@ -447,16 +440,12 @@ def gene_page(gene_id):
 def transcript_page(transcript_id):
     db = get_db()
     try:
-        transcript = lookups.get_transcript(db, transcript_id)
-
         print 'Rendering transcript: %s' % transcript_id
+        transcript = lookups.get_transcript(db, transcript_id)
 
         gene = lookups.get_gene(db, transcript['gene_id'])
         gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
-        variants_in_transcript = lookups.get_most_important_variants_in_transcript(db, transcript_id)
-        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), transcript['xstart'] - EXON_PADDING, transcript['xstop'] + EXON_PADDING)
-        #coverage_stats = coverage_stats[::len(coverage_stats)/8]
-        num_variants_in_transcript = lookups.get_num_variants_in_transcript(db, transcript_id)
+        num_variants = lookups.get_num_variants_in_transcript(db, transcript_id)
 
         return render_template(
             'transcript.html',
