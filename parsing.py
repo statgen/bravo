@@ -144,10 +144,10 @@ def get_variants_from_sites_vcf(sites_vcf):
                     #PJVH: variant['pop_hemis'] = dict([(POPS[x], 0) for x in POPS])
                     #PJVH: variant['hemi_count'] = sum(variant['pop_hemis'].values())
 
-                variant['quality_metrics'] = dict([(x, info_field[x]) for x in METRICS if x in info_field])
+                variant['quality_metrics'] = {x: info_field[x] for x in METRICS if x in info_field}
 
-                variant['genes'] = list({annotation['Gene'] for annotation in vep_annotations})
-                variant['transcripts'] = list({annotation['Feature'] for annotation in vep_annotations})
+                variant['genes'] = list(set(annotation['Gene'] for annotation in vep_annotations if annotation['Gene']))
+                variant['transcripts'] = list(set(annotation['Feature'] for annotation in vep_annotations if annotation['Feature']))
 
                 if 'DP_HIST' in info_field:
                    hists_all = [info_field['DP_HIST'].split(',')[0], info_field['DP_HIST'].split(',')[i+1]]

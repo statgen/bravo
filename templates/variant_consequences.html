@@ -1,4 +1,7 @@
-    {% if consequence_columns[0]|length != 0 %}
+{% if consequence_columns[0]|length != 0 %}
+   {% if consequences|length == 1 and consequence_columns[0][0] == "intergenic_variant" %}
+     <p>This variant is intergenic.</p>
+   {% else %}
         <p>This variant falls on {{ variant.transcripts|length }} transcript{{ "s" if (variant.transcripts|length) != 1 else "" }}
           belonging to {{ variant.genes|length }} gene{{ "s" if (variant.genes|length) != 1 else "" }}:</p>
         <div class="panel-group" id="annotation_accordion" style="margin-bottom: 0px;">
@@ -17,6 +20,7 @@
             </div>
         </div>
         <small><span class="label label-info">Note:</span> This list may not include additional transcripts in the same gene that the variant does not overlap.</small>
-    {% else %}
-        No annotations were found for this variant.
-    {% endif %}
+   {% endif %}
+{% else %}
+  <p>No annotations were found for this variant.</p>
+{% endif %}
