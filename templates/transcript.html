@@ -1,120 +1,131 @@
 {% extends "layout.html" %}
 
 {% block title %}
-<title>{{ config['BROWSER_NAME'] }} - {{ transcript.transcript_id }}</title>
+<title>{{ config['BROWSER_NAME'] }} - {{ gene.gene_name }}</title>
 {% endblock %}
 
+
+{% block in_head %}
+<script type="text/javascript">
+ window.model = window.model || {};
+ window.model.chrom = {{ chrom|tojson|safe }};
+ window.model.start = {{ start|tojson(separators=(',',':'))|safe }};
+ window.model.stop = {{ stop|tojson(separators=(',',':'))|safe }};
+ window.model.csq = {{ csq|tojson(separators=(',',':'))|safe }};
+ window.model.gene = {{ gene|tojson(separators=(',',':'))|safe }};
+ window.model.transcript = {{ transcript|tojson(separators=(',',':'))|safe }};
+ window.model.exons = {{ exons|tojson(separators=(',',':'))|safe }};
+</script>
+<script type="text/javascript" src="{{ url_for('static', filename='plot.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='transcript.js') }}"></script>
+<style type="text/css">
+ .dataTable { font-size: 12px; }
+ .dataTables_info { display: inline-block; }
+ .dataTable { font-family: Arial, Sans-serif; /* Arial handles figure-space correctly */ }
+ .dataTable .dt-pad-left { padding-left: 1.2em; }
+ .dataTable .dt-right { text-align: right; padding-right: 0.7em; }
+ .dataTable .dt-center { text-align: center; }
+ .dataTables_length { display:inline-block; float: right; margin-left: 3em; }
+ .dataTables_paginate { display:inline-block; float: right; margin-left: 3em !important; }
+ .dataTables_processing {
+    position: absolute; top: 50%; left: 50%; width: 100%; height: 40px; padding-top: 20px; margin-left: -50%; margin-top: -25px;
+    text-align: center; font-size: 1.2em;
+    background-color: white;
+    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 25%, rgba(255,255,255,0.9) 75%, rgba(255,255,255,0) 100%);
+ }
+
+ .d3-tip { font-family: Arial, Sans-serif; /* Helvetica Neue ignores thinspace */ }
+ #coverage_plot_container .axis path { fill: None; stroke: black; }
+ #variant_table .highlight { background-color: orange !important }
+ .table-hover>tbody>tr:hover { background-color: orange !important }
+
+ input[type=number].variant_table_filter { padding: 0; }
+
+ .mouse_guide { height: 100%; width: 2px; fill: orange; fill-opacity: 0.85; pointer-events: none; }
+ .genome_g_mouse_catcher { width: 100%; height: 100%; opacity: 0; }
+
+ .numsep { margin-left: 0.1em; margin-right: 0.1em; }
+</style>
+{% endblock %}
+
+
 {% block body %}
-    <!-- Render context vars in JS here -->
-    <script type="text/javascript">
-        window.transcript = {{ transcript|tojson(separators=(',',':'))|safe }};
-        window.strand = window.transcript.strand;
-        window.exons_and_utrs = _.sortBy(window.transcript.exons, "start");
-        window.table_variants = {{ variants_in_transcript|tojson(separators=(',',':'))|safe }};
-        window.variants_for_graph = window.table_variants;
-        window.coverage_stats = {{ coverage_stats|tojson(separators=(',',':'))|safe }};
-        window.gene = {{ gene|tojson(separators=(',',':'))|safe }};
-        window.page_name = window.gene.symbol + '_' + window.transcript.transcript_id;
-
-
-        $(document).ready(function() {
-            $('#consequence_other_variant_button')
-            .addClass('disabled')
-            .attr('disabled', 'disabled')
-            .attr('data-tooltip', "Loading...");
-        });
-
-        $.when($.getJSON("/api/variants_in_transcript/" + window.transcript.transcript_id),
-               $.Deferred(function() { $(this.resolve); })) //document.ready
-        .done(function(transcript_data) {
-            // Somehow these arguments get wrapped up, so we want transcript_data[0].
-
-            $('#consequence_other_variant_button')
-            .attr('data-tooltip', "Show all variants")
-            .removeClass('disabled')
-            .removeAttr('disabled')
-            .one('change', function() {
-                with_waiting_notice(function() {
-                    //add variants to the variant_table
-                    window.table_variants = transcript_data[0];
-                    build_variant_table()
-
-                    //add variants to the variant graph
-                    window.variants_for_graph = transcript_data[0];
-                    window.precalc_coding_coordinates(window.variants_for_graph);
-                    add_variants_to_variants_plot();
-                    update_variants();
-                });
-            });
-        })
-        .fail(function() {
-            console.log("XHR failed for transcript.");
-        });
-
-    </script>
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-xs-11 col-xs-offset-1">
-                <h1 class="gene-name">{{ gene.gene_name }}</h1>
-                <h3>Transcript: {{ transcript.transcript_id }} (<span id="number_of_exons"></span> coding exons)</h3>
-                <script>
-                  var coding_exons = _.filter(window.exons_and_utrs, function(d) {
-                      return d.feature_type === 'CDS';
-                  });
-                  $('#number_of_exons').html(coding_exons.length);
-                </script>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-xs-11 col-xs-offset-1">
-                <dl class="dl-horizontal">
-                    <dt>Number of variants</dt>
-                    <dd>{{ num_variants_in_transcript }}</dd>
-                    <dt class="hidden-xs">UCSC Browser</dt>
-                    <dd class="hidden-xs">
-                        <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ transcript.chrom }}%3A{{ transcript.start - 1 }}-{{ transcript.stop - 1 }}" target="_blank">
-                            {{ transcript.chrom }}:{{ transcript.start - 1 }}-{{ transcript.stop - 1 }}
-                            <i class="fa fa-external-link"></i>
-                        </a>
-                    </dd>
-                </dl>
-                <div class="dropdown">
-                    <button class="btn btn-default dropdown-toggle" type="button" id="transcript_dropdown" data-toggle="dropdown">
-                        Other transcripts in this gene
-                        <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu" aria-labelledby="transcript_dropdown">
-                        {% for transcript in gene.transcripts %}
-                            <li role="presentation">
-                                <a role="menuitem" tabindex="-1" href="/transcript/{{ transcript.transcript_id }}">
-                                    {{ transcript.transcript_id }}
-                                    {% if transcript.transcript_id == gene.canonical_transcript %}
-                                        *
-                                    {% endif %}
-                                </a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-xs-12 col-md-10 col-md-offset-1">
-                {% with plot_id = transcript.transcript_id %}
-                    {% include 'transcript_or_gene_graph.html' %}
-                {% endwith %}
-            </div>
-         </div>
-         <div class="row">
-            <div class="col-xs-12 col-md-10 col-md-offset-1">
-                {% if variants_in_transcript %}
-                    {% with chrom = variants_in_transcript[0].chrom %}
-                        {% include 'variant_table.html' %}
-                    {% endwith %}
-                {% else %}
-                    No variants in this gene.
-                {% endif %}
-            </div>
-        </div>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-xs-12">
+      <h1><span class="gene-name">{{ gene.gene_name }}</span>: {{ transcript.transcript_id }}</h1>
     </div>
+  </div>
+  <div class="row">
+    <div class="col-xs-12 col-md-6">
+       {% if gene.full_gene_name %}
+       <p><span class="gene-name">{{ gene.gene_name }}</span>: {{ gene.full_gene_name }}</p>
+       {% endif %}
+       <p>region: <a href="/region/{{ chrom }}-{{ start - 1 }}-{{ stop - 1 }}" target="_blank">chr{{ chrom }}:{{ start - 1 }}-{{ stop - 1 }} (GRCh38)</a></p>
+       <div class="dropdown">
+           <button class="btn btn-default dropdown-toggle" type="button" id="external_ref_dropdown" data-toggle="dropdown">
+               External References
+               <span class="caret"></span>
+           </button>
+           <ul class="dropdown-menu" role="menu" aria-labelledby="external_ref_dropdown">
+               <li role="presentation">
+                   <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ chrom }}%3A{{ start - 1 }}-{{ stop - 1 }}" target="_blank">
+                       UCSC Browser
+                       <i class="fa fa-external-link"></i>
+                   </a>
+               </li>
+           </ul>
+       </div>
+    </div>
+    <div class="col-xs-12 col-md-6">
+      <a class="btn btn-default" href="{{ url_for('download_gene_variants', gene_id=gene.gene_id) }}">Download all {{ num_variants }} variants</a>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-xs-12">
+      <div class="panel panel-default" style="margin-bottom:10px">
+        <div class="panel-heading">
+         <h3 style="margin-bottom:0; margin-top:0">Coverage Depth</h3>
+        </div>
+        <div class="panel-body">
+          {% include 'coverage_selectors.html' %}
+          <br/>
+          <div id="coverage_plot_container"></div>
+          <div id="gene_plot_container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-xs-12">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 style="margin-bottom:0; margin-top:0">Variants</h3>
+        </div>
+        <div class="panel-body">
+          <p style="display: inline-block;margin:0 10px 5px"><span class="btn-group btn-group-sm" data-toggle="buttons" id="vtf_category">
+              <button class="btn btn-primary variant_table_filter"><input type="radio" name="i1">LoF</input></button>
+              <button class="btn btn-primary variant_table_filter"><input type="radio" name="i1">LoF+Missense</input></button>
+              <button class="btn btn-primary variant_table_filter active"><input type="radio" name="i1">All</input></button>
+            </span></p>
+          <p style="display:inline-block;margin: 0 10px 5px">pos between
+            <input type="number" class="variant_table_filter" id="pos_ge" step=1000> and
+            <input type="number" class="variant_table_filter" id="pos_le" step=1000>
+          </p>
+          <p style="display:inline-block;margin: 0 10px 5px">MAF between
+            <input type="number" class="variant_table_filter" id="maf_ge" value=0  min=0 max=50 step=1 style="width:5em">% and
+            <input type="number" class="variant_table_filter" id="maf_le" value=50 min=0 max=50 step=1 style="width:4em">%
+          </p>
+          <p style="display:inline-block;margin:0 10px 5px">Quality: <select class='variant_table_filter' id='filter_value'>
+              <option value='*'>PASS+FAIL</option>
+              <option selected value='PASS'>PASS</option>
+              <option value='not PASS'>FAIL</option>
+          </select></p>
+          <div id="variant_plot_container"></div>
+          <table id="variant_table" class="table table-bordered table-hover table-condensed" cellspacing=0><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

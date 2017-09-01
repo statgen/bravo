@@ -418,18 +418,17 @@ def gene_page(gene_id):
 
         return render_template(
             'gene.html',
-            gene_id=gene_id,
-            gene=gene,
             chrom=gene['chrom'],
             start=gene['start'],
             stop=gene['stop'],
-            exons=exons,
             num_variants=num_variants,
             csq = {'order':Consequence.csqs,
                    'n_lof':len(Consequence._lof_csqs),
                    'n_lof_mis':len(Consequence._lof_csqs)+len(Consequence._missense_csqs),
                    'n_lof_mis_syn':len(Consequence._lof_csqs)+len(Consequence._missense_csqs)+len(Consequence._synonymous_csqs),
             },
+            gene=gene,
+            exons=exons,
         )
     except Exception, e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
@@ -442,19 +441,29 @@ def transcript_page(transcript_id):
     try:
         print 'Rendering transcript: %s' % transcript_id
         transcript = lookups.get_transcript(db, transcript_id)
-
         gene = lookups.get_gene(db, transcript['gene_id'])
+        allowed_chroms = [str(chrom) for chrom in range(1,1+22)] + ['X']
+        if gene['chrom'] not in allowed_chroms:
+            return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
+                app.config['DATASET_NAME'], gene['chrom']))
         gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
         num_variants = lookups.get_num_variants_in_transcript(db, transcript_id)
+        exons = lookups.get_exons_in_transcript(db, transcript_id)
 
         return render_template(
             'transcript.html',
-            transcript=transcript,
-            variants_in_transcript=variants_in_transcript,
-            num_variants_in_transcript=num_variants_in_transcript,
-            coverage_stats=coverage_stats,
+            chrom=transcript['chrom'],
+            start=transcript['start'],
+            stop=transcript['stop'],
+            num_variants=num_variants,
+            csq = {'order':Consequence.csqs,
+                   'n_lof':len(Consequence._lof_csqs),
+                   'n_lof_mis':len(Consequence._lof_csqs)+len(Consequence._missense_csqs),
+                   'n_lof_mis_syn':len(Consequence._lof_csqs)+len(Consequence._missense_csqs)+len(Consequence._synonymous_csqs),
+            },
             gene=gene,
-            csq_order=csq_order,
+            transcript=transcript,
+            exons=exons,
         )
     except Exception, e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()

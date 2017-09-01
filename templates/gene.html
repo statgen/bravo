@@ -60,7 +60,7 @@
        {% if gene.full_gene_name %}
        <p><span class="gene-name">{{ gene.gene_name }}</span>: {{ gene.full_gene_name }}</p>
        {% endif %}
-       <p>region: <a href="/region/{{ gene.chrom }}-{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">chr{{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }} (GRCh38)</a></p>
+       <p>region: <a href="/region/{{ chrom }}-{{ start - 1 }}-{{ stop - 1 }}" target="_blank">chr{{ chrom }}:{{ start - 1 }}-{{ stop - 1 }} (GRCh38)</a></p>
        <div class="dropdown">
            <button class="btn btn-default dropdown-toggle" type="button" id="external_ref_dropdown" data-toggle="dropdown">
                External References
@@ -68,7 +68,7 @@
            </button>
            <ul class="dropdown-menu" role="menu" aria-labelledby="external_ref_dropdown">
                <li role="presentation">
-                   <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ gene.chrom }}%3A{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
+                   <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position=chr{{ chrom }}%3A{{ start - 1 }}-{{ stop - 1 }}" target="_blank">
                        UCSC Browser
                        <i class="fa fa-external-link"></i>
                    </a>
@@ -116,7 +116,7 @@
        </div>
     </div>
     <div class="col-xs-12 col-md-6">
-      <a class="btn btn-default" href="{{ url_for('download_gene_variants', gene_id=gene_id) }}">Download all {{ num_variants }} variants</a>
+      <a class="btn btn-default" href="{{ url_for('download_gene_variants', gene_id=gene.gene_id) }}">Download all {{ num_variants }} variants</a>
     </div>
   </div>
   <div class="row">
