@@ -13,7 +13,7 @@ from utils import *
 from pycoverage import *
 import auth
 
-from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify
+from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, Blueprint
 from flask_compress import Compress
 from flask_errormail import mail_on_500
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
@@ -27,6 +27,8 @@ import time
 import sys
 import functools
 import contextlib
+
+bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 'static')
 
 app = Flask(__name__)
 app.config.from_object('flask_config.BravoFreeze3PublicConfig')
@@ -344,24 +346,24 @@ def require_agreement_to_terms_and_store_destination(func):
         else:
             print('unauthorized user {!r} visited the url [{!r}]'.format(current_user, request.path))
             session['original_destination'] = request.path
-            return redirect(url_for('get_authorized'))
+            return redirect(url_for('.get_authorized'))
         return func(*args, **kwargs)
     return decorated_view
 
 
-@app.route('/')
+@bp.route('/')
 def homepage():
     return render_template('homepage.html')
 
 
-@app.route('/api/autocomplete')
+@bp.route('/api/autocomplete')
 def autocomplete():
     query = request.args.get('query', '')
     suggestions = lookups.get_awesomebar_suggestions(get_autocomplete_strings(), query)
     return jsonify([{'value': s} for s in sorted(suggestions)])
 
 
-@app.route('/awesome')
+@bp.route('/awesome')
 def awesome():
     db = get_db()
     query = request.args.get('query')
@@ -384,7 +386,7 @@ def awesome():
         raise Exception
 
 
-@app.route('/variant/<variant_str>')
+@bp.route('/variant/<variant_str>')
 @require_agreement_to_terms_and_store_destination
 def variant_page(variant_str):
     db = get_db()
@@ -422,7 +424,7 @@ def variant_page(variant_str):
         abort(404)
 
 
-@app.route('/gene/<gene_id>')
+@bp.route('/gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
 def gene_page(gene_id):
     db = get_db()
@@ -458,7 +460,7 @@ def gene_page(gene_id):
         abort(404)
 
 
-@app.route('/transcript/<transcript_id>')
+@bp.route('/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def transcript_page(transcript_id):
     db = get_db()
@@ -486,7 +488,7 @@ def transcript_page(transcript_id):
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/api/variants_in_gene/<gene_id>')
+@bp.route('/api/variants_in_gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
 def variants_gene_api(gene_id):
     db = get_db()
@@ -497,7 +499,7 @@ def variants_gene_api(gene_id):
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/api/variants_in_transcript/<transcript_id>')
+@bp.route('/api/variants_in_transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def variants_transcript_api(transcript_id):
     db = get_db()
@@ -508,7 +510,7 @@ def variants_transcript_api(transcript_id):
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/api/variants_in_region/<region_id>')
+@bp.route('/api/variants_in_region/<region_id>')
 @require_agreement_to_terms_and_store_destination
 def variants_region_api(region_id):
     db = get_db()
@@ -521,7 +523,7 @@ def variants_region_api(region_id):
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/api/coverage/region/<region_id>')
+@bp.route('/api/coverage/region/<region_id>')
 @require_agreement_to_terms_and_store_destination
 def region_coverage_api(region_id):
     db = get_db()
@@ -535,7 +537,7 @@ def region_coverage_api(region_id):
         print 'Failed on region:', region_id, ';Error=', traceback.format_exc()
         abort(404)
 
-@app.route('/region/<region_id>')
+@bp.route('/region/<region_id>')
 @require_agreement_to_terms_and_store_destination
 def region_page(region_id):
     db = get_db()
@@ -575,7 +577,7 @@ def region_page(region_id):
         abort(404)
 
 
-@app.route('/dbsnp/<rsid>')
+@bp.route('/dbsnp/<rsid>')
 @require_agreement_to_terms_and_store_destination
 def dbsnp_page(rsid):
     db = get_db()
@@ -592,29 +594,29 @@ def dbsnp_page(rsid):
         abort(404)
 
 
-@app.route('/not_found/<query>')
+@bp.route('/not_found/<query>')
 def not_found_page(query):
     return render_template(
         'not_found.html',
         query=query
     )
 
-@app.route('/error/<message>')
-@app.errorhandler(404)
+@bp.route('/error/<message>')
+@bp.errorhandler(404)
 def error_page(message):
     return render_template(
         'error.html',
         message=message
     ), 404
 
-@app.route('/about')
+@bp.route('/about')
 def about_page():
     db = get_db()
     num_variants = db.variants.count()
     return render_template('about.html',
                            num_variants=num_variants)
 
-@app.route('/terms')
+@bp.route('/terms')
 def terms_page():
     return render_template('terms.html')
 
@@ -623,7 +625,7 @@ def terms_page():
 google_sign_in = auth.GoogleSignIn(app)
 
 lm = LoginManager(app)
-lm.login_view = 'homepage'
+lm.login_view = '.homepage'
 
 class User(UserMixin):
     "A user's id is their email address."
@@ -658,7 +660,7 @@ def load_user(id):
 
     return u
 
-@app.route('/agree_to_terms')
+@bp.route('/agree_to_terms')
 def agree_to_terms():
     "this route is for when the user has clicked 'I agree to the terms'."
     if not current_user.is_anonymous:
@@ -666,39 +668,39 @@ def agree_to_terms():
         db = get_db()
         result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})
     print('User [{!r}] agreed to the terms!'.format(current_user))
-    return redirect(url_for('get_authorized'))
+    return redirect(url_for('.get_authorized'))
 
-@app.route('/logout')
+@bp.route('/logout')
 def logout():
     print('logging out user {!r}'.format(current_user))
     logout_user()
-    return redirect(url_for('homepage'))
+    return redirect(url_for('.homepage'))
 
-@app.route('/login_with_google')
+@bp.route('/login_with_google')
 def login_with_google():
     "this route is for the login button"
-    session['original_destination'] = url_for('homepage')
-    return redirect(url_for('get_authorized'))
+    session['original_destination'] = url_for('.homepage')
+    return redirect(url_for('.get_authorized'))
 
-@app.route('/get_authorized')
+@bp.route('/get_authorized')
 def get_authorized():
     "This route tries to be clever and handle lots of situations."
     if current_user.is_anonymous:
         return google_sign_in.authorize()
     elif not current_user.agreed_to_terms:
-        return redirect(url_for('terms_page'))
+        return redirect(url_for('.terms_page'))
     else:
         if 'original_destination' in session:
             orig_dest = session['original_destination']
             del session['original_destination'] # We don't want old destinations hanging around.  If this leads to problems with re-opening windows, disable this line.
         else:
-            orig_dest = url_for('homepage')
+            orig_dest = url_for('.homepage')
         return redirect(orig_dest)
 
-@app.route('/callback/google')
+@bp.route('/callback/google')
 def oauth_callback_google():
     if not current_user.is_anonymous:
-        return redirect(url_for('homepage'))
+        return redirect(url_for('.homepage'))
     try:
         username, email = google_sign_in.callback() # oauth.callback reads request.args.
     except Exception as exc:
@@ -706,16 +708,16 @@ def oauth_callback_google():
         print(exc)
         print(traceback.format_exc())
         flash('Something is wrong with authentication.  Please email pjvh@umich.edu')
-        return redirect(url_for('homepage'))
+        return redirect(url_for('.homepage'))
     if email is None:
         # I need a valid email address for my user identification
         flash('Authentication failed by failing to get an email address.  Please email pjvh@umich.edu')
-        return redirect(url_for('homepage'))
+        return redirect(url_for('.homepage'))
 
     if app.config['EMAIL_WHITELIST']:
         if email.lower() not in app.config['EMAIL_WHITELIST']:
             flash('Your email, {}, is not in the list of allowed emails. If it should be, email pjvh@umich.edu to request permission.'.format(email.lower()))
-            return redirect(url_for('homepage'))
+            return redirect(url_for('.homepage'))
 
     # Look if the user already exists
 
@@ -732,14 +734,15 @@ def oauth_callback_google():
     # unless they log out.
     login_user(user, remember=True)
 
-    return redirect(url_for('get_authorized'))
+    return redirect(url_for('.get_authorized'))
 
-@app.after_request
+@bp.after_request
 def apply_caching(response):
     # prevent click-jacking vulnerability identified by BITs
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
+app.register_blueprint(bp, url_prefix = '/freeze3a/hg19')
 
 if __name__ == "__main__":
     import argparse

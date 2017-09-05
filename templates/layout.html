@@ -2,23 +2,23 @@
 <head>
     {% block title %}<title>{{ config['BROWSER_NAME'] }}</title>{% endblock %}
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='vendor/font-awesome.min.css') }}">
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/jquery-1.11.1.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/bootstrap.min.js') }}"></script>
+    <link rel=stylesheet type=text/css href="{{ url_for('.static', filename='vendor/font-awesome.min.css') }}">
+    <script type="text/javascript" src="{{ url_for('.static', filename='vendor/jquery-1.11.1.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('.static', filename='vendor/bootstrap.min.js') }}"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
 
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/jquery.tablesorter.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/jquery.tablesorter.pager.js') }}"></script>
-    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='vendor/theme.default.css') }}">
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/underscore-min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('.static', filename='vendor/jquery.tablesorter.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('.static', filename='vendor/jquery.tablesorter.pager.js') }}"></script>
+    <link rel=stylesheet type=text/css href="{{ url_for('.static', filename='vendor/theme.default.css') }}">
+    <script type="text/javascript" src="{{ url_for('.static', filename='vendor/underscore-min.js') }}"></script>
 
-    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}">
-    <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/d3.v3.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='vendor/d3-tip.js') }}"></script>
+    <link rel=stylesheet type=text/css href="{{ url_for('.static', filename='vendor/bootstrap.min.css') }}">
+    <link rel=stylesheet type=text/css href="{{ url_for('.static', filename='style.css') }}">
+    <script type="text/javascript" src="{{ url_for('.static', filename='vendor/d3.v3.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('.static', filename='vendor/d3-tip.js') }}"></script>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='common.css') }}">
-    <script type="text/javascript" src="{{ url_for('static', filename='common.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('.static', filename='common.css') }}">
+    <script type="text/javascript" src="{{ url_for('.static', filename='common.js') }}"></script>
     <script>
         (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
         (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
@@ -29,7 +29,9 @@
         ga('send', 'pageview');
     </script>
     <script type="text/javascript">
+	window.model = window.model || {};
         window.dataset_name = "{{ config['DATASET_NAME'] }}";
+	window.model.url_prefix = {{ url_for('.homepage')|tojson|safe }};
     </script>
     {% block in_head %}{% endblock %}
 </head>
@@ -44,7 +46,7 @@
                 <span class="icon-bar"></span>
             </button>
             {% block navbar_left %}
-            <a class="navbar-brand" href="/" style="color: #333; font-weight: bold; float: left; font-size: 15px;">{{ config['BROWSER_NAME'] }}</a>
+            <a class="navbar-brand" href="{{ url_for('.homepage') }}" style="color: #333; font-weight: bold; float: left; font-size: 15px;">{{ config['BROWSER_NAME'] }}</a>
             <div class="navbar-left" id="navbar_form_container">
                 <form action="/awesome" class="navbar-form" role="search">
                     <div class="form-group" id="navbar-awesomebar">
@@ -57,10 +59,10 @@
         <!-- Collect the nav links, forms, and other content for toggling -->
         <div class="collapse navbar-collapse" id="navbar-collapse">
             <ul class="nav navbar-nav navbar-right">
-                <li><a href="/about" style="color: #333; font-weight: bold;">About</a></li>
-                <li><a href="/terms" style="color: #333; font-weight: bold;">Terms</a></li>
+                <li><a href="{{ url_for('.about_page') }}" style="color: #333; font-weight: bold;">About</a></li>
+                <li><a href="{{ url_for('.terms_page') }}" style="color: #333; font-weight: bold;">Terms</a></li>
                 {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('logout') }}" style="color: #333; font-weight: bold;">Logout ({{ current_user.email }})</a></li>
+                <li><a href="{{ url_for('.logout') }}" style="color: #333; font-weight: bold;">Logout ({{ current_user.email }})</a></li>
                 {% endif %}
             </ul>
         </div><!-- /.navbar-collapse -->

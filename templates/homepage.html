@@ -21,7 +21,7 @@
         <div class="jumbotron" style="margin-top:3em">
           <p>To protect the privacy of our study participants, you must log in to view our data.</p>
           <br>
-          <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('login_with_google') }}">Click here to login with Google</a><p>
+          <p><a class="btn-lg btn-primary" role="button" href="{{ url_for('.login_with_google') }}">Click here to login with Google</a><p>
           <p>
             If your work email is not connected to a Google account, please <a href="https://accounts.google.com/SignUpWithoutGmail">create a Google account</a>.
           </p>
@@ -33,6 +33,7 @@
                 {% if config['SHOW_POWERED_BY'] %}
                 <h2>Powered by {{ config['DATASET_NAME'] }}</h2>
                 {% endif %}
+                <p>(This dataset includes 170 million variants on 14559 individuals. <a href="/freeze5/hg38">Click here to switch to Freeze5 on GRCh38.</a>)</p>
             </div>
         </div>
         <div class="row">
@@ -47,10 +48,10 @@
                     </form>
                     <p class="text-muted">
                         Examples -
-                        Gene: <a href="/awesome?query=PCSK9">PCSK9</a>,
-                        Transcript: <a href="/transcript/ENST00000407236">ENST00000407236</a>,
-                        Variant: <a href="/variant/22-36655789-G-T">22-36655789-G-T</a>,
-                        Region: <a href="/region/22-46546424-46639653">22:46546424-46639653</a>
+                        Gene: <a href="{{ url_for('.gene_page', gene_id='ENSG00000169174') }}">PCSK9</a>,
+                        Transcript: <a href="{{ url_for('.transcript_page', transcript_id='ENST00000407236') }}">ENST00000407236</a>,
+                        Variant: <a href="{{ url_for('.variant_page', variant_str='22-36655789-G-T') }}">22-36655789-G-T</a>,
+                        Region: <a href="{{ url_for('.region_page', region_id='22-46546424-46639653') }}">22:46546424-46639653</a>
                     </p>
                 </div>
             </div>
