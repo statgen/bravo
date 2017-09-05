@@ -70,16 +70,20 @@ def get_coverages():
 
 
 def get_tabix_file_contig_pairs(tabix_filenames):
-    def _convert_contig_to_int(contig):
-        try: return int(contig)
-        except: return 0 # parse X/Y right at the beginning.
+    filename_contig_pairs = []
     for tabix_filename in tabix_filenames:
         with pysam.Tabixfile(tabix_filename) as tabix_file:
-            for contig in sorted(tabix_file.contigs, key=_convert_contig_to_int): # Hopefully going from large -> small chroms keeps load higher.
-                yield (tabix_filename, contig)
+            for contig in tabix_file.contigs:
+                filename_contig_pairs.append((tabix_filename, contig))
+    def _sort_key(pair):
+        (filename, contig) = pair
+        if contig.startswith('chr'): contig = contig[3:]
+        if contig.isdigit(): return int(contig)
+        return 0 # for X/Y/MT
+    filename_contig_pairs.sort(key=_sort_key) # Sort from large -> small chromosomes
+    return filename_contig_pairs
 
 def get_records_from_tabix_contig(tabix_filename, contig, record_parser):
-    # TODO: we can do better than splitting up just "contigs" (chromosomes).  Why not split chromosomes into pieces?
     start_time = time.time()
     with pysam.Tabixfile(tabix_filename) as tabix_file:
         record_i = 0 # in case record_parser never yields anything.
@@ -89,7 +93,6 @@ def get_records_from_tabix_contig(tabix_filename, contig, record_parser):
             if record_i % int(1e6) == 0:
                 print("Loaded {:11,} records in {:6,} seconds from contig {!r:6} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
     print("Loaded {:11,} records in {:6,} seconds from contig {!r:6} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
-
 
 def _load_variants_from_tabix_file_and_contig(args):
     tabix_file, contig = args
@@ -105,18 +108,19 @@ def load_variants_file():
     db.variants.drop()
     print("Dropped db.variants")
 
-    db.variants.ensure_index('xpos')
-    db.variants.ensure_index('xstop')
-    db.variants.ensure_index('rsids')
-    db.variants.ensure_index('genes')
-    db.variants.ensure_index('transcripts')
-
     if len(app.config['SITES_VCFS']) == 0:
         raise IOError("No vcf file found")
 
     with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
         # workaround for Pool.map() from <http://stackoverflow.com/a/1408476/1166306>
         pool.map_async(_load_variants_from_tabix_file_and_contig, get_tabix_file_contig_pairs(app.config['SITES_VCFS'])).get(9999999)
+
+    db.variants.ensure_index('xpos')
+    db.variants.ensure_index('xstop')
+    db.variants.ensure_index('rsids')
+    db.variants.ensure_index('filter')
+    db.variants.ensure_index('genes')
+    db.variants.ensure_index('transcripts')
 
 
 def load_gene_models():
