@@ -184,3 +184,20 @@ def indent_pprint(obj):
 def mkdict(*dicts, **ret):
     for d in dicts: ret.update({k:True for k in d} if isinstance(d, (set,list)) else d)
     return ret
+
+def clamp(num, min_value, max_value):
+    return max(min_value, min(max_value, num))
+
+def histogram_from_counter(counter, num_bins=10, bin_range=None):
+    from math import floor
+    if bin_range is None:
+        bin_range = (min(counter.iterkeys()), max(counter.iterkeys()))
+    bin_width = float(bin_range[1] - bin_range[0]) / num_bins
+    bin_left_edges = [bin_range[0] + bin_width * i for i in range(num_bins)]
+    bin_counts = [0]*num_bins
+    for key, count in counter.iteritems():
+        bin_i = int(floor((key - bin_range[0]) / bin_width))
+        bin_i = clamp(bin_i, min_value=0, max_value=num_bins-1)
+        bin_counts[bin_i] += count
+    bin_mids = [left_edge + bin_width/2.0 for left_edge in bin_left_edges]
+    return {'left_edges': bin_left_edges, 'mids': bin_mids, 'counts': bin_counts}

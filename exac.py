@@ -241,11 +241,22 @@ def load_dbsnp_file():
 def precalculate_metrics():
     import numpy
     db = get_db()
-    print 'Reading %s variants...' % db.variants.count()
+    total_num_variants = db.variants.count()
+    # Mongo sorts the whole table if I request >5% of all documents, so I take only 4% for safety.
+    num_variants_to_sample = clamp(total_num_variants/25, min_value=int(10e3), max_value=min(int(1e6),total_num_variants))
+    print 'Sampling {:,} of {:,} variants...'.format(num_variants_to_sample, total_num_variants)
     metrics = defaultdict(Counter)
     qualities_by_af = defaultdict(Counter)
     start_time = time.time()
-    for variant_i, variant in enumerate(db.variants.find(projection=['quality_metrics', 'site_quality', 'allele_num', 'allele_count'])):
+    variant_iterator = db.variants.aggregate([
+        {'$sample': {'size':num_variants_to_sample}},
+        {'$project': {'quality_metrics':1, 'site_quality':1, 'allele_num':1, 'allele_count':1, '_id':0}},
+    ])
+    for variant_i, variant in enumerate(variant_iterator):
+        if variant_i % int(100e3) == 0:
+            num_keys = sum(len(cntr.viewkeys()) for cntr in metrics.values())
+            print 'Read {:,} variants. Took {:.0f} seconds. Made {:,} distinct keys'.format(variant_i, time.time() - start_time, num_keys)
+            start_time = time.time()
         if 'DP' in variant['quality_metrics'] and float(variant['quality_metrics']['DP']) == 0:
             print('Warning: variant with id {} has depth of 0'.format(variant['_id']))
         for metric, value in variant['quality_metrics'].iteritems():
@@ -263,46 +274,29 @@ def precalculate_metrics():
                 if variant_af < bucket_af:
                     qualities_by_af[bucket_af][qual] += 1
                     break
-        if variant_i % int(1e6) == 0:
-            print 'Read %s variants. Took %s seconds' % (variant_i, int(time.time() - start_time))
+    num_keys = sum(len(cntr.viewkeys()) for cntr in metrics.values())
+    print 'Read {:,} variants. Took {:.0f} seconds. Made {:,} distinct keys'.format(variant_i, time.time() - start_time, num_keys)
     print 'Done reading variants. Dropping metrics database... '
     db.metrics.drop()
+    start_time = time.time()
     print 'Dropped metrics database. Calculating metrics...'
     for metric in metrics:
+        print '... for metric', metric
         bin_range = None
         data = metrics[metric]
-        data = list(data.elements()) # TODO: avoid this.
-        if metric == 'DP':
-            data = map(numpy.log, data)
-        if metric == 'FS':
-            bin_range = (0, 20)
-        elif metric == 'VQSLOD':
-            bin_range = (-20, 20)
-        elif metric == 'InbreedingCoeff':
-            bin_range = (0, 1)
-        if bin_range is not None:
-            data = [x if (x > bin_range[0]) else bin_range[0] for x in data]
-            data = [x if (x < bin_range[1]) else bin_range[1] for x in data]
-        hist = numpy.histogram(data, bins=40, range=bin_range)
-        edges = hist[1]
-        # mids = [(edges[i]+edges[i+1])/2 for i in range(len(edges)-1)]
-        lefts = [edges[i] for i in range(len(edges)-1)]
-        db.metrics.insert({
-            'metric': metric,
-            'mids': lefts,
-            'hist': hist[0].tolist()
-        })
+        if metric == 'DP': data = {numpy.log(key): count for key,count in data.iteritems()}
+        if metric == 'FS': bin_range = (0, 20)
+        elif metric == 'VQSLOD': bin_range = (-20, 20)
+        elif metric == 'InbreedingCoeff': bin_range = (0, 1)
+        hist = histogram_from_counter(data, num_bins=40, bin_range=bin_range)
+        db.metrics.insert({'metric': metric, 'mids': hist['left_edges'], 'hist': hist['counts']})
     for af_bin in qualities_by_af:
-        qualities_as_list = qualities_by_af[af_bin].elements()
-        hist = numpy.histogram(map(numpy.log, qualities_as_list), bins=40)
-        edges = hist[1]
-        mids = [(edges[i]+edges[i+1])/2 for i in range(len(edges)-1)]
-        db.metrics.insert({
-            'metric': 'binned_%s' % af_bin,
-            'mids': mids,
-            'hist': hist[0].tolist()
-        })
+        print '... for site quality for af', af_bin
+        data = {numpy.log(key): count for key,count in qualities_by_af[af_bin].iteritems()}
+        hist = histogram_from_counter(data, num_bins=40)
+        db.metrics.insert({'metric': 'binned_%s' % af_bin, 'mids': hist['mids'], 'hist': hist['counts']})
     db.metrics.ensure_index('metric')
+    print '... (took {:.0f} seconds)'.format(time.time() - start_time)
     print 'Done pre-calculating metrics!'
 
 def create_users():
