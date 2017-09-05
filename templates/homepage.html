@@ -33,6 +33,7 @@
                 {% if config['SHOW_POWERED_BY'] %}
                 <h3>Powered by {{ config['DATASET_NAME'] }}</h3>
                 {% endif %}
+                <p>(This dataset includes 549 million variants on 62784 individuals.  <a href="/freeze3a/hg19">Click here to switch to Freeze3a on GRCh37/hg19.</a>)</p>
             </div>
         </div>
         <div class="row">
@@ -52,7 +53,7 @@
                     Gene: <a href="{{ url_for('.gene_page', gene_id='ENSG00000186951') }}">PPARA</a>,
                     Transcript: <a href="{{ url_for('.transcript_page', transcript_id='ENST00000407236') }}">ENST00000407236</a>,
                     Variant: <a href="{{ url_for('.variant_page', variant_id='22-16389447-A-G') }}">chr22-16389447-A-G</a>,
-                    Region: <a href="{{ url_for('.region_page', chrom='22', start=46546424, stop=46639653) }}">chr22:46546424-46639653</a></p>
+                    Region: <a href="{{ url_for('.region_page', chrom='22', start=46546424, stop=46639653) }}">chr22:46546424-46639653</a>
                 </p>
             </div>
         </div>
