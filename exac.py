@@ -115,8 +115,8 @@ def load_variants_file():
         # workaround for Pool.map() from <http://stackoverflow.com/a/1408476/1166306>
         pool.map_async(_load_variants_from_tabix_file_and_contig, get_tabix_file_contig_pairs(app.config['SITES_VCFS'])).get(9999999)
 
-    # TODO: use db.variants.create_indexes([pymongo.operations.IndexModel(key) for key in 'xpos xstop rsids filter genes transcripts'.split()])
-    for key in 'xpos xstop rsids filter genes transcripts'.split():
+    # TODO: use db.variants.create_indexes([pymongo.operations.IndexModel(key) for key in 'xpos xstop rsids filter'.split()])
+    for key in 'xpos xstop rsids filter'.split():
         print 'creating index on', key
         db.variants.create_index(key)
 
