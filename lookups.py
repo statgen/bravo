@@ -97,11 +97,6 @@ def get_coverage_for_bases(coverages, xstart, xstop=None):
 
 
 def get_awesomebar_suggestions(autocomplete_strings, query):
-    """
-    This generates autocomplete suggestions when user
-    query is the string that user types
-    If it is the prefix for a gene, return list of gene names
-    """
     regex = re.compile('^' + re.escape(query), re.IGNORECASE)
     results = (r for r in autocomplete_strings if regex.match(r))
     results = itertools.islice(results, 0, 20)
@@ -121,27 +116,6 @@ _regex_chr_pos_ref_alt = re.compile(_regex_pattern_chr_pos_ref_alt+'$')
 
 
 def get_awesomebar_result(db, query):
-    """
-    Similar to the above, but this is after a user types enter
-    We need to figure out what they meant - could be gene, variant, region
-
-    Return tuple of (datatype, identifier)
-    Where datatype is one of 'gene', 'variant', or 'region'
-    And identifier is one of:
-    - ensembl ID for gene
-    - variant ID string for variant (eg. 1-1000-A-T)
-    - region ID string for region (eg. 1-1000-2000)
-
-    Follow these steps:
-    - if query is an ensembl ID, return it
-    - if a gene symbol, return that gene's ensembl ID
-    - if an RSID, return that variant's string
-
-
-    Finally, note that we don't return the whole object here - only it's identifier.
-    This could be important for performance later
-
-    """
     query = query.strip()
     print 'Query: %s' % query
 
@@ -269,15 +243,6 @@ def remove_extraneous_information(variant):
     """Remove information not needed by gene.html, transcript.html or region.html"""
     remove_some_extraneous_information(variant)
     for key in ['genotype_depths','genotype_qualities','transcripts','genes','site_quality','quality_metrics',]: variant.pop(key, None)
-
-def get_most_important_variants_in_gene(db, gene_id):
-    variants = []
-    for variant in db.variants.find({'genes': gene_id, 'sometimes_missense_or_lof':1}, projection={'_id': False}):
-        variant['vep_annotations'] = [x for x in variant['vep_annotations'] if x['Gene'] == gene_id]
-        if variant['category'] in ['lof_variant', 'missense_variant']:
-            remove_extraneous_information(variant)
-            variants.append(variant)
-    return variants
 
 def get_num_variants_in_region(db, chrom, start, stop):
     xstart, xstop = Xpos.from_chrom_pos(chrom, start), Xpos.from_chrom_pos(chrom, stop)
