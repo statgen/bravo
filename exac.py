@@ -546,6 +546,19 @@ def _get_variants_csv_for_region(chrom, start, stop, filename):
     return resp
 
 
+@bp.route('/api/summary/region/<chrom>-<start>-<stop>')
+@require_agreement_to_terms_and_store_destination
+def region_summary_api(chrom, start, stop):
+    db = get_db()
+    try:
+        start, stop = int(start), int(stop)
+        ret = lookups.get_summary_for_region(db, chrom, start, stop)
+        return jsonify(ret)
+    except Exception as e:
+        print 'Failed with:', chrom, start, stop, ';Error=', traceback.format_exc()
+        abort(404)
+
+
 @bp.route('/api/variants_for_table', methods=['POST'])
 @require_agreement_to_terms_and_store_destination
 def variants_table_api():

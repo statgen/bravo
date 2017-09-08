@@ -53,6 +53,7 @@ function create_gene_plot() {
     genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#gene-plot-clip)');
 }
 
+create_summary_table();
 create_coverage_plot();
 $(function() {
     populate_variant_table_filters();

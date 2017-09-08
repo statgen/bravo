@@ -469,3 +469,24 @@ function initiate_mouse_guide() {
         .on('mouseleave', mouse_guide.hide)
         .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recives mousemove and bubbles it up to `.genome_g`
 }
+
+
+
+
+function create_summary_table() {
+    var summary_XHR = $.getJSON(window.model.url_prefix + fmt('api/summary/region/{0}-{1}-{2}', window.model.chrom, window.model.start, window.model.stop));
+    $(function() {
+        summary_XHR
+            .done(function(summary) {
+                $('#summary_table').DataTable({
+                    paging: false, searching: false, info: false, ordering: false,
+                    data: Object.entries(summary),
+                    columns: [
+                        {title: 'variant type'},
+                        {title: 'count', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}
+                    ],
+                });
+            })
+            .fail(function() { console.error('summary XHR failed'); });
+    });
+}
