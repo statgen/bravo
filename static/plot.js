@@ -100,7 +100,7 @@ function populate_coverage_plot(data_g, genome_g) {
             return window.model.plot.x(d.start);
         })
         .attr("width", function(d) {
-            return window.model.plot.x(d.end) - window.model.plot.x(d.start) + 1;
+            return window.model.plot.x(d.end + 1) - window.model.plot.x(d.start) + 1;
         })
         .attr("y", function(d) {
             return y(d[metric]) || 0;
