@@ -287,7 +287,7 @@ def get_summary_for_region(db, chrom, start_pos, end_pos):
 
     ret = {
         'total': num_total_variants,
-        'lof': num_lof_variants,
+        'LoF': num_lof_variants,
         'missense': num_mis_variants,
         'synonymous': num_syn_variants,
         'indel': num_indels,

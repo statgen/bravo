@@ -478,9 +478,10 @@ function create_summary_table() {
     $(function() {
         summary_XHR
             .done(function(summary) {
+                var data = _.sortBy(Object.entries(summary), function(elem) { return elem[1]; });
                 $('#summary_table').DataTable({
                     paging: false, searching: false, info: false, ordering: false,
-                    data: Object.entries(summary),
+                    data: data,
                     columns: [
                         {title: 'variant type'},
                         {title: 'count', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}
