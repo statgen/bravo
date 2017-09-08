@@ -3,7 +3,7 @@
     {% for gene in consequences[consequence] %}
         <li>
             {% if gene %}
-                <a class="gene-name" href="/gene/{{ gene }}">
+                <a class="gene-name" href="{{ url_for('.gene_page', gene_id=gene) }}">
                 {% if consequences[consequence][gene][0].SYMBOL %}
                     {{ consequences[consequence][gene][0].SYMBOL }}
                 {% else %}
@@ -15,7 +15,7 @@
                 {% with annotation = consequences[consequence][gene][0] %}
                     {% if gene %}-{% endif %}
                     {% if annotation.Feature[:4] == "ENST" %}
-                        <a href="/transcript/{{ annotation.Feature }}">
+                        <a href="{{ url_for('.transcript_page', transcript_id=annotation.Feature) }}">
                     {% else %}
                         <a href="http://useast.ensembl.org/Multi/Search/Results?q={{ annotation.Feature }}">
                     {% endif %}
@@ -30,7 +30,7 @@
                 <ul class="list_of_transcripts_in_gene_csq">
                     {% for annotation in consequences[consequence][gene] %}
                         <li>
-                            <a href="/transcript/{{ annotation.Feature }}">
+                            <a href="{{ url_for('.transcript_page', transcript_id=annotation.Feature) }}">
                                 {{ annotation.Feature }}
                                 {% if annotation.CANONICAL == 'YES' %}
                                     *
@@ -45,7 +45,7 @@
                     <ul class="collapse list_of_transcripts_in_gene_csq">
                         {% for annotation in consequences[consequence][gene] %}
                             <li>
-                                <a href="/transcript/{{ annotation.Feature }}">
+                                <a href="{{ url_for('.transcript_page', transcript_id=annotation.Feature) }}">
                                     {{ annotation.Feature }}
                                     {% if annotation.CANONICAL == 'YES' %}
                                         *

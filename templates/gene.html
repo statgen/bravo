@@ -70,7 +70,7 @@
                     <dd>{{ num_variants_in_gene }}</dd>
                     <dt class="hidden-xs">Region</dt>
                     <dd class="hidden-xs">
-                        <a href="/region/{{ gene.chrom }}-{{ gene.start - 1 }}-{{ gene.stop - 1 }}" target="_blank">
+                        <a href="{{ url_for('.region_page', region_id='{}-{}-{}'.format(gene.chrom, gene.start-1, gene.stop-1)) }}" target="_blank">
                             {{ gene.chrom }}:{{ gene.start - 1 }}-{{ gene.stop - 1 }}
                         </a>
                     </dd>
@@ -156,7 +156,7 @@
                     <ul class="dropdown-menu" role="menu" aria-labelledby="transcript_dropdown">
                         {% for transcript in transcripts_in_gene %}
                             <li role="presentation">
-                                <a role="menuitem" tabindex="-1" href="/transcript/{{ transcript.transcript_id }}" target="_blank">
+                                <a role="menuitem" tabindex="-1" href="{{ url_for('.transcript_page', transcript_id=transcript.transcript_id) }}" target="_blank">
                                     {{ transcript.transcript_id }}
                                     {% if transcript.transcript_id == gene.canonical_transcript %}
                                         *

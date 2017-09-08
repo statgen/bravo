@@ -54,7 +54,7 @@
                     {% for allele in variant.orig_alt_alleles %}
                         {% if allele != variant.variant_id %}
                             <li>
-                                <a href="/variant/{{ allele }}">{{ allele }}</a>
+                                <a href="{{ url_for('variant_page', variant_id=allele) }}">{{ allele }}</a>
                             </li>
                         {% endif %}
                     {% endfor %}

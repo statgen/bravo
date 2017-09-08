@@ -46,7 +46,7 @@
               data-tooltip="<%= variant.ref %> / <%= variant.alt %>"
                 <% } %>
                 >
-                <a href="/variant/<%= variant.chrom %>-<%= variant.pos %>-<%= variant.ref %>-<%= variant.alt %>" target="_blank">
+                <a href="<%= window.model.url_prefix %>variant/<%= variant.chrom %>-<%= variant.pos %>-<%= variant.ref %>-<%= variant.alt %>" target="_blank">
                 <% if (variant.ref.length > 20) { %>
                     <%= variant.ref.slice(0,20) %>...
                 <% } else { %>
