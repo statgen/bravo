@@ -678,10 +678,7 @@ def download_full_vcf():
 
 @bp.route('/about')
 def about_page():
-    db = get_db()
-    num_variants = db.variants.count()
-    return render_template('about.html',
-                           num_variants=num_variants)
+    return render_template('about.html')
 
 @bp.route('/terms')
 def terms_page():

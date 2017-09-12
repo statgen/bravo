@@ -33,7 +33,7 @@
                 {% if config['SHOW_POWERED_BY'] %}
                 <h3>Powered by {{ config['DATASET_NAME'] }}</h3>
                 {% endif %}
-                <p>(This dataset includes 463 million variants on 62784 individuals.  <a href="/freeze3a/hg19">Click here to switch to Freeze3a on GRCh37/hg19.</a>)</p>
+                <p>(This dataset includes {{ config['NUM_VARIANTS'] }} variants on {{ config['NUM_SAMPLES'] }} individuals.  <a href="/freeze3a/hg19">Click here to switch to Freeze3a on GRCh37/hg19.</a>)</p>
             </div>
         </div>
         <div class="row">

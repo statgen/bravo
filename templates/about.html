@@ -6,7 +6,7 @@
                 <h1 style="margin-bottom: 1em">About {{ config['BROWSER_NAME'] }}</h1>
                 <p>
                   This variant browser currently shows chromosome locations, alleles, VEP functional annotations,
-                  and allele frequencies for {{ "{:,}".format(num_variants) }} variants observed in {{ "{:,}".format(config['NUM_SAMPLES']) }} individuals
+                  and allele frequencies for {{ config['NUM_VARIANTS'] }} variants observed in {{ "{:,}".format(config['NUM_SAMPLES']) }} individuals
                   sequenced in <a href="http://nhlbiwgs.org/">NHLBI's TOPMed program</a>.
                 </p>
                 <p>
