@@ -5,6 +5,7 @@ import pysam
 import json
 import time
 import pymongo
+import boltons.iterutils
 
 SEARCH_LIMIT = 10000
 
@@ -179,6 +180,50 @@ def get_awesomebar_result(db, query):
     return 'not_found', {'query': query}
 
 
+class IntervalSet(object):
+    EXON_PADDING = 20
+
+    def __init__(self, chrom, list_of_pairs):
+        self._chrom = chrom
+        self._list_of_pairs = list_of_pairs
+    @classmethod
+    def from_chrom_start_stop(cls, chrom, start, stop):
+        return cls(chrom, [[start, stop]])
+    @classmethod
+    def from_gene(cls, db, gene_id):
+        # TODO: include 1kb upstream
+        exons = db.exons.find({'gene_id': gene_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})
+        return cls._from_exons(exons)
+    @classmethod
+    def from_transcript(cls, db, transcript_id):
+        # TODO: include 1kb upstream
+        exons = db.exons.find({'transcript_id': transcript_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})
+        return cls._from_exons(exons)
+    @classmethod
+    def  _from_exons(cls, exons):
+        exons = sorted(list(exons), key=lambda exon: exon['start'])
+        assert len(exons) > 0
+        assert boltons.iterutils.same(exon['chrom'] for exon in exons)
+        regions = []
+        for exon in exons:
+            assert exon['start'] < exon['stop']
+            start, stop = exon['start']-cls.EXON_PADDING, exon['stop']+cls.EXON_PADDING
+            if not regions or regions[-1][1] <= start:
+                regions.append([start, stop])
+            else:
+                regions[-1][1] = stop
+        return cls(exons[0]['chrom'], regions)
+
+    def to_obj(self):
+        return {'chrom': self._chrom, 'list_of_pairs': self._list_of_pairs}
+    def to_mongo(self):
+        return {'$or': self.to_list_of_mongos()}
+    def to_list_of_mongos(self):
+        return [{'xpos': {'$gte': Xpos.from_chrom_pos(self._chrom, start), '$lte': Xpos.from_chrom_pos(self._chrom, stop)}} for (start,stop) in self._list_of_pairs]
+    def __str__(self):
+        return 'chr{}:{}'.format(self._chrom, ','.join('{}-{}'.format(*pair) for pair in self._list_of_pairs))
+
+
 def get_genes_in_region(db, chrom, start, stop):
     """
     Genes that overlap a region
@@ -192,19 +237,13 @@ def get_genes_in_region(db, chrom, start, stop):
     return list(genes)
 
 
-def get_variants_in_region(db, chrom, start, stop):
-    """
-    Variants that overlap a region
-    Unclear if this will include CNVs
-    """
-    xstart = Xpos.from_chrom_pos(chrom, start)
-    xstop = Xpos.from_chrom_pos(chrom, stop)
-    variants = list(db.variants.find({
-        'xpos': {'$lte': xstop, '$gte': xstart}
-    }, projection={'_id': False}, limit=SEARCH_LIMIT))
-    for variant in variants:
-        remove_extraneous_information(variant)
-    return list(variants)
+def get_variants_in_intervalset(db, intervalset):
+    """Variants that overlap an intervalset"""
+    for mongo_match_region in intervalset.to_list_of_mongos():
+        variants = db.variants.find(mongo_match_region, projection={'_id': False})
+        for variant in variants:
+            remove_extraneous_information(variant)
+            yield variant
 
 
 def get_metrics(db, variant):
@@ -256,55 +295,51 @@ def get_exons_in_transcript(db, transcript_id):
     return sorted(list(db.exons.find({'transcript_id': transcript_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])
 
 def get_exons_in_gene(db, gene_id):
-    """
-    Returns the "exons", sorted by position.
-    """
     return sorted(list(db.exons.find({'gene_id': gene_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])
 
 
-def get_summary_for_region(db, chrom, start_pos, end_pos):
+def get_summary_for_intervalset(db, intervalset):
+    # TODO: this is an order of magnitude faster than using intervalset.to_mongo() and I have no idea why. Try query planner?
     # TODO: use an aggregation pipeline to get all of these at once. (or joint-index xpos+csqidx)
     st = time.time()
-    _threshold_lof = len(Consequence._lof_csqs)
-    _threshold_mis = _threshold_lof + len(Consequence._missense_csqs)
-    _threshold_syn = _threshold_mis + len(Consequence._synonymous_csqs)
-
-    mongo_match_region = {'xpos': {'$gte': Xpos.from_chrom_pos(chrom, start_pos), '$lte': Xpos.from_chrom_pos(chrom, end_pos)}}
     mongo_match_pass = {'filter': 'PASS'}
-    mongo_match_lof = {'worst_csqidx': {'$lt': _threshold_lof}}
-    mongo_match_mis = {'worst_csqidx': {'$gte': _threshold_lof, '$lt':_threshold_mis}}
-    mongo_match_syn = {'worst_csqidx': {'$gte': _threshold_mis, '$lt':_threshold_syn}}
-    mongo_match_indel = {'$or': [
-        {'ref': {'$regex': r'(^$|-|\.|..)'}},
-        {'alt': {'$regex': r'(^$|-|\.|..)'}},
-    ]}
+    mongo_match_lof = {'worst_csqidx': {'$lt': Consequence.as_obj['n_lof']}}
+    mongo_match_mis = {'worst_csqidx': {'$gte': Consequence.as_obj['n_lof'], '$lt':Consequence.as_obj['n_lof_mis']}}
+    mongo_match_syn = {'worst_csqidx': {'$gte': Consequence.as_obj['n_lof_mis'], '$lt':Consequence.as_obj['n_lof_mis_syn']}}
+    mongo_match_indel = {'$or': [{'ref': {'$regex': r'(^$|-|\.|..)'}},{'alt': {'$regex': r'(^$|-|\.|..)'}},]}
 
-    num_total_variants=db.variants.find(mkdict(mongo_match_region, mongo_match_pass)).count()
-    num_lof_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_lof)).count()
-    num_mis_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_mis)).count()
-    num_syn_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_syn)).count()
-    num_indels =       db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_indel)).count()
+    num_total_variants = 0
+    num_lof_variants = 0
+    num_mis_variants = 0
+    num_syn_variants = 0
+    num_indels = 0
+    for mongo_match_region in intervalset.to_list_of_mongos():
+        num_total_variants+=db.variants.find(mkdict(mongo_match_region, mongo_match_pass)).count()
+        num_lof_variants += db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_lof)).count()
+        num_mis_variants += db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_mis)).count()
+        num_syn_variants += db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_syn)).count()
+        num_indels +=       db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_indel)).count()
 
-    ret = {
-        'total': num_total_variants,
-        'LoF': num_lof_variants,
-        'missense': num_mis_variants,
-        'synonymous': num_syn_variants,
-        'indel': num_indels,
-    }
+    ret = [
+        ['LoF', num_lof_variants],
+        ['missense', num_mis_variants],
+        ['synonymous', num_syn_variants],
+        ['indel', num_indels],
+        ['total', num_total_variants],
+    ]
     print '## {:0.3f} sec: counted variants: {}'.format(time.time() - st, ret)
     return ret
 
-def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, order, filter_info, skip, length):
-    # 1. match what the user asked for - using [chrom, start_pos, end_pos, filter_info]
+def get_variants_subset_for_intervalset(db, intervalset, columns_to_return, order, filter_info, skip, length):
+    # 1. match what the user asked for - using [intervalset, filter_info]
     # 2. project to just keys for sorting, sort, and get `_id`s - using [order]
     # 3. get `n_filtered` and `length`-many `_id`s - using [skip, length]
     # 4. look up those `_id`s and project - using [columns_to_return]
     st = time.time()
 
-    mongo_match = [{'xpos': {'$gte': Xpos.from_chrom_pos(chrom, start_pos), '$lte': Xpos.from_chrom_pos(chrom, end_pos)}}]
-    if isinstance(filter_info.get('pos_ge',None),int): mongo_match.append({'xpos': {'$gte': Xpos.from_chrom_pos(chrom, filter_info['pos_ge'])}})
-    if isinstance(filter_info.get('pos_le',None),int): mongo_match.append({'xpos': {'$lte': Xpos.from_chrom_pos(chrom, filter_info['pos_le'])}})
+    mongo_match = [intervalset.to_mongo()]
+    if isinstance(filter_info.get('pos_ge',None),int): mongo_match.append({'xpos': {'$gte': Xpos.from_chrom_pos(intervalset._chrom, filter_info['pos_ge'])}})
+    if isinstance(filter_info.get('pos_le',None),int): mongo_match.append({'xpos': {'$lte': Xpos.from_chrom_pos(intervalset._chrom, filter_info['pos_le'])}})
     if filter_info.get('filter_value',None) is not None:
         if filter_info['filter_value'] == 'PASS': mongo_match.append({'filter': 'PASS'})
         elif filter_info['filter_value'] == 'not PASS': mongo_match.append({'filter': {'$ne': 'PASS'}})
@@ -315,8 +350,8 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         assert 0 <= filter_info['maf_le'] <= 0.5
         if filter_info['maf_le'] < 0.5: mongo_match.append({'$or': [{'allele_freq': {'$lte': filter_info['maf_le']}},{'allele_freq': {'$gte': 1-filter_info['maf_le']}}]})
     if filter_info.get('category',None) is not None:
-        if filter_info['category'].strip() == 'LoF': mongo_match.append({'worst_csqidx': {'$lt': len(Consequence._lof_csqs)}})
-        elif filter_info['category'].strip() == 'LoF+Missense': mongo_match.append({'worst_csqidx': {'$lt': len(Consequence._lof_csqs)+len(Consequence._missense_csqs)}})
+        if filter_info['category'].strip() == 'LoF': mongo_match.append({'worst_csqidx': {'$lt': Consequence.as_obj['n_lof']}})
+        elif filter_info['category'].strip() == 'LoF+Missense': mongo_match.append({'worst_csqidx': {'$lt': Consequence.as_obj['n_lof_mis']}})
 
     cols = {
         # after pre-processing, these will look like:
@@ -382,3 +417,20 @@ def get_variants_for_table(db, chrom, start_pos, end_pos, columns_to_return, ord
         'recordsTotal': n_filtered,
         'data': variants
     }
+
+
+def get_variants_csv_str_for_intervalset(db, intervalset):
+    import io, csv
+    out = io.BytesIO()
+    writer = csv.writer(out)
+    fields = 'chrom pos ref alt rsids filter genes allele_num allele_count allele_freq hom_count site_quality quality_metrics.DP cadd_phred'.split()
+    writer.writerow(fields)
+    variants = get_variants_in_intervalset(db, intervalset)
+    for v in variants:
+        row = []
+        for field in fields:
+            if '.' in field: parts = field.split('.', 1); row.append(v.get(parts[0], {}).get(parts[1], ''))
+            elif field in ['rsids','genes']: row.append('|'.join(v.get(field, [])))
+            else: row.append(v.get(field, ''))
+        writer.writerow(row)
+    return out.getvalue()

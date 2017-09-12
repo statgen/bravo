@@ -26,8 +26,7 @@ function get_variant_id(variant) { return ''+variant.pos+'-'+variant.ref+'-'+var
 
 
 function create_coverage_plot() {
-    var coverage_XHR = $.getJSON(window.model.url_prefix + fmt('api/coverage/region/{0}-{1}-{2}', window.model.chrom, window.model.start, window.model.stop));
-
+    var coverage_XHR = $.getJSON(window.model.url_prefix + 'api/coverage' + window.model.url_suffix);
     $(function() {
         bootstrap_plot();
 
@@ -237,6 +236,7 @@ function change_variant_plot(variants) {
     var selection = d3.select('#variant_track .data_g')
         .selectAll('.variant-circle')
         .data(variants, get_variant_id); // define data-joining 2nd method to allow move-to-front
+    window._debug.selection = selection;
     var variant_circles = selection.enter()
         .append('ellipse')
         .attr('class', 'variant-circle')
@@ -276,6 +276,22 @@ function change_variant_plot(variants) {
     variant_plot_default_style(variant_circles);
     selection.exit()
         .remove()
+    order_selection_by_data_reversed(selection);
+}
+
+function order_selection_by_data_reversed(selection){
+    // this is like selection.order() but it uses the reverse order.
+    // it puts elements from the beginning of the data at the end in the DOM, which is rendered last (on top).
+    var n_datasets = selection.length;
+    for(var dataset_idx=0;dataset_idx<n_datasets;dataset_idx++) {
+        var elems=selection[dataset_idx];
+        for(var idx=1;idx<elems.length;idx++) {
+            var better = elems[idx-1];
+            var lesser = elems[idx];
+            if (better && lesser && lesser.nextSibling !== better)
+                better.parentNode.insertBefore(lesser, better); // put lesser before better
+        }
+    }
 }
 
 function variant_plot_default_style(selection) {
@@ -393,7 +409,7 @@ function create_variant_table() {
         searching: false,
 
         ajax: {
-            url: window.model.url_prefix+'api/variants_for_table',
+            url: window.model.url_prefix + 'api/variants' + window.model.url_suffix,
             type: 'POST',
             data: function(args) { /* modify request form parameters */
                 return {
@@ -474,14 +490,13 @@ function initiate_mouse_guide() {
 
 
 function create_summary_table() {
-    var summary_XHR = $.getJSON(window.model.url_prefix + fmt('api/summary/region/{0}-{1}-{2}', window.model.chrom, window.model.start, window.model.stop));
+    var summary_XHR = $.getJSON(window.model.url_prefix + 'api/summary' + window.model.url_suffix);
     $(function() {
         summary_XHR
             .done(function(summary) {
-                var data = _.sortBy(Object.entries(summary), function(elem) { return elem[1]; });
                 $('#summary_table').DataTable({
                     paging: false, searching: false, info: false, ordering: false,
-                    data: data,
+                    data: summary,
                     columns: [
                         {title: 'variant type'},
                         {title: 'count (PASS-only)', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}

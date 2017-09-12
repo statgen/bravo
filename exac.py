@@ -8,6 +8,7 @@ import pysam
 import gzip
 from parsing import *
 import lookups
+from lookups import IntervalSet
 import random
 from utils import *
 from pycoverage import *
@@ -384,6 +385,8 @@ def variant_page(variant_id):
         abort(404)
 
 
+# TODO: how to make these simpler?  what is their core function?
+#   - *.html: intervalset, csq, list of lists of exon-like features to display (region:gene-unions, gene:transcripts, trans:self)
 @bp.route('/gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
 def gene_page(gene_id):
@@ -391,26 +394,13 @@ def gene_page(gene_id):
     try:
         print 'Rendering gene: %s' % gene_id
         gene = lookups.get_gene(db, gene_id)
-        if gene is None:
-            abort(404)
-        allowed_chroms = [str(chrom) for chrom in range(1,1+22)] + ['X']
-        if gene['chrom'] not in allowed_chroms:
-            return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
-                app.config['DATASET_NAME'], gene['chrom']))
-        num_variants = lookups.get_num_variants_in_region(db, gene['chrom'], gene['start'], gene['stop'])
         exons = lookups.get_exons_in_gene(db, gene_id)
-
+        intervalset = IntervalSet.from_gene(db, gene_id).to_obj()
         return render_template(
             'gene.html',
-            chrom=gene['chrom'],
-            start=gene['start'],
-            stop=gene['stop'],
-            num_variants=num_variants,
-            csq = {'order':Consequence.csqs,
-                   'n_lof':len(Consequence._lof_csqs),
-                   'n_lof_mis':len(Consequence._lof_csqs)+len(Consequence._missense_csqs),
-                   'n_lof_mis_syn':len(Consequence._lof_csqs)+len(Consequence._missense_csqs)+len(Consequence._synonymous_csqs),
-            },
+            chrom=gene['chrom'], start=gene['start'], stop=gene['stop'],
+            intervalset=intervalset,
+            csq = Consequence.as_obj,
             gene=gene,
             exons=exons,
         )
@@ -426,25 +416,13 @@ def transcript_page(transcript_id):
         print 'Rendering transcript: %s' % transcript_id
         transcript = lookups.get_transcript(db, transcript_id)
         gene = lookups.get_gene(db, transcript['gene_id'])
-        allowed_chroms = [str(chrom) for chrom in range(1,1+22)] + ['X']
-        if gene['chrom'] not in allowed_chroms:
-            return error_page("Sorry, {} doesn't currently contain chromosome {}".format(
-                app.config['DATASET_NAME'], gene['chrom']))
-        gene['transcripts'] = lookups.get_transcripts_in_gene(db, transcript['gene_id'])
-        num_variants = lookups.get_num_variants_in_region(db, transcript['chrom'], transcript['start'], transcript['stop'])
         exons = lookups.get_exons_in_transcript(db, transcript_id)
-
+        intervalset = IntervalSet.from_transcript(db, transcript_id).to_obj()
         return render_template(
             'transcript.html',
-            chrom=transcript['chrom'],
-            start=transcript['start'],
-            stop=transcript['stop'],
-            num_variants=num_variants,
-            csq = {'order':Consequence.csqs,
-                   'n_lof':len(Consequence._lof_csqs),
-                   'n_lof_mis':len(Consequence._lof_csqs)+len(Consequence._missense_csqs),
-                   'n_lof_mis_syn':len(Consequence._lof_csqs)+len(Consequence._missense_csqs)+len(Consequence._synonymous_csqs),
-            },
+            chrom=transcript['chrom'], start=transcript['start'], stop=transcript['stop'],
+            intervalset=intervalset,
+            csq = Consequence.as_obj,
             gene=gene,
             transcript=transcript,
             exons=exons,
@@ -470,19 +448,13 @@ def region_page(chrom, start, stop):
             stop += 20
 
         genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
-        num_variants = lookups.get_num_variants_in_region(db, chrom, start, stop)
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop).to_obj()
         return render_template(
             'region.html',
-            chrom=chrom,
-            start=start,
-            stop=stop,
+            chrom=chrom, start=start, stop=stop,
+            csq = Consequence.as_obj,
+            intervalset=intervalset,
             genes_in_region=genes_in_region,
-            num_variants=num_variants,
-            csq = {'order':Consequence.csqs,
-                   'n_lof':len(Consequence._lof_csqs),
-                   'n_lof_mis':len(Consequence._lof_csqs)+len(Consequence._missense_csqs),
-                   'n_lof_mis_syn':len(Consequence._lof_csqs)+len(Consequence._missense_csqs)+len(Consequence._synonymous_csqs),
-            },
         )
     except Exception, e:
         print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
@@ -494,134 +466,143 @@ def region_page(chrom, start, stop):
 def download_gene_variants(gene_id):
     db = get_db()
     try:
-        gene = lookups.get_gene(db, gene_id)
-        resp = _get_variants_csv_for_region(gene['chrom'], gene['start'], gene['stop'], '{}.csv'.format(gene_id))
-        return resp
+        intervalset = IntervalSet.from_gene(get_db(), gene_id)
+        return _get_variants_csv_for_intervalset(intervalset, '{}.csv'.format(gene_id))
     except Exception as e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
-
 @bp.route('/download/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def download_transcript_variants(transcript_id):
     db = get_db()
     try:
-        transcript = lookups.get_transcript(db, transcript_id)
-        resp = _get_variants_csv_for_region(transcript['chrom'], transcript['start'], transcript['stop'], '{}.csv'.format(transcript_id))
-        return resp
+        intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
+        return _get_variants_csv_for_intervalset(intervalset, '{}.csv'.format(transcript_id))
     except Exception as e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
-
 @bp.route('/download/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def download_region_variants(chrom, start, stop):
-    db = get_db()
     try:
-        start, stop = int(start), int(stop)
-        resp = _get_variants_csv_for_region(chrom, start, stop, 'chr{}-{}-{}.csv'.format(chrom, start, stop))
-        return resp
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
+        return _get_variants_csv_for_intervalset(intervalset, 'chr{}-{}-{}.csv'.format(chrom, start, stop))
     except Exception as e:
         print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
-
-def _get_variants_csv_for_region(chrom, start, stop, filename):
-    import io, csv
-    db = get_db()
-    out = io.BytesIO()
-    writer = csv.writer(out)
-    fields = 'chrom pos ref alt rsids filter genes allele_num allele_count allele_freq hom_count site_quality quality_metrics.DP cadd_phred'.split()
-    writer.writerow(fields)
-    variants = lookups.get_variants_in_region(db, chrom, start, stop)
-    for v in variants:
-        row = []
-        for field in fields:
-            if '.' in field: parts = field.split('.', 1); row.append(v.get(parts[0], {}).get(parts[1], ''))
-            elif field in ['rsids','genes']: row.append('|'.join(v.get(field, [])))
-            else: row.append(v.get(field, ''))
-        writer.writerow(row)
-    resp = make_response(out.getvalue())
+def _get_variants_csv_for_intervalset(intervalset, filename):
+    resp = make_response(lookups.get_variants_csv_str_for_intervalset(get_db(), intervalset))
     resp.headers['Content-Disposition'] = 'attachment; filename={}'.format(filename)
     resp.mimetype='text/csv'
     return resp
 
 
+@bp.route('/api/summary/gene/<gene_id>')
+@require_agreement_to_terms_and_store_destination
+def gene_summary_api(gene_id):
+    try:
+        intervalset = IntervalSet.from_gene(get_db(), gene_id)
+        return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
+    except Exception as e:
+        print 'Failed with:', gene_id, ';Error=', traceback.format_exc()
+        abort(404)
+@bp.route('/api/summary/transcript/<transcript_id>')
+@require_agreement_to_terms_and_store_destination
+def transcript_summary_api(transcript_id):
+    try:
+        intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
+        return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
+    except Exception as e:
+        print 'Failed with:', transcript_id, ';Error=', traceback.format_exc()
+        abort(404)
 @bp.route('/api/summary/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def region_summary_api(chrom, start, stop):
-    db = get_db()
     try:
-        start, stop = int(start), int(stop)
-        ret = lookups.get_summary_for_region(db, chrom, start, stop)
-        return jsonify(ret)
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
+        return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
     except Exception as e:
         print 'Failed with:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
 
 
-@bp.route('/api/variants_for_table', methods=['POST'])
+@bp.route('/api/variants/gene/<gene_id>', methods=['POST'])
 @require_agreement_to_terms_and_store_destination
-def variants_table_api():
-    db = get_db()
+def gene_variants_subset_api(gene_id):
     try:
-        args = json.loads(request.form['args'])
-        assert isinstance(args['draw'], int)
-
-        filter_info = json.loads(request.form['filter_info'])
-        import pprint; pprint.pprint(filter_info)
-        chrom = filter_info['chrom'].encode()
-        start_pos = int(filter_info['start'])
-        end_pos = int(filter_info['stop'])
-        xstart = Xpos.from_chrom_pos(chrom, start_pos)
-        xend = Xpos.from_chrom_pos(chrom, end_pos)
-
-        ret = lookups.get_variants_for_table(
-            db,
-            chrom, start_pos, end_pos,
-            args['columns'], args['order'], filter_info,
-            skip=args['start'], length=args['length']
-        )
-        ret['draw'] = args['draw']
-        return jsonify(ret)
+        intervalset = IntervalSet.from_gene(get_db(), gene_id)
+        return _get_variants_subset_response_for_intervalset(intervalset)
     except Exception as e:
         print 'Failed with:', request.form, ';Error=', traceback.format_exc()
         abort(404)
-
-@bp.route('/api/variants_in_transcript/<transcript_id>')
+@bp.route('/api/variants/transcript/<transcript_id>', methods=['POST'])
 @require_agreement_to_terms_and_store_destination
-def variants_transcript_api(transcript_id):
-    db = get_db()
+def transcript_variants_subset_api(transcript_id):
     try:
-        variants_in_transcript = lookups.get_variants_in_transcript(db, transcript_id)
-        return jsonify(variants_in_transcript)
+        intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
+        return _get_variants_subset_response_for_intervalset(intervalset)
+    except Exception as e:
+        print 'Failed with:', request.form, ';Error=', traceback.format_exc()
+        abort(404)
+@bp.route('/api/variants/region/<chrom>-<start>-<stop>', methods=['POST'])
+@require_agreement_to_terms_and_store_destination
+def region_variants_subset_api(chrom, start, stop):
+    try:
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
+        return _get_variants_subset_response_for_intervalset(intervalset)
+    except Exception as e:
+        print 'Failed with:', request.form, ';Error=', traceback.format_exc()
+        abort(404)
+def _get_variants_subset_response_for_intervalset(intervalset):
+    db = get_db()
+    args = json.loads(request.form['args'])
+    assert isinstance(args['draw'], int)
+    filter_info = json.loads(request.form['filter_info'])
+    import pprint; pprint.pprint(filter_info)
+    ret = lookups.get_variants_subset_for_intervalset(
+        db,
+        intervalset,
+        args['columns'], args['order'], filter_info,
+        skip=args['start'], length=args['length']
+    )
+    ret['draw'] = args['draw']
+    return jsonify(ret)
+
+
+@bp.route('/api/coverage/gene/<gene_id>')
+@require_agreement_to_terms_and_store_destination
+def gene_coverage_api(gene_id):
+    try:
+        intervalset = IntervalSet.from_gene(get_db(), gene_id)
+        return _get_coverage_response_for_intervalset(intervalset)
+    except Exception as e:
+        print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
+        abort(404)
+@bp.route('/api/coverage/transcript/<transcript_id>')
+@require_agreement_to_terms_and_store_destination
+def transcript_coverage_api(transcript_id):
+    try:
+        intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
+        return _get_coverage_response_for_intervalset(intervalset)
     except Exception as e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
-
-@bp.route('/api/variants_in_region/<chrom>-<start>-<stop>')
-@require_agreement_to_terms_and_store_destination
-def variants_region_api(chrom, start, stop):
-    db = get_db()
-    try:
-        start, stop = int(start), int(stop)
-        variants_in_region = lookups.get_variants_in_region(db, chrom, start, stop)
-        return jsonify(variants_in_region)
-    except Exception as e:
-        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
-        abort(404)
-
 @bp.route('/api/coverage/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def region_coverage_api(chrom, start, stop):
-    db = get_db()
     try:
-        start, stop = int(start), int(stop)
-        xstart, xstop = Xpos.from_chrom_pos(chrom, start), Xpos.from_chrom_pos(chrom, stop)
-        coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
-        return jsonify(coverage_stats)
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
+        return _get_coverage_response_for_intervalset(intervalset)
     except Exception as e:
-        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
+        print 'Failed on gene:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
+def _get_coverage_response_for_intervalset(intervalset):
+    # TODO: handling length explicitly will require serious changes to pycoverage
+    iso = intervalset.to_obj()
+    xstart = Xpos.from_chrom_pos(iso['chrom'], iso['list_of_pairs'][0][0])
+    xstop = Xpos.from_chrom_pos(iso['chrom'], iso['list_of_pairs'][-1][1])
+    coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
+    return jsonify(coverage_stats)
 
 
 @bp.route('/multi_variant_rsid/<rsid>')

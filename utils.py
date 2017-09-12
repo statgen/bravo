@@ -83,6 +83,12 @@ class Consequence(object):
     csqs = _lof_csqs + _missense_csqs + _synonymous_csqs + _other_csqs
     assert len(csqs) == len(set(csqs)) # No dupes!
     csqidxs = {csq:i for i,csq in enumerate(csqs)}
+    as_obj = {
+        'order':csqs,
+        'n_lof':len(_lof_csqs),
+        'n_lof_mis':len(_lof_csqs)+len(_missense_csqs),
+        'n_lof_mis_syn':len(_lof_csqs)+len(_missense_csqs)+len(_synonymous_csqs),
+    }
 
 class Xpos:
     CHROMOSOME_STRINGS = ['chr%s' % x for x in range(1, 22+1)] + ['chrX', 'chrY', 'chrM']

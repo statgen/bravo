@@ -35,7 +35,8 @@ class Coverage(object):
 
     def getCoverageX(self, xstart, xend):
         contig, start = Xpos.to_chrom_pos(xstart)
-        _, end = Xpos.to_chrom_pos(xend)
+        contig2, end = Xpos.to_chrom_pos(xend)
+        assert contig == contig2
         if contig.startswith('chr'): contig = contig[3:] # TODO: this is gross, why do I need to do this?
         return self.getCoverage(contig, start, end)
 
