@@ -24,7 +24,7 @@
             .attr('data-tooltip', "Loading...");
         });
 
-        $.when($.getJSON("/api/variants_in_gene/" + window.gene.gene_id),
+        $.when($.getJSON(fmt("{0}api/variants_in_gene/{1}", window.model.url_prefix, window.gene.gene_id)),
                $.Deferred(function() { $(this.resolve); })) //document.ready
         .done(function(gene_data) {
             // Somehow these arguments get wrapped up, so we want gene_data[0].

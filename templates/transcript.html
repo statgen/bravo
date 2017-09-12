@@ -24,7 +24,7 @@
             .attr('data-tooltip', "Loading...");
         });
 
-        $.when($.getJSON("/api/variants_in_transcript/" + window.transcript.transcript_id),
+        $.when($.getJSON(fmt("{0}api/variants_in_transcript/{1}", window.model.url_prefix, window.transcript.transcript_id)),
                $.Deferred(function() { $(this.resolve); })) //document.ready
         .done(function(transcript_data) {
             // Somehow these arguments get wrapped up, so we want transcript_data[0].
