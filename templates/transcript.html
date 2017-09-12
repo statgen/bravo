@@ -86,7 +86,7 @@
                     <ul class="dropdown-menu" role="menu" aria-labelledby="transcript_dropdown">
                         {% for transcript in gene.transcripts %}
                             <li role="presentation">
-                                <a role="menuitem" tabindex="-1" href="{{ url_for('.transcript', transcript_id=transcript.transcript_id) }}">
+                                <a role="menuitem" tabindex="-1" href="{{ url_for('.transcript_page', transcript_id=transcript.transcript_id) }}">
                                     {{ transcript.transcript_id }}
                                     {% if transcript.transcript_id == gene.canonical_transcript %}
                                         *
