@@ -538,8 +538,8 @@ def _get_variants_csv_for_region(chrom, start, stop, filename):
         for field in fields:
             if '.' in field: parts = field.split('.', 1); row.append(v.get(parts[0], {}).get(parts[1], ''))
             elif field in ['rsids','genes']: row.append('|'.join(v.get(field, [])))
-    else: row.append(v.get(field, ''))
-    writer.writerow(row)
+            else: row.append(v.get(field, ''))
+        writer.writerow(row)
     resp = make_response(out.getvalue())
     resp.headers['Content-Disposition'] = 'attachment; filename={}'.format(filename)
     resp.mimetype='text/csv'
