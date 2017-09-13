@@ -193,10 +193,19 @@ def histogram_from_counter(counter, num_bins=10, bin_range=None):
     if bin_range is None:
         bin_range = (min(counter.iterkeys()), max(counter.iterkeys()))
     bin_width = float(bin_range[1] - bin_range[0]) / num_bins
+    if bin_width == 0:
+        only_key = counter.keys()[0]
+        print 'Warning: metric always had the value {}'.format(counter.keys())
+        return {'left_edges': [only_key-1, only_key, only_key+1], 'mids': [only_key-1, only_key, only_key+1], 'counts': [0, counter.values()[0], 0]}
     bin_left_edges = [bin_range[0] + bin_width * i for i in range(num_bins)]
     bin_counts = [0]*num_bins
     for key, count in counter.iteritems():
-        bin_i = int(floor((key - bin_range[0]) / bin_width))
+        bin_i = (key - bin_range[0]) / bin_width
+        try:
+            bin_i = int(floor(bin_i))
+        except:
+            print 'error on', bin_i, key, bin_range[0], bin_range[1], bin_width
+            raise
         bin_i = clamp(bin_i, min_value=0, max_value=num_bins-1)
         bin_counts[bin_i] += count
     bin_mids = [left_edge + bin_width/2.0 for left_edge in bin_left_edges]

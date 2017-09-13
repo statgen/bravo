@@ -212,21 +212,22 @@ function add_line_to_quality_histogram(data, position, container, log) {
 function draw_quality_histogram(data, container, log, integer_scale, xlabel, ylabel) {
     //Takes histogram data as a list of [midpoint, value] and puts into container
     //If data already in container, transitions to new data
+    while (data.length < 40) data.push([data[data.length-1][0]+1,0]);
+
+    console.log(data);
+    try {
     var x;
     if (log) {
         x = d3.scale.log();
     } else {
         x = d3.scale.linear();
     }
-    x.domain([d3.min(data, function (d) {
-        return d[0];
-    }), d3.max(data, function (d) {
-        return d[0];
-    })])
-        .range([0, quality_chart_width]);
+    x.domain(d3.extent(data, function (d) { return d[0]; }))
+    x.range([0, quality_chart_width]);
     var bar_width = x(data[1][0]) - x(data[0][0]);
+    console.log('bar_width', bar_width);
     var y = d3.scale.linear()
-        .domain([d3.min(data, function(d) { return d[1]; }), d3.max(data, function(d) { return d[1]; })])
+        .domain([0, d3.max(data, function(d) { return d[1]; })])
         .range([quality_chart_height, 0]);
 
     var xAxis = d3.svg.axis()
@@ -328,12 +329,15 @@ function draw_quality_histogram(data, container, log, integer_scale, xlabel, yla
             .text(ylabel);
         svg.selectAll('rect')
             .data(data)
-            .transition()
-            .duration(500)
             .attr("x", function(d) { return x(d[0]); })
             .attr("width", bar_width)
             .attr("height", function(d) { return quality_chart_height - y(d[1]); })
             .attr("y", function(d) { return y(d[1]); });
+    }
+    //$(container).show();
+    } catch(e) {
+    console.log(['error:',e]);
+    //$(container).hide();
     }
 }
 
