@@ -484,7 +484,7 @@ function create_summary_table() {
                     data: data,
                     columns: [
                         {title: 'variant type'},
-                        {title: 'count', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}
+                        {title: 'count (PASS-only)', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}
                     ],
                 });
             })

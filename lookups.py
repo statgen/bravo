@@ -264,13 +264,13 @@ def get_exons_in_gene(db, gene_id):
 
 def get_summary_for_region(db, chrom, start_pos, end_pos):
     # TODO: use an aggregation pipeline to get all of these at once. (or joint-index xpos+csqidx)
-    # TODO: check PASS/FAIL somehow (maybe include only PASS)
     st = time.time()
     _threshold_lof = len(Consequence._lof_csqs)
     _threshold_mis = _threshold_lof + len(Consequence._missense_csqs)
     _threshold_syn = _threshold_mis + len(Consequence._synonymous_csqs)
 
     mongo_match_region = {'xpos': {'$gte': Xpos.from_chrom_pos(chrom, start_pos), '$lte': Xpos.from_chrom_pos(chrom, end_pos)}}
+    mongo_match_pass = {'filter': 'PASS'}
     mongo_match_lof = {'worst_csqidx': {'$lt': _threshold_lof}}
     mongo_match_mis = {'worst_csqidx': {'$gte': _threshold_lof, '$lt':_threshold_mis}}
     mongo_match_syn = {'worst_csqidx': {'$gte': _threshold_mis, '$lt':_threshold_syn}}
@@ -279,11 +279,11 @@ def get_summary_for_region(db, chrom, start_pos, end_pos):
         {'alt': {'$regex': r'(^$|-|\.|..)'}},
     ]}
 
-    num_total_variants = db.variants.find(mongo_match_region).count()
-    num_lof_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_lof)).count()
-    num_mis_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_mis)).count()
-    num_syn_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_syn)).count()
-    num_indels = db.variants.find(mkdict(mongo_match_region, mongo_match_indel)).count()
+    num_total_variants=db.variants.find(mkdict(mongo_match_region, mongo_match_pass)).count()
+    num_lof_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_lof)).count()
+    num_mis_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_mis)).count()
+    num_syn_variants = db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_syn)).count()
+    num_indels =       db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_indel)).count()
 
     ret = {
         'total': num_total_variants,
