@@ -69,13 +69,10 @@ function draw_region_coverage(raw_data, metric, ref) {
         } else {
             svg = d3.select('#region_coverage').select('svg').select('#inner_graph');
             svg.select(".y.axis")
-                .transition()
                 .call(yAxis);
 
             svg.selectAll('rect')
                 .data(data)
-                .transition()
-                .duration(500)
                 .attr("x", function(d, i) { return x(i); })
                 .attr("width", chart_width/data.length - 1)
                 .attr("height", function(d) { return quality_chart_height - y(d[metric]); })
@@ -203,8 +200,6 @@ function add_line_to_quality_histogram(data, position, container, log) {
     } else {
         svg.selectAll('.line').select('line')
             .data([position])
-            .transition()
-            .duration(500)
             .attr("x1", function(d) { return x(d); })
             .attr("x2", function(d) { return x(d); })
             .attr("y1", quality_chart_height)
@@ -290,9 +285,7 @@ function draw_quality_histogram(data, container, log, integer_scale, xlabel, yla
                 .style("text-anchor", "end")
                 .attr("dx", "-.8em")
                 .attr("dy", ".15em")
-                .attr("transform", function(d) {
-                    return "rotate(-45)"
-                });
+                .attr("transform", "rotate(-45)");
             svg.append("g")
                 .attr("class", "y axis")
                 .style("font-size", "10px")
@@ -311,7 +304,6 @@ function draw_quality_histogram(data, container, log, integer_scale, xlabel, yla
 
         if (container == '#quality_metric_container') {
             svg.select(".x.axis")
-                .transition()
                 .attr("transform", "translate(0," + quality_chart_height + ")")
                 .call(xAxis)
                 .selectAll("text")
@@ -323,13 +315,11 @@ function draw_quality_histogram(data, container, log, integer_scale, xlabel, yla
                 });
         } else {
             svg.select(".x.axis")
-            .transition()
             .attr("transform", "translate(0," + quality_chart_height + ")")
             .call(xAxis);
         }
 
         svg.select(".y.axis")
-            .transition()
             .call(yAxis);
 
         svg.select('.x.label')
