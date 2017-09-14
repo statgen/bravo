@@ -18,7 +18,8 @@ class CoverageHandler(object):
                 self._single_chrom_coverage_handlers[chrom].add_coverage_file(coverage_file, cf.get('bp-min-length',0))
     def get_coverage_for_intervalset(self, intervalset):
         st = time.time()
-        single_contig_coverage_handler = self._single_contig_coverage_handlers[intervalset.chrom]
+        try: single_chrom_coverage_handler = self._single_chrom_coverage_handlers[intervalset.chrom]
+        except KeyError: print 'Warning: No coverage for chrom', intervalset.chrom; return []
         coverage = []
         intervalset_length = intervalset.get_length()
         for pair in intervalset.to_obj()['list_of_pairs']:
