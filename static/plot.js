@@ -15,9 +15,17 @@ function bootstrap_plot() {
         window.model.plot.genome_coords_width = window.model.plot.svg_width - genome_coords_margin.left - genome_coords_margin.right;
     }
     if (!window.model.plot.x) {
-        window.model.plot.x = d3.scale.linear()
-            .domain([window.model.start, window.model.stop])
-            .range([0, window.model.plot.genome_coords_width]);
+        var total_range_length = sum(window.model.intervalset.list_of_pairs.map(function(pair){return pair[1]-pair[0]}));
+        var SPACING = total_range_length/50; // TODO: tune this once we've fixed the coverage API ranges
+        var domain = [], range = [];
+        window.model.intervalset.list_of_pairs.forEach(function(pair) {
+            domain.push(pair[0]); domain.push(pair[1]);
+            if (range.length === 0) { range.push(0) } else { range.push(range[range.length-1] + SPACING) };
+            range.push(range[range.length-1] + pair[1]-pair[0]);
+        });
+        range = range.map(function(x) { return x * window.model.plot.genome_coords_width / range[range.length-1]; });
+        console.log(domain, range);
+        window.model.plot.x = d3.scale.linear().domain(domain).range(range);
     }
 }
 
@@ -196,13 +204,16 @@ function create_variant_plot() {
 
     genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#variant-plot-clip)');
 
-    genome_g.append("line")
+    genome_g.selectAll('line.intervals')
+        .data(window.model.intervalset.list_of_pairs)
+        .enter()
+        .append('line')
         .attr("y1", variant_plot_height/2)
         .attr("y2", variant_plot_height/2)
-        .attr("x1", 0)
-        .attr("x2", window.model.plot.genome_coords_width)
+        .attr("x1", function(d) { return window.model.plot.x(d[0]) })
+        .attr("x2", function(d) { return window.model.plot.x(d[1]) })
         .attr("stroke-width", 1)
-        .attr("stroke", "#dfe6ef");
+        .attr("stroke", "lightsteelblue");
 
     var data_g = genome_g.append('g').attr('class','data_g');
 

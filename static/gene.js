@@ -29,11 +29,14 @@ function create_gene_plot() {
 
     var data_g = genome_g.append('g');
 
-    data_g.append('line')
+    data_g.selectAll('line.intervals')
+        .data(window.model.intervalset.list_of_pairs)
+        .enter()
+        .append('line')
         .attr("y1", gene_plot_height/2)
         .attr("y2", gene_plot_height/2)
-        .attr("x1", 0)
-        .attr("x2", window.model.plot.genome_coords_width)
+        .attr("x1", function(d) { return window.model.plot.x(d[0]) })
+        .attr("x2", function(d) { return window.model.plot.x(d[1]) })
         .attr("stroke-width", 1)
         .attr("stroke", "lightsteelblue");
 
