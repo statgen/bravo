@@ -91,13 +91,12 @@ class Consequence(object):
     }
 
 class Xpos:
-    CHROMOSOME_STRINGS = ['chr%s' % x for x in range(1, 22+1)] + ['chrX', 'chrY', 'chrM']
+    CHROMOSOME_STRINGS = [str(x) for x in range(1, 22+1)] + ['X', 'Y', 'M']
     CHROMOSOME_STRING_TO_NUMBER = {chrom: idx+1 for idx,chrom in enumerate(CHROMOSOME_STRINGS) }
     CHROMOSOME_NUMBER_TO_STRING = {chrom_num: chrom for chrom,chrom_num in CHROMOSOME_STRING_TO_NUMBER.items()}
     @staticmethod
     def from_chrom_pos(chrom, pos):
-        if not chrom.startswith('chr'):
-            chrom = 'chr{}'.format(chrom)
+        if chrom.startswith('chr'): chrom = chrom[3:]
         return Xpos.CHROMOSOME_STRING_TO_NUMBER[chrom] * int(1e9) + pos
     @staticmethod
     def to_chrom_pos(xpos):

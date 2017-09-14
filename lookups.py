@@ -83,19 +83,6 @@ def get_variants_from_dbsnp(db, rsid):
             return variants
     return []
 
-def get_coverage_for_bases(coverages, xstart, xstop=None):
-    """
-    Get the coverage for the list of bases given by xstart->xstop, inclusive
-    Returns list of coverage dicts sorted by pos
-    xstop can be None if just one base, but you'll still get back a list
-    """
-    if xstop is None:
-        xstop = xstart
-    start_time = time.time()
-    coverages_json = coverages.getCoverageX(xstart, xstop)
-    print 'tabix\'ed %s base(s) from %s-%s in %s sec' % (len(coverages_json), xstart, xstop, time.time() - start_time)
-    return coverages_json
-
 
 def get_awesomebar_suggestions(autocomplete_strings, query):
     regex = re.compile('^' + re.escape(query), re.IGNORECASE)
@@ -185,10 +172,16 @@ class IntervalSet(object):
 
     def __init__(self, chrom, list_of_pairs):
         self._chrom = chrom
-        self._list_of_pairs = list_of_pairs
+        self._list_of_pairs = list_of_pairs # [[start1, stop1], [start2, stop2], ...]
     @classmethod
     def from_chrom_start_stop(cls, chrom, start, stop):
         return cls(chrom, [[start, stop]])
+    @classmethod
+    def from_xstart_xstop(cls, xstart, xstop):
+        chrom1, start = Xpos.to_chrom_pos(xstart)
+        chrom2, stop = Xpos.to_chrom_pos(xstop)
+        assert chrom1 == chrom2
+        return cls(chrom1, [[start, stop]])
     @classmethod
     def from_gene(cls, db, gene_id):
         # TODO: include 1kb upstream
@@ -221,7 +214,10 @@ class IntervalSet(object):
     def to_list_of_mongos(self):
         return [{'xpos': {'$gte': Xpos.from_chrom_pos(self._chrom, start), '$lte': Xpos.from_chrom_pos(self._chrom, stop)}} for (start,stop) in self._list_of_pairs]
     def __str__(self):
-        return 'chr{}:{}'.format(self._chrom, ','.join('{}-{}'.format(*pair) for pair in self._list_of_pairs))
+        return '{}:{}'.format(self._chrom, ','.join('{}-{}'.format(*pair) for pair in self._list_of_pairs))
+
+    def get_length(self):
+        return sum(pair[1] - pair[0] for pair in self._list_of_pairs)
 
 
 def get_genes_in_region(db, chrom, start, stop):

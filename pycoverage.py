@@ -1,81 +1,60 @@
 import json
 import pysam
-from intervaltree import IntervalTree
-import sys
-import utils
+import time
+
 from utils import Xpos
-
-# TODO:
-# - organize first by contig, then by lengths.
-# - assert that ranges are (1) never overlapping and (2) cover [0,inf]
-#    - so, maybe each (filepath,contig) should just have a min_length.  Then we use bisect.
-
-class Coverage(object):
-
-    def __init__(self):
-        self.tabix_path = {}
-        self.tabix_handler = {}
-
-    def setTabixPath(self, contig, path):
-        self.tabix_path[contig] = path
-
-    def open(self):
-        self.tabix_handler = {contig: pysam.Tabixfile(path) for contig, path in self.tabix_path.iteritems()}
-
-    def close(self):
-        for contig, handler in self.tabix_handler.iteritems():
-            handler.close()
-
-    def getCoverage(self, contig, start, end):
-        try:
-            handler = self.tabix_handler[contig]
-        except KeyError:
-            return None
-        return [json.loads(row[2]) for row in handler.fetch(contig, start, end + 1, parser = pysam.asTuple())]
-
-    def getCoverageX(self, xstart, xend):
-        contig, start = Xpos.to_chrom_pos(xstart)
-        contig2, end = Xpos.to_chrom_pos(xend)
-        assert contig == contig2
-        if contig.startswith('chr'): contig = contig[3:] # TODO: this is gross, why do I need to do this?
-        return self.getCoverage(contig, start, end)
+from lookups import IntervalSet
 
 
-class CoverageCollection(object):
+class CoverageHandler(object):
+    '''contains coverage (at multiple binning levels) for all contigs'''
+    def __init__(self, coverage_files):
+        self._single_contig_coverage_handlers = {}
+        for cf in coverage_files:
+            coverage_file = CoverageFile(cf['path'])
+            for contig in coverage_file.get_contigs():
+                if contig not in self._single_contig_coverage_handlers:
+                    self._single_contig_coverage_handlers[contig] = SingleContigCoverageHandler(contig)
+                self._single_contig_coverage_handlers[contig].add_coverage_file(coverage_file, cf['bp-min-length'])
+    def get_coverage_for_intervalset(self, intervalset):
+        st = time.time()
+        contig = intervalset._chrom
+        single_contig_coverage_handler = self._single_contig_coverage_handlers[contig]
+        coverage = []
+        intervalset_length = intervalset.get_length()
+        for pair in intervalset.to_obj()['list_of_pairs']:
+            coverage.extend(single_contig_coverage_handler.get_coverage_for_range(pair[0], pair[1], length=intervalset_length))
+        print '## COVERAGE: spent {:.3f} seconds tabixing {} coverage bins'.format(time.time()-st, len(coverage))
+        return coverage
 
-    def __init__(self):
-        self.collection = IntervalTree()
+class SingleContigCoverageHandler(object):
+    '''contains coverage (at multiple binning levels) for one contig'''
+    def __init__(self, contig):
+        self._contig = contig
+        self._coverage_files = []
+    def add_coverage_file(self, coverage_file, min_length_in_bases):
+        self._coverage_files.append({'bp-min-length': min_length_in_bases, 'coverage_file': coverage_file})
+        self._coverage_files.sort(key=lambda d:d['bp-min-length'])
+    def get_coverage_for_range(self, start, stop, length=None):
+        if length is None: length = stop - start
+        assert len(self._coverage_files) >= 1, (self._contig, start, stop, length, self._coverage_files, str(self))
+        assert self._coverage_files[0]['bp-min-length'] <= length, (self._contig, start, stop, length, self._coverage_files, str(self))
+        # get the last (ie, longest `bp-min-length`) coverage_file that has a `bp-min-length` <= length
+        coverage_file = next(cf['coverage_file'] for cf in reversed(self._coverage_files) if cf['bp-min-length'] <= length)
+        return coverage_file.get_coverage(self._contig, start, stop)
+    def __str__(self):
+        return '<SingleContigCoverageHandler contig={} coverage_files={!r}>'.format(self._contig, self._coverage_files)
+    __repr__ = __str__
 
-    def setTabixPath(self, min_length, max_length, contig, path):
-        coverage = Coverage()
-        coverage.setTabixPath(contig, path)
-        self.collection[min_length:max_length] = coverage
-
-    def openAll(self):
-        for coverage in self.collection.items():
-           coverage.data.open()
-
-    def closeAll(self):
-        for coverage in self.collection.items():
-            coverage.data.close()
-
-    def clearAll(self):
-        self.closeAll()
-        collection.clear()
-
-    def getCoverage(self, contig, start, end):
-        for coverage in self.collection.search(end - start):
-            rv = coverage.data.getCoverage(contig, start, end)
-            if rv is not None: return rv
-        return []
-
-    def getCoverageX(self, xstart, xend):
-        for coverage in self.collection.search(xend - xstart):
-            rv = coverage.data.getCoverageX(xstart, xend)
-            if rv is not None:
-                return rv
-        return []
-
-    def printAll(self):
-        for coverage in self.collection.items():
-            print coverage
+class CoverageFile(object):
+    '''handles a single tabixed coverage file with any number of contigs'''
+    # our coverage files don't include `chr`, so this class prepends `chr` to output and strips `chr` from input
+    def __init__(self, path):
+        self._tabixfile = pysam.TabixFile(path)
+    def get_contigs(self):
+        return self._tabixfile.contigs
+    def get_coverage(self, contig, start, stop):
+        return [json.loads(row[2]) for row in self._tabixfile.fetch(contig, start, stop+1, parser=pysam.asTuple())]
+    def __str__(self):
+        return '<CoverageFile contigs={} path={}>'.format(','.join(self.get_contigs()), self._tabixfile.filename)
+    __repr__ = __str__

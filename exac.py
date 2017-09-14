@@ -28,7 +28,7 @@ from parsing import *
 import lookups
 from lookups import IntervalSet
 from utils import *
-from pycoverage import *
+from pycoverage import CoverageHandler
 import auth
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
@@ -62,12 +62,8 @@ def get_autocomplete_strings():
     return sorted(set(autocomplete_strings))
 
 @boltons.cacheutils.cached({})
-def get_coverages():
-    coverages = CoverageCollection()
-    for coverage in app.config['BASE_COVERAGE']:
-        coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], coverage['chrom'], coverage['path'])
-    coverages.openAll()
-    return coverages
+def get_coverage_handler():
+    return CoverageHandler(app.config['BASE_COVERAGE'])
 
 
 def get_tabix_file_contig_pairs(tabix_filenames):
@@ -362,7 +358,8 @@ def variant_page(variant_id):
         gene_for_top_csq, top_HGVSs = ConsequenceDrilldown.get_top_gene_and_HGVSs(consequence_drilldown)
         consequence_drilldown_columns = ConsequenceDrilldown.split_into_two_columns(consequence_drilldown)
 
-        base_coverage = lookups.get_coverage_for_bases(get_coverages(), variant['xpos'], variant['xpos'] + len(variant['ref']) - 1)
+        base_coverage = get_coverage_handler().get_coverage_for_intervalset(
+            IntervalSet.from_xstart_xstop(variant['xpos'], variant['xpos']+len(variant['ref'])-1))
         metrics = lookups.get_metrics(db, variant)
 
         if 'pop_afs' in variant: variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
@@ -574,7 +571,7 @@ def _get_variants_subset_response_for_intervalset(intervalset):
 def gene_coverage_api(gene_id):
     try:
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
-        return _get_coverage_response_for_intervalset(intervalset)
+        return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
     except Exception as e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
         abort(404)
@@ -583,7 +580,7 @@ def gene_coverage_api(gene_id):
 def transcript_coverage_api(transcript_id):
     try:
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
-        return _get_coverage_response_for_intervalset(intervalset)
+        return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
     except Exception as e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
         abort(404)
@@ -592,16 +589,10 @@ def transcript_coverage_api(transcript_id):
 def region_coverage_api(chrom, start, stop):
     try:
         intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
-        return _get_coverage_response_for_intervalset(intervalset)
+        return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
     except Exception as e:
-        print 'Failed on gene:', chrom, start, stop, ';Error=', traceback.format_exc()
+        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
-def _get_coverage_response_for_intervalset(intervalset):
-    iso = intervalset.to_obj()
-    xstart = Xpos.from_chrom_pos(iso['chrom'], iso['list_of_pairs'][0][0])
-    xstop = Xpos.from_chrom_pos(iso['chrom'], iso['list_of_pairs'][-1][1])
-    coverage_stats = lookups.get_coverage_for_bases(get_coverages(), xstart, xstop)
-    return jsonify(coverage_stats)
 
 
 @bp.route('/multi_variant_rsid/<rsid>')
