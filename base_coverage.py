@@ -18,7 +18,7 @@ class CoverageHandler(object):
                 self._single_contig_coverage_handlers[contig].add_coverage_file(coverage_file, cf.get('bp-min-length',0))
     def get_coverage_for_intervalset(self, intervalset):
         st = time.time()
-        contig = intervalset._chrom
+        contig = intervalset.chrom
         single_contig_coverage_handler = self._single_contig_coverage_handlers[contig]
         coverage = []
         intervalset_length = intervalset.get_length()

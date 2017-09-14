@@ -171,7 +171,7 @@ class IntervalSet(object):
     EXON_PADDING = 20
 
     def __init__(self, chrom, list_of_pairs):
-        self._chrom = chrom
+        self.chrom = chrom
         self._list_of_pairs = list_of_pairs # [[start1, stop1], [start2, stop2], ...]
     @classmethod
     def from_chrom_start_stop(cls, chrom, start, stop):
@@ -210,16 +210,19 @@ class IntervalSet(object):
         return cls(exons[0]['chrom'], regions)
 
     def to_obj(self):
-        return {'chrom': self._chrom, 'list_of_pairs': self._list_of_pairs}
+        return {'chrom': self.chrom, 'list_of_pairs': self._list_of_pairs}
     def to_mongo(self):
         return {'$or': self.to_list_of_mongos()}
     def to_list_of_mongos(self):
-        return [{'xpos': {'$gte': Xpos.from_chrom_pos(self._chrom, start), '$lte': Xpos.from_chrom_pos(self._chrom, stop)}} for (start,stop) in self._list_of_pairs]
+        return [{'xpos': {'$gte': Xpos.from_chrom_pos(self.chrom, start), '$lte': Xpos.from_chrom_pos(self.chrom, stop)}} for (start,stop) in self._list_of_pairs]
     def __str__(self):
-        return '{}:{}'.format(self._chrom, ','.join('{}-{}'.format(*pair) for pair in self._list_of_pairs))
+        return '{}:{}'.format(self.chrom, ','.join('{}-{}'.format(*pair) for pair in self._list_of_pairs))
 
-    def get_length(self):
-        return sum(pair[1] - pair[0] for pair in self._list_of_pairs)
+    def get_start(self): return self._list_of_pairs[0][0]
+    def get_stop(self): return self._list_of_pairs[-1][1]
+    def get_length(self): return sum(pair[1] - pair[0] for pair in self._list_of_pairs)
+    def to_region_dict(self): return {'chrom': self.chrom, 'start':self.get_start(), 'stop':self.get_stop()}
+    def to_region_dashed(self): return '{}-{}-{}'.format(self.chrom, self.get_start(), self.get_stop())
 
 
 def get_genes_in_region(db, chrom, start, stop):

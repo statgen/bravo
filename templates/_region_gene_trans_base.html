@@ -3,11 +3,8 @@
 {% block in_head %}
 <script type="text/javascript">
  window.model = window.model || {};
- window.model.chrom = {{ chrom|tojson|safe }};
- window.model.start = {{ start|tojson(separators=(',',':'))|safe }};
- window.model.stop = {{ stop|tojson(separators=(',',':'))|safe }};
  window.model.csq = {{ csq|tojson(separators=(',',':'))|safe }};
- window.model.intervalset = {{ intervalset|tojson(separators=(',',':'))|safe }};
+ window.model.intervalset = {{ intervalset.to_obj()|tojson(separators=(',',':'))|safe }};
  {% block in_js %}{% endblock %}
 </script>
 <script type="text/javascript" src="{{ url_for('.static', filename='plot.js') }}"></script>

@@ -384,7 +384,7 @@ function create_variant_table() {
             searchable: false, orderable: false,
             render: (function() {
                 var template = _.template(
-                    '<a href="<%= window.model.url_prefix %>variant/<%= window.model.chrom %>-<%= variant.pos %>-<%= variant.ref %>-<%= variant.alt %>" target="_blank">'+
+                    '<a href="<%= window.model.url_prefix %>variant/<%= window.model.intervalset.chrom %>-<%= variant.pos %>-<%= variant.ref %>-<%= variant.alt %>" target="_blank">'+
                         '<% if (variant.ref.length > 20) { %><%= variant.ref.slice(0,20) %>...<% } else { %><%= variant.ref %><% } %> / '+
                         '<% if (variant.alt.length > 20) { %><%= variant.alt.slice(0,20) %>...<% } else { %><%= variant.alt %><% } %>'+
                         '<% if (variant.rsids.length) { %> (<%= variant.rsids.join(", ") %>)<% } %>'+
@@ -394,7 +394,7 @@ function create_variant_table() {
             })(),
 
         },{
-            title: 'Position (chr' + window.model.chrom + ')', name: 'pos',
+            title: 'Position (chr' + window.model.intervalset.chrom + ')', name: 'pos',
             data: 'pos', searchable: true,  orderable: true, className: 'dt-right',
             render: function(cell_data, type, row) { return group_thousands_html(cell_data); },
 

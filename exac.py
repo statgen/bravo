@@ -389,10 +389,9 @@ def gene_page(gene_id):
         print 'Rendering gene: %s' % gene_id
         gene = lookups.get_gene(db, gene_id)
         exons = lookups.get_exons_in_gene(db, gene_id)
-        intervalset = IntervalSet.from_gene(db, gene_id).to_obj()
+        intervalset = IntervalSet.from_gene(db, gene_id)
         return render_template(
             'gene.html',
-            chrom=gene['chrom'], start=gene['start'], stop=gene['stop'],
             intervalset=intervalset,
             csq = Consequence.as_obj,
             gene=gene,
@@ -411,10 +410,9 @@ def transcript_page(transcript_id):
         transcript = lookups.get_transcript(db, transcript_id)
         gene = lookups.get_gene(db, transcript['gene_id'])
         exons = lookups.get_exons_in_transcript(db, transcript_id)
-        intervalset = IntervalSet.from_transcript(db, transcript_id).to_obj()
+        intervalset = IntervalSet.from_transcript(db, transcript_id)
         return render_template(
             'transcript.html',
-            chrom=transcript['chrom'], start=transcript['start'], stop=transcript['stop'],
             intervalset=intervalset,
             csq = Consequence.as_obj,
             gene=gene,
@@ -439,12 +437,11 @@ def region_page(chrom, start, stop):
             stop += 20
 
         genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
-        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop).to_obj()
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return render_template(
             'region.html',
-            chrom=chrom, start=start, stop=stop,
-            csq = Consequence.as_obj,
             intervalset=intervalset,
+            csq = Consequence.as_obj,
             genes_in_region=genes_in_region,
         )
     except Exception, e:
