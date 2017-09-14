@@ -299,35 +299,34 @@ def get_exons_in_gene(db, gene_id):
 
 
 def get_summary_for_intervalset(db, intervalset):
-    # TODO: this is an order of magnitude faster than using intervalset.to_mongo() and I have no idea why. Try query planner?
-    # TODO: use an aggregation pipeline to get all of these at once. (or joint-index xpos+csqidx)
+    # Note: querying for each extent in intervalset.to_list_of_mongos() is 100+X faster than using intervalset.to_mongo() and I have no idea why. Try query planner?
     st = time.time()
-    mongo_match_pass = {'filter': 'PASS'}
-    mongo_match_lof = {'worst_csqidx': {'$lt': Consequence.as_obj['n_lof']}}
-    mongo_match_mis = {'worst_csqidx': {'$gte': Consequence.as_obj['n_lof'], '$lt':Consequence.as_obj['n_lof_mis']}}
-    mongo_match_syn = {'worst_csqidx': {'$gte': Consequence.as_obj['n_lof_mis'], '$lt':Consequence.as_obj['n_lof_mis_syn']}}
-    mongo_match_indel = {'$or': [{'ref': {'$regex': r'(^$|-|\.|..)'}},{'alt': {'$regex': r'(^$|-|\.|..)'}},]}
+    mongo_match_cond = {
+        'LoF': {'$lt': ['$worst_csqidx', Consequence.as_obj['n_lof']]},
+        'missense': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof']]},     {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}]},
+        'synonymous': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}, {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis_syn']]}]},
+        'indel': {'$or': [{'$ne': [1, {'$strLenBytes':'$ref'}]}, {'$ne': [1, {'$strLenBytes':'$alt'}]}]},
+    }
 
-    num_total_variants = 0
-    num_lof_variants = 0
-    num_mis_variants = 0
-    num_syn_variants = 0
-    num_indels = 0
+    keys = 'LoF missense synonymous indel total'.split()
+    ret = OrderedDict([(key,0) for key in keys])
     for mongo_match_region in intervalset.to_list_of_mongos():
-        num_total_variants+=db.variants.find(mkdict(mongo_match_region, mongo_match_pass)).count()
-        num_lof_variants += db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_lof)).count()
-        num_mis_variants += db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_mis)).count()
-        num_syn_variants += db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_syn)).count()
-        num_indels +=       db.variants.find(mkdict(mongo_match_region, mongo_match_pass, mongo_match_indel)).count()
+        x = db.variants.aggregate([
+            {'$match': mkdict(mongo_match_region, {'filter':'PASS'})},
+            {'$group': {
+                '_id': None,
+                'LoF':       {'$sum':{'$cond':[mongo_match_cond['LoF'],1,0]}},
+                'missense':  {'$sum':{'$cond':[mongo_match_cond['missense'],1,0]}},
+                'synonymous':{'$sum':{'$cond':[mongo_match_cond['synonymous'],1,0]}},
+                'indel':     {'$sum':{'$cond':[mongo_match_cond['indel'],1,0]}},
+                'total':     {'$sum':1},
+            }},
+        ])
+        x = list(x); assert len(x) == 1; x = x[0]
+        for key in keys: ret[key] += x.get(key,0)
 
-    ret = [
-        ['LoF', num_lof_variants],
-        ['missense', num_mis_variants],
-        ['synonymous', num_syn_variants],
-        ['indel', num_indels],
-        ['total', num_total_variants],
-    ]
-    print '## {:0.3f} sec: counted variants: {}'.format(time.time() - st, ret)
+    print '## SUMMARY: took {:0.3f} sec for {} variants'.format(time.time() - st, ret['total'])
+    ret = ret.items()
     return ret
 
 def get_variants_subset_for_intervalset(db, intervalset, columns_to_return, order, filter_info, skip, length):
