@@ -25,9 +25,10 @@ function bootstrap_plot() {
         var SPACING = total_range_length/50;
         var domain = [], range = [];
         window.model.intervalset.list_of_pairs.forEach(function(pair) {
-            domain.push(pair[0]); domain.push(pair[1]);
-            if (range.length === 0) { range.push(0) } else { range.push(range[range.length-1] + SPACING) };
-            range.push(range[range.length-1] + pair[1]-pair[0]);
+            var range_start = (range.length===0 ? 0 : range[range.length-1]+SPACING);
+            var range_end = range_start + pair[1]-pair[0];
+            domain.push(pair[0]); range.push(range_start);
+            domain.push(pair[1]); range.push(range_end);
         });
         range = range.map(function(x) { return x * window.model.plot.genome_coords_width / range[range.length-1]; });
         window.model.plot.x = d3.scale.linear().domain(domain).range(range);
