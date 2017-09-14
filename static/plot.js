@@ -204,15 +204,7 @@ function create_variant_plot() {
         .attr("stroke-width", 1)
         .attr("stroke", "#dfe6ef");
 
-    genome_g.append("line")
-        .attr('id', 'variant_plot_region_selector')
-        .attr("y1", variant_plot_height/2)
-        .attr("y2", variant_plot_height/2)
-        .attr("stroke-width", 1)
-        .attr("stroke", "black");
-
     var data_g = genome_g.append('g').attr('class','data_g');
-    change_variant_plot_region_selector(window.model.start, window.model.stop)
 
     window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
         return group_thousands_html(d.pos) + '<br>' +
@@ -222,14 +214,6 @@ function create_variant_plot() {
         //return JSON.stringify(d);
     });
     svg.call(window.model.plot.oval_tip);
-}
-
-function change_variant_plot_region_selector(start, stop) {
-    var x1 = window.model.plot.x(start);
-    var x2 = window.model.plot.x(stop);
-    d3.select('#variant_plot_region_selector')
-        .attr('x1', x1)
-        .attr('x2', Math.max(x1, x2));
 }
 
 function change_variant_plot(variants) {
@@ -386,8 +370,6 @@ function create_variant_table() {
     window.model.filter_info.chrom = window.model.chrom;
 
     var update_filter_info = function() {
-        window.model.filter_info.pos_ge = parse_int($('input#pos_ge').val());
-        window.model.filter_info.pos_le = parse_int($('input#pos_le').val());
         window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val()) / 100; // %
         window.model.filter_info.maf_le = parseFloat($('input#maf_le').val()) / 100; // %
         window.model.filter_info.filter_value = $('select#filter_value').val();
@@ -462,18 +444,6 @@ function create_variant_table() {
             mouse_guide.show_at(selection.attr('cx'));
         }
     });
-
-    $('input#pos_le,input#pos_ge').change(function() {
-        change_variant_plot_region_selector(parse_int($('input#pos_ge').val()), parse_int($('input#pos_le').val()));
-    });
-}
-
-function populate_variant_table_filters() {
-    $('#pos_ge').val(window.model.start);
-    $('#pos_le').val(window.model.stop);
-    $('#pos_ge,#pos_le').attr('min', window.model.start);
-    $('#pos_ge,#pos_le').attr('max', window.model.stop);
-    $('#pos_ge,#pos_le').attr('step', Math.ceil((window.model.stop - window.model.start) / 20));
 }
 
 

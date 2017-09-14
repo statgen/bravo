@@ -337,8 +337,6 @@ def get_variants_subset_for_intervalset(db, intervalset, columns_to_return, orde
     st = time.time()
 
     mongo_match = [intervalset.to_mongo()]
-    if isinstance(filter_info.get('pos_ge',None),int): mongo_match.append({'xpos': {'$gte': Xpos.from_chrom_pos(intervalset._chrom, filter_info['pos_ge'])}})
-    if isinstance(filter_info.get('pos_le',None),int): mongo_match.append({'xpos': {'$lte': Xpos.from_chrom_pos(intervalset._chrom, filter_info['pos_le'])}})
     if filter_info.get('filter_value',None) is not None:
         if filter_info['filter_value'] == 'PASS': mongo_match.append({'filter': 'PASS'})
         elif filter_info['filter_value'] == 'not PASS': mongo_match.append({'filter': {'$ne': 'PASS'}})
