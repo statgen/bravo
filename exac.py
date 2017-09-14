@@ -28,7 +28,7 @@ from parsing import *
 import lookups
 from lookups import IntervalSet
 from utils import *
-from pycoverage import CoverageHandler
+from base_coverage import CoverageHandler
 import auth
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
