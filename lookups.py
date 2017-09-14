@@ -203,7 +203,7 @@ class IntervalSet(object):
             start, stop = exon['start']-cls.EXON_PADDING, exon['stop']+cls.EXON_PADDING
             if not regions or regions[-1][1] <= start:
                 regions.append([start, stop])
-            else:
+            elif regions[-1][1] < stop:
                 regions[-1][1] = stop
         return cls(exons[0]['chrom'], regions)
 
