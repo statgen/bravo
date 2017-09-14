@@ -25,7 +25,6 @@ window.model.url_suffix = fmt('/region/{0}-{1}-{2}', window.model.chrom, window.
   <li><a href="{{ url_for('.gene_page', gene_id=gene.gene_id) }}">{{ gene.gene_id }}</a></li>
   {% endfor %}
 </ul>
-<br/>
 {% endif %}
-<a class="btn btn-default" href="{{ url_for('.download_region_variants', chrom=chrom, start=start, stop=stop) }}">Download all variants</a>
+<a class="btn btn-default" href="{{ url_for('.download_region_variants', chrom=chrom, start=start, stop=stop) }}" style="margin-bottom:10px">Download all variants</a>
 {% endblock %}

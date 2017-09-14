@@ -303,7 +303,6 @@ def get_summary_for_intervalset(db, intervalset):
         'synonymous': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}, {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis_syn']]}]},
         'indel': {'$or': [{'$ne': [1, {'$strLenBytes':'$ref'}]}, {'$ne': [1, {'$strLenBytes':'$alt'}]}]},
     }
-
     keys = 'LoF missense synonymous indel total'.split()
     ret = OrderedDict([(key,0) for key in keys])
     for mongo_match_region in intervalset.to_list_of_mongos():
@@ -320,8 +319,7 @@ def get_summary_for_intervalset(db, intervalset):
         ])
         x = list(x); assert len(x) == 1; x = x[0]
         for key in keys: ret[key] += x.get(key,0)
-
-    print '## SUMMARY: took {:0.3f} sec for {} variants'.format(time.time() - st, ret['total'])
+    print '## SUMMARY: spent {:0.3f} seconds tabulating {} variants'.format(time.time() - st, ret['total'])
     ret = ret.items()
     return ret
 
@@ -395,17 +393,17 @@ def get_variants_subset_for_intervalset(db, intervalset, columns_to_return, orde
         {'$group': {'_id':0, 'count':{'$sum':1}, 'results':{'$push':'$$ROOT'}}},
         {'$project': {'_id':0, 'count':1, 'ids':{'$slice':['$results',skip,length]}}},
     ])
-    print '## {:0.3f} sec:'.format(time.time()-st), 'cursor created'; st = time.time()
+    print '## VARIANT_SUBSET: spent {:.3f} seconds creating cursor'.format(time.time()-st); st = time.time()
     v_ids_result = list(v_ids_curs)
     if len(v_ids_result) == 0:
         n_filtered, variants = 0, []
     else:
         assert len(v_ids_result) == 1
         n_filtered = v_ids_result[0]['count']
-        print '## {:0.3f} sec:'.format(time.time()-st), 'n_filtered={}'.format(n_filtered); st = time.time()
+        print '## VARIANT_SUBSET: spent {:0.3f} seconds counting {} variants that match filters'.format(time.time()-st, n_filtered); st = time.time()
         v_ids = [v['_id'] for v in v_ids_result[0]['ids']]
         variants = [next(db.variants.aggregate([{'$match': {'_id': vid}}, {'$project': mongo_projection}])) for vid in v_ids] # b/c fancy projections require .aggregate()
-        print '## {:0.3f} sec:'.format(time.time()-st), 'len(variants)={}'.format(len(variants)); st = time.time()
+        print '## VARIANT_SUBSET: spent {:0.3f} seconds fetching {} full variants by id'.format(time.time()-st, len(variants)); st = time.time()
 
     return {
         'recordsFiltered': n_filtered,

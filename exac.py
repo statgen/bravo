@@ -206,7 +206,7 @@ def _load_dbsnp_from_tabix_file_and_contig(args):
     try:
         db.dbsnp.insert(dbsnp_record_generator, w=0)
     except pymongo.errors.InvalidOperation:
-        pass  # handle error when coverage_generator is empty
+        pass  # handle error when generator is empty
 
 def load_dbsnp_file():
     db = get_db()
@@ -353,6 +353,7 @@ def variant_page(variant_id):
     try:
         print 'Rendering variant: %s' % variant_id
         variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant=True)
+        if 'pop_afs' in variant: variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
 
         consequence_drilldown = ConsequenceDrilldown.from_variant(variant)
         gene_for_top_csq, top_HGVSs = ConsequenceDrilldown.get_top_gene_and_HGVSs(consequence_drilldown)
@@ -361,9 +362,6 @@ def variant_page(variant_id):
         base_coverage = get_coverage_handler().get_coverage_for_intervalset(
             IntervalSet.from_xstart_xstop(variant['xpos'], variant['xpos']+len(variant['ref'])-1))
         metrics = lookups.get_metrics(db, variant)
-
-        if 'pop_afs' in variant: variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
-
         lookups.remove_some_extraneous_information(variant)
 
         return render_template(
@@ -557,10 +555,7 @@ def _get_variants_subset_response_for_intervalset(intervalset):
     filter_info = json.loads(request.form['filter_info'])
     import pprint; pprint.pprint(filter_info)
     ret = lookups.get_variants_subset_for_intervalset(
-        db,
-        intervalset,
-        args['columns'], args['order'], filter_info,
-        skip=args['start'], length=args['length']
+        db, intervalset, args['columns'], args['order'], filter_info, skip=args['start'], length=args['length']
     )
     ret['draw'] = args['draw']
     return jsonify(ret)
