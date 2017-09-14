@@ -532,14 +532,14 @@ function create_variant_table() {
 
 var mouse_guide = {
     show_at: function(x) {
-        d3.selectAll('.mouse_guide').attr('x', x - 1);
-        genome_coord = Math.round(window.model.plot.x.invert(x));
-        if (x < 0 || x > window.model.plot.genome_coords_width) {
-            mouse_guide.hide();
-        } else {
+        if (_x_is_in_intervalset(x)) {
+            d3.selectAll('.mouse_guide').attr('x', x - 1);
+            var genome_coord = Math.round(window.model.plot.x.invert(x));
             d3.select('#pos_plot_text')
                 .attr('transform', fmt('translate({0},{1})', x, pos_plot_height))
                 .text(group_thousands(genome_coord));
+        } else {
+            mouse_guide.hide();
         }
     },
     hide: function(x) {
@@ -554,7 +554,15 @@ var mouse_guide = {
             .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recieves mousemove and bubbles it up to `.genome_g`
     },
 };
-
+function _x_is_in_intervalset(x) {
+    // TODO: find a way to make this function faster.  Maybe bisection?
+    if (x < 0 || x > window.model.plot.genome_coords_width) { return false; }
+    var pairs = window.model.intervalset.list_of_pairs;
+    var genome_coord = Math.round(window.model.plot.x.invert(x));
+    return pairs[0][0] <= genome_coord &&
+        genome_coord <= pairs[pairs.length-1][1] &&
+        _.any(pairs, pair => (pair[0] <= genome_coord && genome_coord <= pair[1]));
+}
 
 
 
