@@ -19,7 +19,7 @@ function bootstrap_plot() {
     }
     if (!window.model.plot.x) {
         var total_range_length = sum(window.model.intervalset.list_of_pairs.map(function(pair){return pair[1]-pair[0]}));
-        var SPACING = total_range_length/50; // TODO: tune this once we've fixed the coverage API ranges
+        var SPACING = total_range_length/50;
         var domain = [], range = [];
         window.model.intervalset.list_of_pairs.forEach(function(pair) {
             domain.push(pair[0]); domain.push(pair[1]);
