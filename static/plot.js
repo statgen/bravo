@@ -408,6 +408,8 @@ function create_variant_table() {
 
         searching: false,
 
+        scrollX: true,
+
         ajax: {
             url: window.model.url_prefix + 'api/variants' + window.model.url_suffix,
             type: 'POST',
