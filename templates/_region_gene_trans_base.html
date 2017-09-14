@@ -19,7 +19,7 @@
  .dataTable .dt-pad-left { padding-left: 1.2em; }
  .dataTable .dt-right { text-align: right; padding-right: 0.7em; }
  .dataTable .dt-center { text-align: center; }
- .dataTables_length { display:inline-block; float: right; margin-left: 3em; }
+ .dataTables_length { display:inline-block; float:right; margin-left:3em; margin-top:7px; }
  .dataTables_paginate { display:inline-block; float: right; margin-left: 3em !important; }
  .dataTables_processing {
     position: absolute; top: 50%; left: 50%; width: 100%; height: 40px; padding-top: 20px; margin-left: -50%; margin-top: -25px;
@@ -63,7 +63,7 @@
         </div>
         <div class="panel-body">
           {% include 'coverage_selectors.html' %}
-          <br/>
+          <br style="clear:both"/>
           <div id="coverage_plot_container"></div>
           <div id="gene_plot_container"></div>
           <div id="pos_plot_container"></div>
