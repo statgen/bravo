@@ -22,6 +22,9 @@
         window.model.dataset_name = "{{ config['DATASET_NAME'] }}";
         window.model.url_prefix = {{ url_for('.homepage')|tojson|safe }};
     </script>
+    <style type="text/css">
+      .numsep { margin-left: 0.06em; margin-right: 0.06em; }
+    </style>
     <link rel="stylesheet" href="{{ url_for('.static', filename='common.css') }}">
     <script type="text/javascript" src="{{ url_for('.static', filename='common.js') }}"></script>
     <script>
