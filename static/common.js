@@ -69,6 +69,9 @@ if (!Object.entries) {
 
 
 /* GENERALLY-USEFUL UTILITY FUNCTIONS */
+function parse_int(string) {
+    return parseInt(string, 10);
+}
 function fmt(format) {
     var args = Array.prototype.slice.call(arguments, 1);
     return format.replace(/{(\d+)}/g, function(match, number) {
@@ -148,7 +151,7 @@ function sigfig(numstring, k) {
     var firstk = sig.substr(0, k);
     if (sig.length > k) { /* round */
         var rounder = sig[k];
-        if (parseInt(rounder) >= 5) firstk = (parseInt(firstk) + 1).toString();
+        if (parse_int(rounder) >= 5) firstk = (parse_int(firstk) + 1).toString();
     }
     return not_sig + firstk;
 }

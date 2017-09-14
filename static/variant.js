@@ -81,7 +81,7 @@ function draw_region_coverage(raw_data, metric, ref) {
     } else if (raw_data.length == 1) {
         var data = {};
         $.each(raw_data[0], function(d, i) {
-            var num = parseInt(d);
+            var num = parse_int(d);
             if (!isNaN(num)) {
                 data[d] = raw_data[0][d];
             }

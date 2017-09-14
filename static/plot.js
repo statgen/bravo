@@ -386,8 +386,8 @@ function create_variant_table() {
     window.model.filter_info.chrom = window.model.chrom;
 
     var update_filter_info = function() {
-        window.model.filter_info.pos_ge = parseInt($('input#pos_ge').val());
-        window.model.filter_info.pos_le = parseInt($('input#pos_le').val());
+        window.model.filter_info.pos_ge = parse_int($('input#pos_ge').val());
+        window.model.filter_info.pos_le = parse_int($('input#pos_le').val());
         window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val()) / 100; // %
         window.model.filter_info.maf_le = parseFloat($('input#maf_le').val()) / 100; // %
         window.model.filter_info.filter_value = $('select#filter_value').val();
@@ -462,7 +462,7 @@ function create_variant_table() {
     });
 
     $('input#pos_le,input#pos_ge').change(function() {
-        change_variant_plot_region_selector(parseInt($('input#pos_ge').val()), parseInt($('input#pos_le').val()));
+        change_variant_plot_region_selector(parse_int($('input#pos_ge').val()), parse_int($('input#pos_le').val()));
     });
 }
 
