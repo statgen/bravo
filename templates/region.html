@@ -22,7 +22,7 @@ window.model.url_suffix = fmt('/region/{0}-{1}-{2}', window.model.chrom, window.
 <h3>Genes in this region:</h3>
 <ul>
   {% for gene in genes_in_region %}
-  <li><a href="{{ url_for('.gene_page', gene_id=gene.gene_id) }}">{{ gene.gene_id }}</a></li>
+  <li><a href="{{ url_for('.gene_page', gene_id=gene.gene_id) }}">{{ gene.gene_name or gene.gene_id }}</a></li>
   {% endfor %}
 </ul>
 {% endif %}
