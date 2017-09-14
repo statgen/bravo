@@ -11,11 +11,11 @@ class CoverageHandler(object):
     def __init__(self, coverage_files):
         self._single_contig_coverage_handlers = {}
         for cf in coverage_files:
-            coverage_file = CoverageFile(cf['path'])
+            coverage_file = CoverageFile(cf['path'], cf.get('binned',False))
             for contig in coverage_file.get_contigs():
                 if contig not in self._single_contig_coverage_handlers:
                     self._single_contig_coverage_handlers[contig] = SingleContigCoverageHandler(contig)
-                self._single_contig_coverage_handlers[contig].add_coverage_file(coverage_file, cf['bp-min-length'])
+                self._single_contig_coverage_handlers[contig].add_coverage_file(coverage_file, cf.get('bp-min-length',0))
     def get_coverage_for_intervalset(self, intervalset):
         st = time.time()
         contig = intervalset._chrom
@@ -33,7 +33,7 @@ class SingleContigCoverageHandler(object):
         self._contig = contig
         self._coverage_files = []
     def add_coverage_file(self, coverage_file, min_length_in_bases):
-        self._coverage_files.append({'bp-min-length': min_length_in_bases, 'coverage_file': coverage_file})
+        self._coverage_files.append({'coverage_file':coverage_file, 'bp-min-length':min_length_in_bases})
         self._coverage_files.sort(key=lambda d:d['bp-min-length'])
     def get_coverage_for_range(self, start, stop, length=None):
         if length is None: length = stop - start
@@ -49,12 +49,26 @@ class SingleContigCoverageHandler(object):
 class CoverageFile(object):
     '''handles a single tabixed coverage file with any number of contigs'''
     # our coverage files don't include `chr`, so this class prepends `chr` to output and strips `chr` from input
-    def __init__(self, path):
+    def __init__(self, path, binned):
         self._tabixfile = pysam.TabixFile(path)
+        self._binned = binned
     def get_contigs(self):
         return self._tabixfile.contigs
     def get_coverage(self, contig, start, stop):
-        return [json.loads(row[2]) for row in self._tabixfile.fetch(contig, start, stop+1, parser=pysam.asTuple())]
+        if not self._binned:
+            for row in self._tabixfile.fetch(contig, start, stop+1, parser=pysam.asTuple()):
+                yield json.loads(row[2])
+        else:
+            # Right now we don't include the region_end column in our coverage files,
+            # so there's no way to make sure we get the bin overlapping the start of our query region.
+            # To deal with it for now, we'll just use start-50
+            # TODO: include region_end in coverage files.
+            for row in self._tabixfile.fetch(contig, max(1, start-50), stop+1, parser=pysam.asTuple()):
+                d = json.loads(row[2])
+                if d['end'] < start or d['start'] > stop: continue
+                d['start'] = max(d['start'], start)
+                d['end'] = min(d['end'], stop)
+                yield d
     def __str__(self):
         return '<CoverageFile contigs={} path={}>'.format(','.join(self.get_contigs()), self._tabixfile.filename)
     __repr__ = __str__
