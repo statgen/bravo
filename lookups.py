@@ -298,30 +298,36 @@ def get_summary_for_intervalset(db, intervalset):
     # Note: querying for each extent in intervalset.to_list_of_mongos() is 100+X faster than using intervalset.to_mongo() and I have no idea why. Try query planner?
     st = time.time()
     mongo_match_cond = {
-        'LoF': {'$lt': ['$worst_csqidx', Consequence.as_obj['n_lof']]},
-        'missense': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof']]},     {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}]},
-        'synonymous': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}, {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis_syn']]}]},
+        'lof': {'$lt': ['$worst_csqidx', Consequence.as_obj['n_lof']]},
+        'mis': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof']]},     {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}]},
+        'syn': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}, {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis_syn']]}]},
         'indel': {'$or': [{'$ne': [1, {'$strLenBytes':'$ref'}]}, {'$ne': [1, {'$strLenBytes':'$alt'}]}]},
     }
-    keys = 'LoF missense synonymous indel total'.split()
-    ret = OrderedDict([(key,0) for key in keys])
+    keys = 'lof mis syn indel total'.split()
+    ret = {key:0 for key in keys}
     for mongo_match_region in intervalset.to_list_of_mongos():
         x = db.variants.aggregate([
             {'$match': mkdict(mongo_match_region, {'filter':'PASS'})},
             {'$group': {
                 '_id': None,
-                'LoF':       {'$sum':{'$cond':[mongo_match_cond['LoF'],1,0]}},
-                'missense':  {'$sum':{'$cond':[mongo_match_cond['missense'],1,0]}},
-                'synonymous':{'$sum':{'$cond':[mongo_match_cond['synonymous'],1,0]}},
-                'indel':     {'$sum':{'$cond':[mongo_match_cond['indel'],1,0]}},
-                'total':     {'$sum':1},
+                'lof':  {'$sum':{'$cond':[mongo_match_cond['lof'],1,0]}},
+                'mis':  {'$sum':{'$cond':[mongo_match_cond['mis'],1,0]}},
+                'syn':  {'$sum':{'$cond':[mongo_match_cond['syn'],1,0]}},
+                'indel':{'$sum':{'$cond':[mongo_match_cond['indel'],1,0]}},
+                'total':{'$sum':1},
             }},
         ])
         x = list(x); assert len(x) == 1; x = x[0]
         for key in keys: ret[key] += x.get(key,0)
     print '## SUMMARY: spent {:0.3f} seconds tabulating {} variants'.format(time.time() - st, ret['total'])
-    ret = ret.items()
-    return ret
+    return [
+        ('All - SNPs', ret['total'] - ret['indel']),
+        ('All - Indels', ret['indel']),
+        ('Coding - LoF', ret['lof']),
+        ('Coding - Missense', ret['mis']),
+        ('Coding - Synonymous', ret['syn']),
+    ]
+
 
 def get_variants_subset_for_intervalset(db, intervalset, columns_to_return, order, filter_info, skip, length):
     # 1. match what the user asked for - using [intervalset, filter_info]
