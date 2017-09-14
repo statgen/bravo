@@ -4,5 +4,5 @@ $(function() {
     create_gene_plot();
     create_variant_plot();
     create_variant_table();
-    initiate_mouse_guide();
+    mouse_guide.init();
 });

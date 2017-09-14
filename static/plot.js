@@ -1,13 +1,16 @@
 var genome_coords_margin = {left: 80, right: 30};
 
-var coverage_plot_height = 100;
-var coverage_plot_margin = {top: 10, bottom: 20};
+var coverage_plot_height = 70;
+var coverage_plot_margin = {top: 8, bottom: 7};
 
 var variant_plot_height = 20;
 var variant_plot_margin = {top: -3, bottom: 0};
 
 var gene_plot_height = 15;
 var gene_plot_margin = {top: 0, bottom: 0};
+
+var pos_plot_height = 15;
+var pos_plot_margin = {top: 0, bottom: 0};
 
 
 function bootstrap_plot() {
@@ -27,7 +30,6 @@ function bootstrap_plot() {
             range.push(range[range.length-1] + pair[1]-pair[0]);
         });
         range = range.map(function(x) { return x * window.model.plot.genome_coords_width / range[range.length-1]; });
-        console.log(domain, range);
         window.model.plot.x = d3.scale.linear().domain(domain).range(range);
     }
 }
@@ -40,12 +42,6 @@ function create_coverage_plot() {
     var coverage_XHR = $.getJSON(window.model.url_prefix + 'api/coverage' + window.model.url_suffix);
     $(function() {
         bootstrap_plot();
-
-        var xAxis = d3.svg.axis()
-            .scale(window.model.plot.x)
-            .orient("bottom")
-            .ticks(5)
-            .tickFormat(group_thousands);
 
         var svg = d3.select('#coverage_plot_container').append("svg")
             .attr("width", window.model.plot.svg_width)
@@ -62,11 +58,6 @@ function create_coverage_plot() {
             .attr('width', window.model.plot.genome_coords_width)
             .attr('y', 0)
             .attr('height', coverage_plot_height);
-
-        genome_g.append("g")
-            .attr("class", "x axis")
-            .attr("transform", "translate(0," + coverage_plot_height + ")")
-            .call(xAxis);
 
         var data_g = genome_g.append('g')
             .attr('clip-path', 'url(#cov-plot-clip)')
@@ -244,6 +235,20 @@ function create_gene_plot() {
         .on('mouseout', window.model.plot.exon_tip.hide)
 
     genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#gene-plot-clip)');
+}
+
+
+function create_pos_plot() {
+    bootstrap_plot();
+
+    var svg = d3.select('#pos_plot_container').append('svg')
+        .attr('width', window.model.plot.svg_width)
+        .attr('height', pos_plot_height)
+    var genome_g = svg.append('g')
+        .attr('class', 'genome_g')
+        .attr('transform', 'translate(' + genome_coords_margin.left+','+0+')');
+    genome_g.append('text').attr('id', 'pos_plot_text')
+        .attr('text-anchor', 'middle');
 }
 
 
@@ -521,15 +526,29 @@ function create_variant_table() {
 
 
 var mouse_guide = {
-    show_at: function(x) { d3.selectAll('.mouse_guide').attr('x', x - 1); },
-    hide: function(x) { d3.selectAll('.mouse_guide').attr('x', -999); },
+    show_at: function(x) {
+        d3.selectAll('.mouse_guide').attr('x', x - 1);
+        genome_coord = Math.round(window.model.plot.x.invert(x));
+        if (x < 0 || x > window.model.plot.genome_coords_width) {
+            mouse_guide.hide();
+        } else {
+            d3.select('#pos_plot_text')
+                .attr('transform', fmt('translate({0},{1})', x, pos_plot_height))
+                .text(group_thousands(genome_coord));
+        }
+    },
+    hide: function(x) {
+        d3.selectAll('.mouse_guide').attr('x', -999);
+        d3.select('#pos_plot_text').text('');
+    },
+    init: function() {
+        create_pos_plot();
+        d3.selectAll('.genome_g')
+            .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node()); mouse_guide.show_at(coords[0]); })
+            .on('mouseleave', mouse_guide.hide)
+            .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recieves mousemove and bubbles it up to `.genome_g`
+    },
 };
-function initiate_mouse_guide() {
-    d3.selectAll('.genome_g')
-        .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node()); mouse_guide.show_at(coords[0]); })
-        .on('mouseleave', mouse_guide.hide)
-        .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recives mousemove and bubbles it up to `.genome_g`
-}
 
 
 
