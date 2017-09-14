@@ -235,15 +235,6 @@ def get_genes_in_region(db, chrom, start, stop):
     return list(genes)
 
 
-def get_variants_in_intervalset(db, intervalset):
-    """Variants that overlap an intervalset"""
-    for mongo_match_region in intervalset.to_list_of_mongos():
-        variants = db.variants.find(mongo_match_region, projection={'_id': False})
-        for variant in variants:
-            remove_extraneous_information(variant)
-            yield variant
-
-
 def get_metrics(db, variant):
     if 'allele_count' not in variant or variant['allele_num'] == 0:
         return None
@@ -433,3 +424,9 @@ def get_variants_csv_str_for_intervalset(db, intervalset):
             else: row.append(v.get(field, ''))
         writer.writerow(row)
     return out.getvalue()
+def get_variants_in_intervalset(db, intervalset):
+    """Variants that overlap an intervalset"""
+    for mongo_match_region in intervalset.to_list_of_mongos():
+        for variant in db.variants.find(mongo_match_region, projection={'_id': False}):
+            yield variant
+
