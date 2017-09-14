@@ -201,7 +201,7 @@ class IntervalSet(object):
         assert boltons.iterutils.same(exon['chrom'] for exon in exons)
         regions = []
         for exon in exons:
-            assert exon['start'] < exon['stop']
+            assert exon['start'] <= exon['stop'] # There are some exons with start==stop, which I don't understand
             start, stop = exon['start']-cls.EXON_PADDING, exon['stop']+cls.EXON_PADDING
             if not regions or regions[-1][1] <= start:
                 regions.append([start, stop])
