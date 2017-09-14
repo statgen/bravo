@@ -189,6 +189,11 @@ function change_coverage_plot_metric(metric) {
 function create_gene_plot() {
     bootstrap_plot();
 
+    window.model.exons = [].concat( // put UTR before CDS, so that UTR is rendered behind CDS
+        window.model.exons.filter(function(exon) { return exon.feature_type !== 'CDS' }),
+        window.model.exons.filter(function(exon) { return exon.feature_type === 'CDS' })
+    );
+
     var svg = d3.select('#gene_plot_container').append('svg')
         .attr('width', window.model.plot.svg_width)
         .attr('height', gene_plot_height)
