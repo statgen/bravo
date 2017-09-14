@@ -1,16 +1,16 @@
 var genome_coords_margin = {left: 80, right: 30};
 
 var coverage_plot_height = 70;
-var coverage_plot_margin = {top: 8, bottom: 7};
-
-var variant_plot_height = 20;
-var variant_plot_margin = {top: -3, bottom: 0};
+var coverage_plot_margin = {top: 8, bottom: 10};
 
 var gene_plot_height = 15;
-var gene_plot_margin = {top: 0, bottom: 0};
+var gene_plot_margin = {top: 0, bottom: 3};
 
 var pos_plot_height = 15;
 var pos_plot_margin = {top: 0, bottom: 0};
+
+var variant_plot_height = 20;
+var variant_plot_margin = {top: 0, bottom: 0};
 
 
 function bootstrap_plot() {
@@ -46,7 +46,8 @@ function create_coverage_plot() {
 
         var svg = d3.select('#coverage_plot_container').append("svg")
             .attr("width", window.model.plot.svg_width)
-            .attr("height", coverage_plot_height + coverage_plot_margin.top + coverage_plot_margin.bottom);
+            .attr("height", coverage_plot_height + coverage_plot_margin.top + coverage_plot_margin.bottom)
+            .style('display', 'block');
         var genome_g = svg.append("g")
             .attr('id', 'inner_graph')
             .attr('class', 'genome_g')
@@ -188,11 +189,12 @@ function create_gene_plot() {
 
     var svg = d3.select('#gene_plot_container').append('svg')
         .attr('width', window.model.plot.svg_width)
-        .attr('height', gene_plot_height)
+        .attr('height', gene_plot_height + gene_plot_margin.top + gene_plot_margin.bottom)
+        .style('display', 'block');
     var genome_g = svg.append('g')
         .attr('class', 'genome_g')
         .attr('id', 'gene_track')
-        .attr('transform', 'translate(' + genome_coords_margin.left+','+0+')');
+        .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, gene_plot_margin.top));
 
     genome_g.append('clipPath')
         .attr('id', 'gene-plot-clip')
@@ -244,10 +246,11 @@ function create_pos_plot() {
 
     var svg = d3.select('#pos_plot_container').append('svg')
         .attr('width', window.model.plot.svg_width)
-        .attr('height', pos_plot_height)
+        .attr('height', pos_plot_height + pos_plot_margin.top + pos_plot_margin.bottom)
+        .style('display', 'block');
     var genome_g = svg.append('g')
         .attr('class', 'genome_g')
-        .attr('transform', 'translate(' + genome_coords_margin.left+','+0+')');
+        .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, pos_plot_margin.top));
     genome_g.append('text').attr('id', 'pos_plot_text')
         .attr('text-anchor', 'middle');
 }
@@ -259,11 +262,12 @@ function create_variant_plot() {
 
     var svg = d3.select('#variant_plot_container').append("svg")
         .attr("width", window.model.plot.svg_width)
-        .attr("height", variant_plot_height);
+        .attr("height", variant_plot_height + variant_plot_margin.top + variant_plot_margin.bottom)
+        .style('display', 'block');
     var genome_g = svg.append("g")
         .attr('id', 'variant_track')
         .attr('class', 'genome_g')
-        .attr("transform", "translate(" + genome_coords_margin.left + "," + 0 + ")");
+        .attr("transform", fmt('translate({0},{1})', genome_coords_margin.left, variant_plot_margin.top));
 
     genome_g.append('clipPath')
         .attr('id', 'variant-plot-clip')
