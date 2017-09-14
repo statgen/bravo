@@ -176,13 +176,13 @@ class IntervalSet(object):
     @classmethod
     def from_chrom_start_stop(cls, chrom, start, stop):
         Xpos.check_chrom(chrom)
-        assert start < stop
+        assert start <= stop
         return cls(chrom, [[start, stop]])
     @classmethod
     def from_xstart_xstop(cls, xstart, xstop):
         chrom1, start = Xpos.to_chrom_pos(xstart)
         chrom2, stop = Xpos.to_chrom_pos(xstop)
-        assert start < stop
+        assert start <= stop
         assert chrom1 == chrom2
         return cls(chrom1, [[start, stop]])
     @classmethod
