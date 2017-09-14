@@ -6,20 +6,15 @@ import os
 import pymongo
 import pysam
 import gzip
-from parsing import *
-import lookups
-from lookups import IntervalSet
 import random
-from utils import *
-from pycoverage import *
-import auth
+import boltons.cacheutils
 
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, make_response, send_from_directory, Blueprint
 from flask_compress import Compress
 from flask_errormail import mail_on_500
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
-from collections import defaultdict, Counter
 
+from collections import defaultdict, Counter
 from multiprocessing import Process
 import multiprocessing
 import glob
@@ -28,6 +23,13 @@ import time
 import sys
 import functools
 import contextlib
+
+from parsing import *
+import lookups
+from lookups import IntervalSet
+from utils import *
+from pycoverage import *
+import auth
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
 
@@ -53,21 +55,19 @@ def get_db(new_connection=False):
     return client[app.config['MONGO']['name']]
 get_db._mongo_client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'], connect=False)
 
+@boltons.cacheutils.cached({})
 def get_autocomplete_strings():
-    if not hasattr(get_autocomplete_strings, '_cache'):
-        autocomplete_strings = get_db().genes.distinct('gene_name')
-        autocomplete_strings.extend(get_db().genes.distinct('other_names', {'other_names': {'$ne': None}}))
-        get_autocomplete_strings._cache = sorted(set(autocomplete_strings))
-    return get_autocomplete_strings._cache
+    autocomplete_strings = get_db().genes.distinct('gene_name')
+    autocomplete_strings.extend(get_db().genes.distinct('other_names', {'other_names': {'$ne': None}}))
+    return sorted(set(autocomplete_strings))
 
+@boltons.cacheutils.cached({})
 def get_coverages():
-    if not hasattr(get_coverages, '_cache'):
-        coverages = CoverageCollection()
-        for coverage in app.config['BASE_COVERAGE']:
-            coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], coverage['chrom'], coverage['path'])
-        coverages.openAll()
-        get_coverages._cache = coverages
-    return get_coverages._cache
+    coverages = CoverageCollection()
+    for coverage in app.config['BASE_COVERAGE']:
+        coverages.setTabixPath(coverage['min-length-bp'], coverage['max-length-bp'], coverage['chrom'], coverage['path'])
+    coverages.openAll()
+    return coverages
 
 
 def get_tabix_file_contig_pairs(tabix_filenames):
@@ -597,7 +597,6 @@ def region_coverage_api(chrom, start, stop):
         print 'Failed on gene:', chrom, start, stop, ';Error=', traceback.format_exc()
         abort(404)
 def _get_coverage_response_for_intervalset(intervalset):
-    # TODO: handling length explicitly will require serious changes to pycoverage
     iso = intervalset.to_obj()
     xstart = Xpos.from_chrom_pos(iso['chrom'], iso['list_of_pairs'][0][0])
     xstop = Xpos.from_chrom_pos(iso['chrom'], iso['list_of_pairs'][-1][1])
