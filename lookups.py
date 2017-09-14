@@ -313,7 +313,9 @@ def get_summary_for_intervalset(db, intervalset):
                 'total':{'$sum':1},
             }},
         ])
-        x = list(x); assert len(x) == 1; x = x[0]
+        x = list(x);
+        if len(x) == 0: continue # no variants in interval
+        assert len(x) == 1; x = x[0]
         for key in keys: ret[key] += x.get(key,0)
     print '## SUMMARY: spent {:0.3f} seconds tabulating {} variants'.format(time.time() - st, ret['total'])
     return [
