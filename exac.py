@@ -41,8 +41,7 @@ Compress(app)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 5 # 5 second browser cache timeout
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-REGION_LIMIT = int(1e5)
-EXON_PADDING = 50
+MAX_REGION_LENGTH = int(350e3) # Longer than TTN (305kb), short enough to perform okay.
 
 def get_db(new_connection=False):
     # Only use the database within a request context! Something about threads/forks.
@@ -432,12 +431,9 @@ def region_page(chrom, start, stop):
     db = get_db()
     try:
         print 'Rendering region:', chrom, start, stop
-
-        start, stop = int(start), int(stop)
-        if stop - start > REGION_LIMIT:
-            return error_page("The region you requested, '{chrom}-{start}-{stop}', is {:,} bases long.  We only accept regions shorter than {:,} bases.".format(stop - start, REGION_LIMIT, chrom=chrom, start=start, stop=stop))
-        if stop < start:
-            return error_page("The region you requested, '{chrom}-{start}-{stop}', stops before it starts.  Did you mean '{chrom}-{stop}-{start}'?".format(chrom=chrom, start=start, stop=stop))
+        start,stop = int(start),int(stop)
+        if start > stop: return error_page("The region '{chrom}-{start}-{stop}' stops before it starts. Did you mean '{chrom}-{stop}-{start}'?".format(chrom=chrom, start=start, stop=stop))
+        if stop-start > MAX_REGION_LENGTH: return error_page("The region '{chrom}-{start}-{stop}' is {:,} bases. We only accept regions shorter than {:,} bases.".format(stop-start, MAX_REGION_LENGTH, chrom=chrom, start=start, stop=stop))
         if start == stop:
             start -= 20
             stop += 20
@@ -480,7 +476,8 @@ def download_transcript_variants(transcript_id):
 @require_agreement_to_terms_and_store_destination
 def download_region_variants(chrom, start, stop):
     try:
-        intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
+        start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return _get_variants_csv_for_intervalset(intervalset, 'chr{}-{}-{}.csv'.format(chrom, start, stop))
     except Exception as e:
         print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
@@ -514,7 +511,8 @@ def transcript_summary_api(transcript_id):
 @require_agreement_to_terms_and_store_destination
 def region_summary_api(chrom, start, stop):
     try:
-        intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
+        start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
     except Exception as e:
         print 'Failed with:', chrom, start, stop, ';Error=', traceback.format_exc()
@@ -543,7 +541,8 @@ def transcript_variants_subset_api(transcript_id):
 @require_agreement_to_terms_and_store_destination
 def region_variants_subset_api(chrom, start, stop):
     try:
-        intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
+        start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return _get_variants_subset_response_for_intervalset(intervalset)
     except Exception as e:
         print 'Failed with:', request.form, ';Error=', traceback.format_exc()
@@ -583,7 +582,8 @@ def transcript_coverage_api(transcript_id):
 @require_agreement_to_terms_and_store_destination
 def region_coverage_api(chrom, start, stop):
     try:
-        intervalset = IntervalSet.from_chrom_start_stop(chrom, int(start), int(stop))
+        start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
     except Exception as e:
         print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()

@@ -106,6 +106,10 @@ class Xpos:
     @staticmethod
     def to_pos(xpos):
         return xpos % int(1e9)
+    @staticmethod
+    def check_chrom(chrom):
+        if chrom.startswith('chr'): chrom = chrom[3:]
+        return chrom in Xpos.CHROMOSOME_STRING_TO_NUMBER
 
 class ConsequenceDrilldown(object):
     @staticmethod

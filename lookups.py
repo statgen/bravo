@@ -175,25 +175,27 @@ class IntervalSet(object):
         self._list_of_pairs = list_of_pairs # [[start1, stop1], [start2, stop2], ...]
     @classmethod
     def from_chrom_start_stop(cls, chrom, start, stop):
+        Xpos.check_chrom(chrom)
+        assert start < stop
         return cls(chrom, [[start, stop]])
     @classmethod
     def from_xstart_xstop(cls, xstart, xstop):
         chrom1, start = Xpos.to_chrom_pos(xstart)
         chrom2, stop = Xpos.to_chrom_pos(xstop)
+        assert start < stop
         assert chrom1 == chrom2
         return cls(chrom1, [[start, stop]])
     @classmethod
     def from_gene(cls, db, gene_id):
-        # TODO: include 1kb upstream
         exons = db.exons.find({'gene_id': gene_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})
         return cls._from_exons(exons)
     @classmethod
     def from_transcript(cls, db, transcript_id):
-        # TODO: include 1kb upstream
         exons = db.exons.find({'transcript_id': transcript_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})
         return cls._from_exons(exons)
     @classmethod
     def _from_exons(cls, exons):
+        # note: these "exons" are not all literally exons, some are CDS or UTR features
         exons = sorted(list(exons), key=lambda exon: exon['start'])
         assert len(exons) > 0
         assert boltons.iterutils.same(exon['chrom'] for exon in exons)
