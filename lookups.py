@@ -193,7 +193,7 @@ class IntervalSet(object):
         exons = db.exons.find({'transcript_id': transcript_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})
         return cls._from_exons(exons)
     @classmethod
-    def  _from_exons(cls, exons):
+    def _from_exons(cls, exons):
         exons = sorted(list(exons), key=lambda exon: exon['start'])
         assert len(exons) > 0
         assert boltons.iterutils.same(exon['chrom'] for exon in exons)

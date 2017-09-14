@@ -441,9 +441,6 @@ function create_variant_table() {
 
     window.model = window.model || {};
     window.model.filter_info = window.model.filter_info || {};
-    window.model.filter_info.start = window.model.start;
-    window.model.filter_info.stop = window.model.stop;
-    window.model.filter_info.chrom = window.model.chrom;
 
     var update_filter_info = function() {
         window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val()) / 100; // %
