@@ -5,7 +5,7 @@
 window.model = window.model || {};
 window.model.csq = {{ csq|tojson(separators=(',',':'))|safe }};
 window.model.intervalset = {{ intervalset.to_obj()|tojson(separators=(',',':'))|safe }};
-window.model.transcripts = {{ transcripts|tojson(separators=(',',':'))|safe }};
+window.model.genes = {{ genes|tojson(separators=(',',':'))|safe }};
 {% block in_js %}{% endblock %}
 </script>
 <script type="text/javascript" src="{{ url_for('.static', filename='plot.js') }}"></script>

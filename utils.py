@@ -197,6 +197,10 @@ def mkdict(*dicts, **ret):
 def clamp(num, min_value, max_value):
     return max(min_value, min(max_value, num))
 
+def sortedgroupby(iterable, key):
+    from itertools import groupby
+    return groupby(sorted(iterable, key=key), key=key)
+
 def histogram_from_counter(counter, num_bins=10, bin_range=None):
     from math import floor
     if bin_range is None:

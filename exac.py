@@ -387,10 +387,10 @@ def gene_page(gene_id):
         print 'Rendering gene: %s' % gene_id
         gene = lookups.get_gene(db, gene_id)
         intervalset = IntervalSet.from_gene(db, gene_id)
-        transcripts = TranscriptSet.from_gene(db, gene_id).transcripts
+        genes = TranscriptSet.from_gene(db, gene_id).genes
         return render_template(
             'gene.html',
-            intervalset=intervalset, transcripts=transcripts, csq=Consequence.as_obj,
+            intervalset=intervalset, genes=genes, csq=Consequence.as_obj,
             gene=gene,
         )
     except Exception, e:
@@ -406,10 +406,10 @@ def transcript_page(transcript_id):
         transcript = lookups.get_transcript(db, transcript_id)
         gene = lookups.get_gene(db, transcript['gene_id'])
         intervalset = IntervalSet.from_transcript(db, transcript_id)
-        transcripts = TranscriptSet.from_transcript(db, transcript_id).transcripts
+        genes = TranscriptSet.from_transcript(db, transcript_id).genes
         return render_template(
             'transcript.html',
-            intervalset=intervalset, transcripts=transcripts, csq=Consequence.as_obj,
+            intervalset=intervalset, genes=genes, csq=Consequence.as_obj,
             gene=gene,
             transcript=transcript,
         )
@@ -429,10 +429,10 @@ def region_page(chrom, start, stop):
         if start == stop: start -= 20; stop += 20
 
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
-        transcripts = TranscriptSet.from_chrom_start_stop(db, chrom, start, stop).transcripts
+        genes = TranscriptSet.from_chrom_start_stop(db, chrom, start, stop).genes
         return render_template(
             'region.html',
-            intervalset=intervalset, transcripts=transcripts, csq=Consequence.as_obj,
+            intervalset=intervalset, genes=genes, csq=Consequence.as_obj,
         )
     except Exception, e:
         print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()

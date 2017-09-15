@@ -223,38 +223,48 @@ class IntervalSet(object):
 
 class TranscriptSet(object):
     # TODO: maybe just make each of these methods return the json?  or will this class be more complex?
-    def __init__(self, transcripts):
-        self.transcripts = transcripts
+    def __init__(self, genes):
+        self.genes = genes
     @classmethod
     def from_gene(cls, db, gene_id):
         all_exons = list(db.exons.find({'gene_id': gene_id}, {'_id':False}))
-        return cls._from_exons(all_exons)
+        return cls._from_exons(db, all_exons)
     @classmethod
     def from_transcript(cls, db, transcript_id):
         all_exons = list(db.exons.find({'transcript_id': transcript_id}, {'_id':False}))
-        return cls._from_exons(all_exons)
+        return cls._from_exons(db, all_exons)
     @classmethod
     def from_chrom_start_stop(cls, db, chrom, start, stop):
         xstart,xstop = Xpos.from_chrom_pos(chrom,start),Xpos.from_chrom_pos(chrom,stop)
         all_exons = list(db.exons.find({'xstop':{'$gte':xstart},'xstart':{'$lte':xstop}}, {'_id':False}))
-        return cls._from_exons(all_exons)
+        return cls._from_exons(db, all_exons)
     @classmethod
-    def _from_exons(cls, all_exons):
+    def _from_exons(cls, db, all_exons):
+        '''return is like [{gene_name:'PCSK9', gene_id:'ENSG123', transcripts:[{transcript_id:'ENST234', exons:[{start,stop,strand,feature_type}]}]}]'''
         for exon in all_exons: assert exon['feature_type'] in ['exon', 'CDS', 'UTR'] and exon['strand'] in ['+','-']
-        gene_transcript_key = lambda exon: (exon['gene_id'], exon['transcript_id'])
-        all_exons = sorted(all_exons, key=gene_transcript_key)
-        groups = itertools.groupby(all_exons, key=gene_transcript_key)
-        transcripts = []
-        for key, exons in groups:
-            gene_id, transcript_id = key
+        all_transcripts = []
+        for transcript_id, exons in sortedgroupby(all_exons, key=lambda exon:exon['transcript_id']):
             exons = sorted(exons, key=lambda exon:exon['start'])
+            gene_id = exons[0]['gene_id']
             exons = [{key: exon[key] for key in ['feature_type','strand','start','stop']} for exon in exons]
-            transcripts.append({
+            weight = 0 # my heuristic for importance I guess.  similar to common "canonical" definitions
+            for exon in exons:
+                length = exon['stop']+1 - exon['start']
+                weight += length * {'CDS':1, 'UTR':0.2, 'exon':0.1}[exon['feature_type']]
+            all_transcripts.append({'gene_id':gene_id,'transcript_id':transcript_id,'exons':exons,'weight':weight})
+        genes = []
+        for gene_id, transcripts in sortedgroupby(all_transcripts, key=lambda trans:trans['gene_id']):
+            gene = get_gene(db, gene_id)
+            gene_name = gene['gene_name'] if gene else None
+            transcripts = sorted(transcripts, key=lambda trans:-trans['weight'])
+            genes.append({
                 'gene_id': gene_id,
-                'transcript_id': transcript_id,
-                'exons':exons
+                'gene_name': gene_name,
+                'transcripts': transcripts,
             })
-        return cls(transcripts)
+        genes.sort(key=lambda gene:-gene['transcripts'][0]['weight'])
+        # TODO: remove transcript['gene_id'] and transcript['weight']
+        return cls(genes)
 
 
 def get_metrics(db, variant):

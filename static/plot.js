@@ -187,31 +187,34 @@ var transcripts_plot = {
     margin: {top:0 , bottom:3},
     create: function() {
         bootstrap_plot();
-        window.model.transcripts.forEach(this.create_one.bind(this));
+        window.model.genes.forEach(function(gene) {
+            gene.transcripts.forEach(function(transcript) {
+                this.create_one(gene, transcript);
+            }.bind(this))
+        }.bind(this))
     },
-    create_one: function(transcript) {
+    create_one: function(gene, transcript) {
         var svg = d3.select('#transcripts_plot_container').append('svg')
             .attr('width', window.model.plot.svg_width)
             .attr('height', this.height + this.margin.top + this.margin.bottom)
             .style('display', 'block');
+        svg.append('a')
+            .attr('xlink:href', fmt('{0}gene/{1}', window.model.url_prefix, gene.gene_id))
+            .append('text')
+            .attr('transform', fmt('translate(2,{0})',this.height/2))
+            .attr('alignment-baseline', 'middle')
+            .text(gene.gene_name || gene.gene_id)
+            .style('stroke','steelblue')
+            .style('font-style','italic')
+
         var genome_g = svg.append('g')
             .attr('id', 'gene_track')
             .attr('class', 'genome_g')
             .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top));
-        var clip_id = fmt('transcript-plot-clip-{0}', transcript.transcript_id);
-        genome_g.append('clipPath')
-            .attr('id', clip_id)
-            .append('rect')
-            .attr('x', 0)
-            .attr('width', window.model.plot.genome_coords_width)
-            .attr('y', 0)
-            .attr('height', this.height);
         var data_g = genome_g.append('g');
-        genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', fmt('url({0})', clip_id));
 
         var exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
-            return transcript.gene_id + '<br>' +
-                transcript.transcript_id + '<br>' +
+            return transcript.transcript_id + '<br>' +
                 (d.feature_type==='CDS'?'Coding Sequence':d.feature_type) + '<br>' +
                 'start: ' + group_thousands_html(d.start) + '<br>' +
                 'stop: ' + group_thousands_html(d.stop) + '<br>' +
