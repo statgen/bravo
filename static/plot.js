@@ -213,9 +213,9 @@ var transcripts_plot = {
         }
     },
     render_genes: function(genes) {
-        genes.forEach(function(gene) {
-            gene.transcripts.forEach(function(transcript) {
-                this.create_one(gene, transcript);
+        genes.forEach(function(gene, gi) {
+            gene.transcripts.forEach(function(transcript, ti) {
+                this.create_one(gene, transcript, gi===0 && ti===0);
             }.bind(this))
         }.bind(this))
     },
@@ -224,7 +224,7 @@ var transcripts_plot = {
             return {url:fmt('{0}gene/{1}', window.model.url_prefix, gene.gene_id), text:gene.gene_name || gene.gene_id, fontstyle:'italic'};
         return {url:fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id), text:transcript.transcript_id, fontstyle:'inherit'};
     },
-    create_one: function(gene, transcript) {
+    create_one: function(gene, transcript, is_canonical) {
         var svg = d3.select('#transcripts_plot_container').append('svg')
             .attr('width', window.model.plot.svg_width)
             .attr('height', this.height + this.margin.top + this.margin.bottom)
@@ -238,6 +238,7 @@ var transcripts_plot = {
         mouse_guide.register(genome_g);
 
         var label = this._get_label(gene, transcript);
+        if (is_canonical) label.text += '*';
         svg.append('a')
             .attr('xlink:href', label.url)
             .append('text')
