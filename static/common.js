@@ -72,6 +72,9 @@ if (!Object.entries) {
 function parse_int(string) {
     return parseInt(string, 10);
 }
+function deepcopy(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
 function sum(array) {
     return _.reduce(array, function(a,b){return a+b}, 0);
 }

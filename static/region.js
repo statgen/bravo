@@ -4,5 +4,5 @@ $(function() {
     transcripts_plot.create();
     create_variant_plot();
     create_variant_table();
-    mouse_guide.init();
+    create_pos_plot();
 });

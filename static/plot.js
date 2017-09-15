@@ -55,7 +55,6 @@ function create_coverage_plot() {
             .attr('id', 'inner_graph')
             .attr('class', 'genome_g')
             .attr("transform", "translate(" + genome_coords_margin.left + "," + coverage_plot_margin.top + ")");
-
         genome_g.append('clipPath')
             .attr('id', 'cov-plot-clip')
             .append('rect')
@@ -68,7 +67,7 @@ function create_coverage_plot() {
             .attr('clip-path', 'url(#cov-plot-clip)')
             .attr('id', 'cov-bar-g');
 
-        genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#cov-plot-clip)')
+        mouse_guide.register(genome_g);
 
         var loading_text = genome_g.append('text')
             .attr('text-anchor','middle').text('loading...')
@@ -187,7 +186,34 @@ var transcripts_plot = {
     margin: {top:0 , bottom:3},
     create: function() {
         bootstrap_plot();
-        window.model.genes.forEach(function(gene) {
+
+        var num_transcripts = this.count_transcripts(window.model.genes);
+        var gotta_use_subset = num_transcripts > 7;
+        this.render_genes(gotta_use_subset ? this.get_genes_subset() : window.model.genes);
+        if (gotta_use_subset) {
+            this.add_draw_all_button(num_transcripts - 5);
+        }
+    },
+    count_transcripts: function(genes){
+        return sum(genes.map(function(gene) {return gene.transcripts.length}));
+    },
+    get_genes_subset: function() {
+        // if there are fewer than 5 transcripts we'll probably have an infinite loop so don't do that.
+        var genes = window.model.genes.slice(0,5).map(function(gene) {
+            gene = deepcopy(gene);
+            gene.transcripts = [gene.transcripts[0]];
+            return gene;
+        });
+        for (var trans_i=1; ; trans_i++) {
+            for (var gene_i=0; gene_i < window.model.genes.length; gene_i++) {
+                if (this.count_transcripts(genes) >= 5) return genes;
+                var trans = window.model.genes[gene_i].transcripts[trans_i];
+                if (trans) genes[gene_i].transcripts.push(trans);
+            }
+        }
+    },
+    render_genes: function(genes) {
+        genes.forEach(function(gene) {
             gene.transcripts.forEach(function(transcript) {
                 this.create_one(gene, transcript);
             }.bind(this))
@@ -212,6 +238,7 @@ var transcripts_plot = {
             .attr('class', 'genome_g')
             .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top));
         var data_g = genome_g.append('g');
+        mouse_guide.register(genome_g);
 
         var exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
             return transcript.transcript_id + '<br>' +
@@ -250,7 +277,19 @@ var transcripts_plot = {
             })
             .on('mouseover', exon_tip.show)
             .on('mouseout', exon_tip.hide)
-    }
+    },
+    add_draw_all_button: function(num_transcripts_remaining) {
+        d3.select('#transcripts_plot_container')
+            .append('div')
+            .style('text-align', 'center')
+            .append('button')
+            .attr('class', 'btn btn-default')
+            .text(fmt('Show remaining {0} transcripts',num_transcripts_remaining))
+            .on('click', function(){
+                d3.select('#transcripts_plot_container').selectAll('*').remove()
+                this.render_genes(window.model.genes);
+            }.bind(this))
+    },
 }
 
 
@@ -266,6 +305,7 @@ function create_pos_plot() {
         .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, pos_plot_margin.top));
     genome_g.append('text').attr('id', 'pos_plot_text')
         .attr('text-anchor', 'middle');
+    mouse_guide.register(genome_g, true);
 }
 
 
@@ -303,6 +343,7 @@ function create_variant_plot() {
         .attr("stroke-width", 1)
         .attr("stroke", "lightsteelblue");
 
+    mouse_guide.register(genome_g);
     var data_g = genome_g.append('g').attr('class','data_g');
 
     window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
@@ -544,9 +585,12 @@ function create_variant_table() {
 
 
 var mouse_guide = {
-    init: function() {
-        create_pos_plot();
-        d3.selectAll('.genome_g')
+    register: function(genome_g, no_line) {
+        if (!no_line) {
+            genome_g
+                .append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#cov-plot-clip)')
+        }
+        genome_g
             .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node()); mouse_guide.show_at(coords[0]); })
             .on('mouseleave', mouse_guide.hide)
             .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recieves mousemove and bubbles it up to `.genome_g`
