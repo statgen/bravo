@@ -230,6 +230,13 @@ var transcripts_plot = {
             .attr('height', this.height + this.margin.top + this.margin.bottom)
             .style('display', 'block');
 
+        var genome_g = svg.append('g')
+            .attr('id', 'gene_track')
+            .attr('class', 'genome_g')
+            .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top));
+        var data_g = genome_g.append('g');
+        mouse_guide.register(genome_g);
+
         var label = this._get_label(gene, transcript);
         svg.append('a')
             .attr('xlink:href', label.url)
@@ -239,13 +246,6 @@ var transcripts_plot = {
             .attr('transform', fmt('translate(2,{0})',this.height/2))
             .attr('alignment-baseline', 'middle')
             .style('stroke','steelblue')
-
-        var genome_g = svg.append('g')
-            .attr('id', 'gene_track')
-            .attr('class', 'genome_g')
-            .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top));
-        var data_g = genome_g.append('g');
-        mouse_guide.register(genome_g);
 
         var exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
             return transcript.transcript_id + '<br>' +
