@@ -50,7 +50,7 @@ function with_waiting_notice(f) {
         queryTokenizer: Bloodhound.tokenizers.whitespace,
         identify: function(sugg) { return sugg.value; }, // maybe allows Bloodhound to `.get()`  objects
         remote: {
-            url: '/api/autocomplete?query=%QUERY',
+            url: window.model.url_prefix + 'api/autocomplete?query=%QUERY',
             wildcard: '%QUERY',
             rateLimitBy: 'throttle',
             rateLimitWait: 500,
@@ -89,7 +89,7 @@ function with_waiting_notice(f) {
         });
 
         $('.typeahead').bind('typeahead:select', function(ev, suggestion) {
-            window.location.href = '/awesome?query=' + suggestion.value;
+            window.location.href = window.model.url_prefix + 'awesome?query=' + suggestion.value;
         });
     });
 })();
