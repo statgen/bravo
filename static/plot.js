@@ -219,19 +219,26 @@ var transcripts_plot = {
             }.bind(this))
         }.bind(this))
     },
+    _get_label: function(gene, transcript) {
+        if (window.model.url_suffix.startsWith('/region/')) // TODO: use a cleaner method to check whether we're on region.html
+            return {url:fmt('{0}gene/{1}', window.model.url_prefix, gene.gene_id), text:gene.gene_name || gene.gene_id, fontstyle:'italic'};
+        return {url:fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id), text:transcript.transcript_id, fontstyle:'inherit'};
+    },
     create_one: function(gene, transcript) {
         var svg = d3.select('#transcripts_plot_container').append('svg')
             .attr('width', window.model.plot.svg_width)
             .attr('height', this.height + this.margin.top + this.margin.bottom)
             .style('display', 'block');
+
+        var label = this._get_label(gene, transcript);
         svg.append('a')
-            .attr('xlink:href', fmt('{0}gene/{1}', window.model.url_prefix, gene.gene_id))
+            .attr('xlink:href', label.url)
             .append('text')
+            .text(label.text)
+            .style('font-style', label.fontstyle)
             .attr('transform', fmt('translate(2,{0})',this.height/2))
             .attr('alignment-baseline', 'middle')
-            .text(gene.gene_name || gene.gene_id)
             .style('stroke','steelblue')
-            .style('font-style','italic')
 
         var genome_g = svg.append('g')
             .attr('id', 'gene_track')
