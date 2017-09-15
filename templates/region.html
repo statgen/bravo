@@ -17,5 +17,18 @@ window.model.url_suffix = fmt('/region/{0}', {{ intervalset.to_region_dashed()|t
 
 {% block in_topleft_col %}
 <h1>Region: {{ 'chr{chrom} : {start:,} - {stop:,}'.format(**intervalset.to_region_dict()) }}</h1>
-<a class="btn btn-default" href="{{ url_for('.download_region_variants', **intervalset.to_region_dict()) }}" style="margin-bottom:10px">Download all variants</a>
+<div class="dropdown" style="display:inline-block">
+  <button class="btn btn-default dropdown-toggle" type="button" id="external_ref_dropdown" data-toggle="dropdown">
+    External References
+    <span class="caret"></span>
+  </button>
+  <ul class="dropdown-menu" role="menu" aria-labelledby="external_ref_dropdown">
+    <li role="presentation">
+      <a href="http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&position={{ 'chr{chrom}%3A{start}-{stop}'.format(**intervalset.to_region_dict()) }}" target="_blank">
+        UCSC Browser<i class="fa fa-external-link"></i>
+      </a>
+    </li>
+  </ul>
+</div>
+<a class="btn btn-default" href="{{ url_for('.download_region_variants', **intervalset.to_region_dict()) }}">Download all variants</a>
 {% endblock %}
