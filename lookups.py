@@ -12,7 +12,6 @@ SEARCH_LIMIT = 10000
 def get_gene(db, gene_id):
     return db.genes.find_one({'gene_id': gene_id}, projection={'_id': False})
 
-
 def get_gene_by_name(db, gene_name):
     # try gene_name field first
     gene = db.genes.find_one({'gene_name': gene_name}, projection={'_id': False})
@@ -23,11 +22,7 @@ def get_gene_by_name(db, gene_name):
 
 
 def get_transcript(db, transcript_id):
-    transcript = db.transcripts.find_one({'transcript_id': transcript_id}, projection={'_id': False})
-    if not transcript:
-        return None
-    transcript['exons'] = get_exons_in_transcript(db, transcript_id)
-    return transcript
+    return db.transcripts.find_one({'transcript_id': transcript_id}, projection={'_id': False})
 
 
 def get_variant(db, xpos, ref, alt):
@@ -214,9 +209,10 @@ class IntervalSet(object):
     def to_mongo(self):
         return {'$or': self.to_list_of_mongos()}
     def to_list_of_mongos(self):
-        return [{'xpos': {'$gte': Xpos.from_chrom_pos(self.chrom, start), '$lte': Xpos.from_chrom_pos(self.chrom, stop)}} for (start,stop) in self._list_of_pairs]
+        return [{'xpos': {'$gte':Xpos.from_chrom_pos(self.chrom,start),'$lte':Xpos.from_chrom_pos(self.chrom,stop)}} for (start,stop) in self._list_of_pairs]
     def __str__(self):
         return '{}:{}'.format(self.chrom, ','.join('{}-{}'.format(*pair) for pair in self._list_of_pairs))
+    __repr__ = __str__
 
     def get_start(self): return self._list_of_pairs[0][0]
     def get_stop(self): return self._list_of_pairs[-1][1]
@@ -225,17 +221,40 @@ class IntervalSet(object):
     def to_region_dashed(self): return '{}-{}-{}'.format(self.chrom, self.get_start(), self.get_stop())
 
 
-def get_genes_in_region(db, chrom, start, stop):
-    """
-    Genes that overlap a region
-    """
-    xstart = Xpos.from_chrom_pos(chrom, start)
-    xstop = Xpos.from_chrom_pos(chrom, stop)
-    genes = db.genes.find({
-        'xstart': {'$lte': xstop},
-        'xstop': {'$gte': xstart},
-    }, projection={'_id': False})
-    return list(genes)
+class TranscriptSet(object):
+    # TODO: maybe just make each of these methods return the json?  or will this class be more complex?
+    def __init__(self, transcripts):
+        self.transcripts = transcripts
+    @classmethod
+    def from_gene(cls, db, gene_id):
+        all_exons = list(db.exons.find({'gene_id': gene_id}, {'_id':False}))
+        return cls._from_exons(all_exons)
+    @classmethod
+    def from_transcript(cls, db, transcript_id):
+        all_exons = list(db.exons.find({'transcript_id': transcript_id}, {'_id':False}))
+        return cls._from_exons(all_exons)
+    @classmethod
+    def from_chrom_start_stop(cls, db, chrom, start, stop):
+        xstart,xstop = Xpos.from_chrom_pos(chrom,start),Xpos.from_chrom_pos(chrom,stop)
+        all_exons = list(db.exons.find({'xstop':{'$gte':xstart},'xstart':{'$lte':xstop}}, {'_id':False}))
+        return cls._from_exons(all_exons)
+    @classmethod
+    def _from_exons(cls, all_exons):
+        for exon in all_exons: assert exon['feature_type'] in ['exon', 'CDS', 'UTR'] and exon['strand'] in ['+','-']
+        gene_transcript_key = lambda exon: (exon['gene_id'], exon['transcript_id'])
+        all_exons = sorted(all_exons, key=gene_transcript_key)
+        groups = itertools.groupby(all_exons, key=gene_transcript_key)
+        transcripts = []
+        for key, exons in groups:
+            gene_id, transcript_id = key
+            exons = sorted(exons, key=lambda exon:exon['start'])
+            exons = [{key: exon[key] for key in ['feature_type','strand','start','stop']} for exon in exons]
+            transcripts.append({
+                'gene_id': gene_id,
+                'transcript_id': transcript_id,
+                'exons':exons
+            })
+        return cls(transcripts)
 
 
 def get_metrics(db, variant):
@@ -270,24 +289,6 @@ def remove_some_extraneous_information(variant):
     """Remove information not needed by variant.html or any other page"""
     for key in ['xpos','xstop','vep_annotations',]: variant.pop(key, None)
 
-def remove_extraneous_information(variant):
-    """Remove information not needed by gene.html, transcript.html or region.html"""
-    remove_some_extraneous_information(variant)
-    for key in ['genotype_depths','genotype_qualities','transcripts','genes','site_quality','quality_metrics',]: variant.pop(key, None)
-
-def get_num_variants_in_region(db, chrom, start, stop):
-    xstart, xstop = Xpos.from_chrom_pos(chrom, start), Xpos.from_chrom_pos(chrom, stop)
-    return db.variants.find({'xpos': {'$gte':xstart, '$lte':xstop}}).count()
-
-
-def get_transcripts_in_gene(db, gene_id):
-    return list(db.transcripts.find({'gene_id': gene_id}, projection={'_id': False}))
-
-def get_exons_in_transcript(db, transcript_id):
-    return sorted(list(db.exons.find({'transcript_id': transcript_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])
-
-def get_exons_in_gene(db, gene_id):
-    return sorted(list(db.exons.find({'gene_id': gene_id, 'feature_type': { "$in": ['CDS', 'UTR', 'exon'] }}, projection={'_id': False})), key=lambda k: k['start'])
 
 
 def get_summary_for_intervalset(db, intervalset):

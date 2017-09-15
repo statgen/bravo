@@ -26,7 +26,7 @@ import contextlib
 
 from parsing import *
 import lookups
-from lookups import IntervalSet
+from lookups import IntervalSet, TranscriptSet
 from utils import *
 from base_coverage import CoverageHandler
 import auth
@@ -379,8 +379,6 @@ def variant_page(variant_id):
         abort(404)
 
 
-# TODO: how to make these simpler?  what is their core function?
-#   - *.html: intervalset, csq, list of lists of exon-like features to display (region:gene-unions, gene:transcripts, trans:self)
 @bp.route('/gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
 def gene_page(gene_id):
@@ -388,14 +386,12 @@ def gene_page(gene_id):
     try:
         print 'Rendering gene: %s' % gene_id
         gene = lookups.get_gene(db, gene_id)
-        exons = lookups.get_exons_in_gene(db, gene_id)
         intervalset = IntervalSet.from_gene(db, gene_id)
+        transcripts = TranscriptSet.from_gene(db, gene_id).transcripts
         return render_template(
             'gene.html',
-            intervalset=intervalset,
-            csq = Consequence.as_obj,
+            intervalset=intervalset, transcripts=transcripts, csq=Consequence.as_obj,
             gene=gene,
-            exons=exons,
         )
     except Exception, e:
         print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
@@ -409,15 +405,13 @@ def transcript_page(transcript_id):
         print 'Rendering transcript: %s' % transcript_id
         transcript = lookups.get_transcript(db, transcript_id)
         gene = lookups.get_gene(db, transcript['gene_id'])
-        exons = lookups.get_exons_in_transcript(db, transcript_id)
         intervalset = IntervalSet.from_transcript(db, transcript_id)
+        transcripts = TranscriptSet.from_transcript(db, transcript_id).transcripts
         return render_template(
             'transcript.html',
-            intervalset=intervalset,
-            csq = Consequence.as_obj,
+            intervalset=intervalset, transcripts=transcripts, csq=Consequence.as_obj,
             gene=gene,
             transcript=transcript,
-            exons=exons,
         )
     except Exception, e:
         print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
@@ -432,17 +426,13 @@ def region_page(chrom, start, stop):
         start,stop = int(start),int(stop)
         if start > stop: return error_page("The region '{chrom}-{start}-{stop}' stops before it starts. Did you mean '{chrom}-{stop}-{start}'?".format(chrom=chrom, start=start, stop=stop))
         if stop-start > MAX_REGION_LENGTH: return error_page("The region '{chrom}-{start}-{stop}' is {:,} bases. We only accept regions shorter than {:,} bases.".format(stop-start, MAX_REGION_LENGTH, chrom=chrom, start=start, stop=stop))
-        if start == stop:
-            start -= 20
-            stop += 20
+        if start == stop: start -= 20; stop += 20
 
-        genes_in_region = lookups.get_genes_in_region(db, chrom, start, stop)
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
+        transcripts = TranscriptSet.from_chrom_start_stop(db, chrom, start, stop).transcripts
         return render_template(
             'region.html',
-            intervalset=intervalset,
-            csq = Consequence.as_obj,
-            genes_in_region=genes_in_region,
+            intervalset=intervalset, transcripts=transcripts, csq=Consequence.as_obj,
         )
     except Exception, e:
         print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()

@@ -3,9 +3,6 @@ var genome_coords_margin = {left: 80, right: 30};
 var coverage_plot_height = 70;
 var coverage_plot_margin = {top: 8, bottom: 10};
 
-var gene_plot_height = 15;
-var gene_plot_margin = {top: 0, bottom: 3};
-
 var pos_plot_height = 15;
 var pos_plot_margin = {top: 0, bottom: 0};
 
@@ -21,15 +18,21 @@ function bootstrap_plot() {
         window.model.plot.genome_coords_width = window.model.plot.svg_width - genome_coords_margin.left - genome_coords_margin.right;
     }
     if (!window.model.plot.x) {
+        // window.model.plot.x() converts from chromosome coordinates -> pixels on the screen.
         var total_range_length = sum(window.model.intervalset.list_of_pairs.map(function(pair){return pair[1]-pair[0]}));
-        var SPACING = total_range_length/50;
+        var SPACING = total_range_length/50; // 2% of the screen will be buffer between intervals
         var domain = [], range = [];
+        // first, collapse the space between the intervals
         window.model.intervalset.list_of_pairs.forEach(function(pair) {
             var range_start = (range.length===0 ? 0 : range[range.length-1]+SPACING);
             var range_end = range_start + pair[1]-pair[0];
             domain.push(pair[0]); range.push(range_start);
             domain.push(pair[1]); range.push(range_end);
         });
+        // second, convert any values lower or higher than our domain to be just at the edge of the range (to help with exons on region.html, mostly)
+        domain = [].concat([-1e100],    domain, [1e100]);
+        range =  [].concat([range[0]-1], range, [range[range.length-1]+1]);
+        // third, stretch the range to be the width of the screen where we're plotting
         range = range.map(function(x) { return x * window.model.plot.genome_coords_width / range[range.length-1]; });
         window.model.plot.x = d3.scale.linear().domain(domain).range(range);
     }
@@ -179,65 +182,72 @@ function change_coverage_plot_metric(metric) {
 }
 
 
-function create_gene_plot() {
-    bootstrap_plot();
+var transcripts_plot = {
+    height: 15, // not including margins
+    margin: {top:0 , bottom:3},
+    create: function() {
+        bootstrap_plot();
+        window.model.transcripts.forEach(this.create_one.bind(this));
+    },
+    create_one: function(transcript) {
+        var svg = d3.select('#transcripts_plot_container').append('svg')
+            .attr('width', window.model.plot.svg_width)
+            .attr('height', this.height + this.margin.top + this.margin.bottom)
+            .style('display', 'block');
+        var genome_g = svg.append('g')
+            .attr('id', 'gene_track')
+            .attr('class', 'genome_g')
+            .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top));
+        var clip_id = fmt('transcript-plot-clip-{0}', transcript.transcript_id);
+        genome_g.append('clipPath')
+            .attr('id', clip_id)
+            .append('rect')
+            .attr('x', 0)
+            .attr('width', window.model.plot.genome_coords_width)
+            .attr('y', 0)
+            .attr('height', this.height);
+        var data_g = genome_g.append('g');
+        genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', fmt('url({0})', clip_id));
 
-    window.model.exons = [].concat( // put UTR before CDS, so that UTR is rendered behind CDS
-        window.model.exons.filter(function(exon) { return exon.feature_type !== 'CDS' }),
-        window.model.exons.filter(function(exon) { return exon.feature_type === 'CDS' })
-    );
+        var exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
+            return transcript.gene_id + '<br>' +
+                transcript.transcript_id + '<br>' +
+                (d.feature_type==='CDS'?'Coding Sequence':d.feature_type) + '<br>' +
+                'start: ' + group_thousands_html(d.start) + '<br>' +
+                'stop: ' + group_thousands_html(d.stop) + '<br>' +
+                'strand: ' + d.strand;
+        });
+        svg.call(exon_tip);
 
-    var svg = d3.select('#gene_plot_container').append('svg')
-        .attr('width', window.model.plot.svg_width)
-        .attr('height', gene_plot_height + gene_plot_margin.top + gene_plot_margin.bottom)
-        .style('display', 'block');
-    var genome_g = svg.append('g')
-        .attr('class', 'genome_g')
-        .attr('id', 'gene_track')
-        .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, gene_plot_margin.top));
+        data_g.selectAll('line.intervals')
+            .data(window.model.intervalset.list_of_pairs)
+            .enter()
+            .append('line')
+            .attr("y1", this.height/2)
+            .attr("y2", this.height/2)
+            .attr("x1", function(d) { return window.model.plot.x(d[0]) })
+            .attr("x2", function(d) { return window.model.plot.x(d[1]) })
+            .attr("stroke-width", 1)
+            .attr("stroke", "lightsteelblue");
 
-    genome_g.append('clipPath')
-        .attr('id', 'gene-plot-clip')
-        .append('rect')
-        .attr('x', 0)
-        .attr('width', window.model.plot.genome_coords_width)
-        .attr('y', 0)
-        .attr('height', gene_plot_height);
-
-    window.model.plot.exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
-        return (d.feature_type==='CDS'?'Coding Sequence':'UTR') + '<br>' +
-            'start: ' + group_thousands_html(d.start) + '<br>' +
-            'stop: ' + group_thousands_html(d.stop);
-    });
-    svg.call(window.model.plot.exon_tip);
-
-    var data_g = genome_g.append('g');
-
-    data_g.selectAll('line.intervals')
-        .data(window.model.intervalset.list_of_pairs)
-        .enter()
-        .append('line')
-        .attr("y1", gene_plot_height/2)
-        .attr("y2", gene_plot_height/2)
-        .attr("x1", function(d) { return window.model.plot.x(d[0]) })
-        .attr("x2", function(d) { return window.model.plot.x(d[1]) })
-        .attr("stroke-width", 1)
-        .attr("stroke", "lightsteelblue");
-
-    data_g.selectAll('rect.exon')
-        .data(window.model.exons)
-        .enter()
-        .append('rect')
-        .attr('class', 'exon')
-        .style('fill', 'lightsteelblue')
-        .attr('y', function(d){return d.feature_type==='CDS' ? 0 : gene_plot_height/4})
-        .attr('height',function(d){return d.feature_type==='CDS' ? gene_plot_height : gene_plot_height/2})
-        .attr('x', function(d) { return window.model.plot.x(d.start) })
-        .attr('width', function(d) { return window.model.plot.x(d.stop)-window.model.plot.x(d.start) })
-        .on('mouseover', window.model.plot.exon_tip.show)
-        .on('mouseout', window.model.plot.exon_tip.hide)
-
-    genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#gene-plot-clip)');
+        data_g.selectAll('rect.exon')
+            .data(transcript.exons)
+            .enter()
+            .append('a')
+            .attr('xlink:href', fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id))
+            .append('rect')
+            .attr('class', 'exon')
+            .style('fill', 'lightsteelblue')
+            .attr('y', function(d){return d.feature_type==='CDS' ? 0 : this.height/4}.bind(this))
+            .attr('height',function(d){return d.feature_type==='CDS' ? this.height : this.height/2}.bind(this))
+            .each(function(d) {
+                var start = window.model.plot.x(d.start);
+                var width = window.model.plot.x(d.stop) - start;
+                d3.select(this).attr('x', start).attr('width', width)
+            })
+            .on('mouseover', exon_tip.show)
+            .on('mouseout', exon_tip.hide)
+    }
 }
 
 
@@ -531,8 +541,15 @@ function create_variant_table() {
 
 
 var mouse_guide = {
+    init: function() {
+        create_pos_plot();
+        d3.selectAll('.genome_g')
+            .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node()); mouse_guide.show_at(coords[0]); })
+            .on('mouseleave', mouse_guide.hide)
+            .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recieves mousemove and bubbles it up to `.genome_g`
+    },
     show_at: function(x) {
-        if (_x_is_in_intervalset(x)) {
+        if (this._x_is_in_intervalset(x)) {
             d3.selectAll('.mouse_guide').attr('x', x - 1);
             var genome_coord = Math.round(window.model.plot.x.invert(x));
             d3.select('#pos_plot_text')
@@ -546,22 +563,15 @@ var mouse_guide = {
         d3.selectAll('.mouse_guide').attr('x', -999);
         d3.select('#pos_plot_text').text('');
     },
-    init: function() {
-        create_pos_plot();
-        d3.selectAll('.genome_g')
-            .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node()); mouse_guide.show_at(coords[0]); })
-            .on('mouseleave', mouse_guide.hide)
-            .insert('rect',':first-child').attr('class', 'genome_g_mouse_catcher'); // recieves mousemove and bubbles it up to `.genome_g`
-    },
-};
-function _x_is_in_intervalset(x) {
-    // TODO: find a way to make this function faster.  Maybe bisection?
-    if (x < 0 || x > window.model.plot.genome_coords_width) { return false; }
-    var pairs = window.model.intervalset.list_of_pairs;
-    var genome_coord = Math.round(window.model.plot.x.invert(x));
-    return pairs[0][0] <= genome_coord &&
-        genome_coord <= pairs[pairs.length-1][1] &&
-        _.any(pairs, pair => (pair[0] <= genome_coord && genome_coord <= pair[1]));
+    _x_is_in_intervalset: function(x) {
+        // TODO: find a way to make this function faster.  Maybe bisection?
+        if (x < 0 || x > window.model.plot.genome_coords_width) { return false; }
+        var pairs = window.model.intervalset.list_of_pairs;
+        var genome_coord = Math.round(window.model.plot.x.invert(x));
+        return pairs[0][0] <= genome_coord &&
+            genome_coord <= pairs[pairs.length-1][1] &&
+            _.any(pairs, pair => (pair[0] <= genome_coord && genome_coord <= pair[1]));
+    }
 }
 
 

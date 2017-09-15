@@ -6,7 +6,6 @@
 
 
 {% block in_js %}
-window.model.genes = {{ genes_in_region|tojson(separators=(',',':'))|safe }};
 window.model.url_suffix = fmt('/region/{0}', {{ intervalset.to_region_dashed()|tojson()|safe }});
 {% endblock %}
 
@@ -18,13 +17,5 @@ window.model.url_suffix = fmt('/region/{0}', {{ intervalset.to_region_dashed()|t
 
 {% block in_topleft_col %}
 <h1>Region: {{ 'chr{chrom} : {start:,} - {stop:,}'.format(**intervalset.to_region_dict()) }}</h1>
-{% if genes_in_region %}
-<h3>Genes in this region:</h3>
-<ul>
-  {% for gene in genes_in_region %}
-  <li><a href="{{ url_for('.gene_page', gene_id=gene.gene_id) }}">{{ gene.gene_name or gene.gene_id }}</a></li>
-  {% endfor %}
-</ul>
-{% endif %}
 <a class="btn btn-default" href="{{ url_for('.download_region_variants', **intervalset.to_region_dict()) }}" style="margin-bottom:10px">Download all variants</a>
 {% endblock %}

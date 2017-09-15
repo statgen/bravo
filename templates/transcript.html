@@ -8,7 +8,6 @@
 {% block in_js %}
 window.model.gene = {{ gene|tojson(separators=(',',':'))|safe }};
 window.model.transcript = {{ transcript|tojson(separators=(',',':'))|safe }};
-window.model.exons = {{ exons|tojson(separators=(',',':'))|safe }};
 window.model.url_suffix = fmt('/transcript/{0}', window.model.transcript.transcript_id);
 {% endblock %}
 
