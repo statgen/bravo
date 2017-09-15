@@ -44,6 +44,9 @@ function with_waiting_notice(f) {
     }, 10);
 }
 
+window.model = window.model || {};
+window._debug = window._debug || {};
+
 (function() {
     var autocomplete_bloodhound = new Bloodhound({
         datumTokenizer: Bloodhound.tokenizers.obj.whitespace('value'),

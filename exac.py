@@ -371,17 +371,17 @@ def awesome():
 
     print "Searched for %s: %s" % (datatype, identifier)
     if datatype == 'gene':
-        return redirect('/gene/{}'.format(identifier))
+        return redirect(url_for('.gene_page', gene_id=identifier))
     elif datatype == 'transcript':
-        return redirect('/transcript/{}'.format(identifier))
+        return redirect(url_for('.transcript_page', transcript_id=identifier))
     elif datatype == 'variant':
-        return redirect('/variant/{}'.format(identifier))
+        return redirect(url_for('.variant_page', variant_str=identifier))
     elif datatype == 'region':
-        return redirect('/region/{}'.format(identifier))
+        return redirect(url_for('.region_page', region_id=identifier))
     elif datatype == 'dbsnp_variant_set':
         return redirect('/dbsnp/{}'.format(identifier))
     elif datatype == 'not_found':
-        return redirect('/not_found/{}'.format(identifier))
+        return redirect(url_for('.not_found_page', query=identifier))
     else:
         raise Exception
 
