@@ -193,7 +193,12 @@ class IntervalSet(object):
         # note: these "exons" are not all literally exons, some are CDS or UTR features
         exons = sorted(list(exons), key=lambda exon: exon['start'])
         assert len(exons) > 0
-        assert boltons.iterutils.same(exon['chrom'] for exon in exons)
+        try:
+            assert boltons.iterutils.same(exon['chrom'] for exon in exons)
+        except AssertionError:
+            # if we're in PAR, only show X.  TODO: actually solve this for the long term.
+            assert all(exon['chrom'] in ['X','Y'] for exon in exons)
+            exons = [exon for exon in exons if exon['chrom'] == 'X']
         regions = []
         for exon in exons:
             assert exon['start'] <= exon['stop'] # There are some exons with start==stop, which I don't understand
