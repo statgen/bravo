@@ -245,18 +245,23 @@ class TranscriptSet(object):
         return cls._from_exons(db, all_exons)
     @classmethod
     def _from_exons(cls, db, all_exons):
-        '''return is like [{gene_name:'PCSK9', gene_id:'ENSG123', transcripts:[{transcript_id:'ENST234', exons:[{start,stop,strand,feature_type}]}]}]'''
+        '''return is like [{gene_name:'PCSK9', gene_id:'ENSG123', transcripts:[{transcript_id:'ENST234',start,stop,exons:[{start,stop,strand,feature_type}]}]}]'''
         for exon in all_exons: assert exon['feature_type'] in ['exon', 'CDS', 'UTR'] and exon['strand'] in ['+','-']
         all_transcripts = []
         for transcript_id, exons in sortedgroupby(all_exons, key=lambda exon:exon['transcript_id']):
             exons = sorted(exons, key=lambda exon:exon['start'])
+            transcript = db.transcripts.find_one({'transcript_id':transcript_id})
             gene_id = exons[0]['gene_id']
             exons = [{key: exon[key] for key in ['feature_type','strand','start','stop']} for exon in exons]
             weight = 0 # 1e10 * CDS length + 1e5 * UTR length + 1 * exon length
             for exon in exons:
                 length = exon['stop']+1 - exon['start']
                 weight += length * {'CDS':1e10, 'UTR':1e5, 'exon':1}[exon['feature_type']]
-            all_transcripts.append({'gene_id':gene_id,'transcript_id':transcript_id,'exons':exons,'weight':weight})
+            all_transcripts.append({
+                'gene_id':gene_id,'transcript_id':transcript_id,
+                'start':transcript['start'],'stop':transcript['stop'],
+                'exons':exons,'weight':weight
+            })
         genes = []
         for gene_id, transcripts in sortedgroupby(all_transcripts, key=lambda trans:trans['gene_id']):
             transcripts = sorted(transcripts, key=lambda trans:-trans['weight'])

@@ -259,8 +259,11 @@ var transcripts_plot = {
         });
         svg.call(exon_tip);
 
+        var intervals_to_show = window.model.intervalset.list_of_pairs
+            .filter(function(pair) { return pair[0] <= transcript.stop && pair[1] >= transcript.start })
+            .map(function(pair) { return [Math.max(pair[0], transcript.start), Math.min(pair[1], transcript.stop)] });
         data_g.selectAll('line.intervals')
-            .data(window.model.intervalset.list_of_pairs)
+            .data(intervals_to_show)
             .enter()
             .append('line')
             .attr("y1", this.height/2)
