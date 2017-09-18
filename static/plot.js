@@ -84,6 +84,8 @@ function create_coverage_plot() {
 }
 
 function populate_coverage_plot(data_g, genome_g) {
+    var color = '#ffa37c';
+
     var metric = 'mean';
     var max_cov = 1;
     if (metric === 'mean' || metric === 'median') {
@@ -100,7 +102,7 @@ function populate_coverage_plot(data_g, genome_g) {
         .enter()
         .append("rect")
         .attr('class', 'cov_plot_bars')
-        .style("fill", "steelblue")
+        .style("fill", color)
         .attr("x", function(d) {
             return window.model.plot.x(d.start);
         })
@@ -184,6 +186,8 @@ function change_coverage_plot_metric(metric) {
 var transcripts_plot = {
     height: 15, // not including margins
     margin: {top:0 , bottom:3},
+    label_gradient_width: 40,
+    colors: {canonical:'darkblue', coding:'steelblue', noncoding:'lightsteelblue'},
     create: function() {
         bootstrap_plot();
 
@@ -213,42 +217,40 @@ var transcripts_plot = {
         }
     },
     render_genes: function(genes) {
-        genes.forEach(function(gene, gi) {
-            gene.transcripts.forEach(function(transcript, ti) {
-                this.create_one(gene, transcript, gi===0 && ti===0);
+        genes.forEach(function(gene) {
+            gene.transcripts.forEach(function(transcript, i) {
+                var is_coding = _.any(transcript.exons, function(exon) {return exon.feature_type === 'CDS'});
+                var is_canonical = is_coding && (i===0);
+                this.create_one(gene, transcript, is_canonical, is_coding);
             }.bind(this))
         }.bind(this))
     },
-    _get_label: function(gene, transcript) {
-        if (window.model.url_suffix.startsWith('/region/')) // TODO: use a cleaner method to check whether we're on region.html
-            return {url:fmt('{0}gene/{1}', window.model.url_prefix, gene.gene_id), text:gene.gene_name || gene.gene_id, fontstyle:'italic'};
-        return {url:fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id), text:transcript.transcript_id, fontstyle:'inherit'};
-    },
-    create_one: function(gene, transcript, is_canonical) {
-        var svg = d3.select('#transcripts_plot_container').append('svg')
+    create_one: function(gene, transcript, is_canonical, is_coding) {
+        var color = (is_canonical ? this.colors.canonical : (is_coding ? this.colors.coding : this.colors.noncoding));
+
+        var div = d3.select('#transcripts_plot_container').append('div');
+        var label_p = div.append('p').attr('class','transcript-label').style('position','absolute').style('margin',0);
+        var svg = div.append('svg')
             .attr('width', window.model.plot.svg_width)
             .attr('height', this.height + this.margin.top + this.margin.bottom)
-            .style('display', 'block');
+            .style('display', 'block')
+            .style('position','relative').style('z-index',1) // allows z-index
+            .style('pointer-events','none') // don't capture mouseover, to let it pass thru to label
+        this._populate_label(gene, transcript, is_canonical, is_coding, label_p, svg, color);
 
         var genome_g = svg.append('g')
             .attr('id', 'gene_track')
             .attr('class', 'genome_g')
-            .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top));
+            .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top))
+            .style('pointer-events', 'all');
+        genome_g.append('rect').style('fill','white').style('height','100%').style('width','100%');
         var data_g = genome_g.append('g');
         mouse_guide.register(genome_g);
 
-        var label = this._get_label(gene, transcript);
-        if (is_canonical) label.text += '*';
-        svg.append('a')
-            .attr('xlink:href', label.url)
-            .append('text')
-            .text(label.text)
-            .style('font-style', label.fontstyle)
-            .attr('transform', fmt('translate(2,{0})',this.height/2))
-            .attr('alignment-baseline', 'middle')
-            .style('stroke','steelblue')
-
-        var exon_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
+        var exon_tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .style('z-index', 2)
+            .html(function(d) {
             return transcript.transcript_id + '<br>' +
                 (d.feature_type==='CDS'?'Coding Sequence':d.feature_type) + '<br>' +
                 'start: ' + group_thousands_html(d.start) + '<br>' +
@@ -266,7 +268,7 @@ var transcripts_plot = {
             .attr("x1", function(d) { return window.model.plot.x(d[0]) })
             .attr("x2", function(d) { return window.model.plot.x(d[1]) })
             .attr("stroke-width", 1)
-            .attr("stroke", "lightsteelblue");
+            .attr("stroke", color);
 
         data_g.selectAll('rect.exon')
             .data(transcript.exons)
@@ -275,7 +277,7 @@ var transcripts_plot = {
             .attr('xlink:href', fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id))
             .append('rect')
             .attr('class', 'exon')
-            .style('fill', 'lightsteelblue')
+            .style('fill', color)
             .attr('y', function(d){return d.feature_type==='CDS' ? 0 : this.height/4}.bind(this))
             .attr('height',function(d){return d.feature_type==='CDS' ? this.height : this.height/2}.bind(this))
             .each(function(d) {
@@ -285,6 +287,40 @@ var transcripts_plot = {
             })
             .on('mouseover', exon_tip.show)
             .on('mouseout', exon_tip.hide)
+    },
+    _populate_label: function(gene, transcript, is_canonical, is_coding, label_p, svg, color) {
+        var grad = svg.append('linearGradient').attr('id', 'label-mask-gradient').attr('x2', 1)
+        grad.append('stop').attr('offset',0).attr('stop-opacity',0).attr('stop-color','white')
+        grad.append('stop').attr('offset',0.8).attr('stop-opacity',1).attr('stop-color','white')
+        grad.append('stop').attr('offset',1).attr('stop-opacity',1).attr('stop-color','white')
+        svg.append('rect')
+            .attr('x', genome_coords_margin.left-this.label_gradient_width)
+            .attr('width', this.label_gradient_width)
+            .attr('height', this.height)
+            .attr('fill', 'url(#label-mask-gradient)')
+
+        var font_weight = is_canonical ? 'bold' : 'inherit';
+        label_p
+            .style('height', fmt('{0}px', this.height + this.margin.bottom + this.margin.top))
+            .on('mouseover', function() { d3.selectAll('.transcript-label').style('z-index', 2) })
+            .on('mouseout', function() { d3.selectAll('.transcript-label').style('z-index', 0) })
+            .style('background-color','white')
+            .style('padding-right', '0.5em')
+        var show_gene = window.model.url_suffix.startsWith('/region/'); // TODO: use a cleaner method to check whether we're on region.html
+        if (show_gene) {
+            label_p.append('a')
+                .attr('href', fmt('{0}gene/{1}', window.model.url_prefix, gene.gene_id))
+                .style('font-style','italic')
+                .style('margin-right', '0.2em')
+                .text(gene.gene_name || gene.gene_id)
+                .style('color', color)
+                .style('font-weight', font_weight)
+        }
+        var label = label_p.append('a')
+            .attr('href', fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id))
+            .text(transcript.transcript_id)
+            .style('color', color)
+            .style('font-weight', font_weight)
     },
     add_draw_all_button: function(num_transcripts_remaining) {
         d3.select('#transcripts_plot_container')
