@@ -185,7 +185,7 @@ function change_coverage_plot_metric(metric) {
 
 var transcripts_plot = {
     height: 15, // not including margins
-    margin: {top:0 , bottom:3},
+    margin: {top:1, bottom:1},
     label_gradient_width: 40,
     colors: {canonical:'darkblue', coding:'steelblue', noncoding:'lightsteelblue'},
     create: function() {
