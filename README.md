@@ -18,13 +18,23 @@ You probably want to run Flask behind something else, like Apache2.
 
 ### Prepare a VCF
 
-Use the scripts in `data/new_vcf_info/` to extract a subset of samples from a vcf file and calculate a few summaries for each variant.
+In `data/DataPrep/` you will find tools to prepare your VCF/BCF files for import into Mongo database.
 
-Use `data/add_cadd_scores.py` to add CADD scores to a vcf.
+Commands below will compile and install `CountAlleles`, `GTHistogram`, and `INFOHistogram` tools to `data/DataPrep/build/bin`:
 
-Use `data/remove_ac0.py` to remove variants that never vary.
+    mkdir data/DataPrep/build
+    cd data/DataPrep/build
+    cmake ..
+    make install
+    
 
-Use `data/import_info.py` with some options (I don't know which) to copy some INFO fields from one vcf (eg, your full vcf) into another (eg, your sites vcf)
+Use `CountAlleles` tool to compute NS, AN, AC, AF, Hom, Het values for each variant in a subset of samples (monomorphic variants are dropped).
+
+Use `GTHistograms` tool to compute histograms for DP and GQ fields for each variant in a subset of samples.
+
+Use `INFOHistograms` tool to compute histograms for INFO fields across all variants (or variants in the specified allele frequency range).
+
+Specify `--help` to see all possible options for each of the above tools (e.g. `Count Alleles --help`). All tools support streaming VCF/BCF from Google and Amazon cloud storages.
 
 
 ### Make some config for your new dataset
