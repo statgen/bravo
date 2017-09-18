@@ -31,7 +31,7 @@ def get_variant(db, xpos, ref, alt):
     if variant['rsids'] == []:
         variant['rsids'] = list('rs{}'.format(r['rsid']) for r in db.dbsnp.find({'xpos': xpos}))
         if variant['rsids']:
-            print("apparently the variant [xpos={!r}, ref={!r}, alt={!r}] didn't have any rsids but found some in db.dbsnp")
+            print("apparently the variant [xpos={!r}, ref={!r}, alt={!r}] didn't have any rsids but found some in db.dbsnp".format(xpos, ref, alt))
     variant['genes'] = [gene for gene in variant['genes'] if gene != '']
     return variant
 
