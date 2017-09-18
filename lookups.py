@@ -323,11 +323,15 @@ def get_summary_for_intervalset(db, intervalset):
     st = time.time()
     mongo_match_cond = {
         'lof': {'$lt': ['$worst_csqidx', Consequence.as_obj['n_lof']]},
+        'lof_lc': {'$and': [
+            {'$lt': ['$worst_csqidx', Consequence.as_obj['n_lof']]},
+            {'$in':[{'k':"LoF",'v':"LC"},{'$objectToArray':{'$arrayElemAt':["$vep_annotations",0]}}]} # this is gross but I couldn't find a better way.
+        ]},
         'mis': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof']]},     {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}]},
         'syn': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}, {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis_syn']]}]},
         'indel': {'$or': [{'$ne': [1, {'$strLenBytes':'$ref'}]}, {'$ne': [1, {'$strLenBytes':'$alt'}]}]},
     }
-    keys = 'lof mis syn indel total'.split()
+    keys = 'lof lof_lc mis syn indel total'.split()
     ret = {key:0 for key in keys}
     for mongo_match_region in intervalset.to_list_of_mongos():
         x = db.variants.aggregate([
@@ -335,6 +339,7 @@ def get_summary_for_intervalset(db, intervalset):
             {'$group': {
                 '_id': None,
                 'lof':  {'$sum':{'$cond':[mongo_match_cond['lof'],1,0]}},
+                'lof_lc':  {'$sum':{'$cond':[mongo_match_cond['lof_lc'],1,0]}},
                 'mis':  {'$sum':{'$cond':[mongo_match_cond['mis'],1,0]}},
                 'syn':  {'$sum':{'$cond':[mongo_match_cond['syn'],1,0]}},
                 'indel':{'$sum':{'$cond':[mongo_match_cond['indel'],1,0]}},
@@ -350,6 +355,7 @@ def get_summary_for_intervalset(db, intervalset):
         ('All - SNPs', ret['total'] - ret['indel']),
         ('All - Indels', ret['indel']),
         ('Coding - LoF', ret['lof']),
+        ('Coding - LoF - Low Confidence', ret['lof_lc']),
         ('Coding - Missense', ret['mis']),
         ('Coding - Synonymous', ret['syn']),
     ]
