@@ -323,6 +323,10 @@ def require_agreement_to_terms_and_store_destination(func):
         return func(*args, **kwargs)
     return decorated_view
 
+def _log(message=''):
+    url = request.full_path.rstrip('?')
+    if url.startswith(app.config['URL_PREFIX']): url = url[len(app.config['URL_PREFIX']):]
+    print('{}  {}{}'.format(current_user, url, message))
 
 @bp.route('/')
 def homepage():
@@ -333,6 +337,7 @@ def homepage():
 def autocomplete():
     query = request.args.get('query', '')
     suggestions = lookups.get_awesomebar_suggestions(get_autocomplete_strings(), query)
+    print('  =>  {} results'.format(len(suggestions)))
     return jsonify([{'value': s} for s in sorted(suggestions)])
 
 
@@ -341,7 +346,7 @@ def awesome():
     db = get_db()
     query = request.args.get('query')
     datatype, redirect_args = lookups.get_awesomebar_result(db, query)
-    print "Searched for %s: %s" % (datatype, redirect_args)
+    _log('  =>  {}_page({})'.format(datatype, redirect_args))
     return redirect(url_for('.{}_page'.format(datatype), **redirect_args))
 
 
@@ -350,8 +355,9 @@ def awesome():
 def variant_page(variant_id):
     db = get_db()
     try:
-        print 'Rendering variant: %s' % variant_id
+        _log()
         variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant=True)
+        if not variant: return error_page('Variant {!r} not found'.format(variant_id))
         if 'pop_afs' in variant: variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
 
         consequence_drilldown = ConsequenceDrilldown.from_variant(variant)
@@ -375,8 +381,7 @@ def variant_page(variant_id):
             gene_for_top_csq=gene_for_top_csq,
         )
     except Exception, e:
-        print 'Failed on variant:', variant_id, '; Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 
 
 @bp.route('/gene/<gene_id>')
@@ -384,8 +389,9 @@ def variant_page(variant_id):
 def gene_page(gene_id):
     db = get_db()
     try:
-        print 'Rendering gene: %s' % gene_id
+        _log()
         gene = lookups.get_gene(db, gene_id)
+        if not gene: return error_page('Gene {!r} not found'.format(gene_id))
         intervalset = IntervalSet.from_gene(db, gene_id)
         genes = TranscriptSet.from_gene(db, gene_id).genes
         return render_template(
@@ -394,16 +400,16 @@ def gene_page(gene_id):
             gene=gene,
         )
     except Exception, e:
-        print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 
 @bp.route('/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def transcript_page(transcript_id):
     db = get_db()
     try:
-        print 'Rendering transcript: %s' % transcript_id
+        _log()
         transcript = lookups.get_transcript(db, transcript_id)
+        if not transcript: return error_page('Transcript {!r} not found'.format(transcript_id))
         gene = lookups.get_gene(db, transcript['gene_id'])
         intervalset = IntervalSet.from_transcript(db, transcript_id)
         genes = TranscriptSet.from_transcript(db, transcript_id).genes
@@ -414,16 +420,16 @@ def transcript_page(transcript_id):
             transcript=transcript,
         )
     except Exception, e:
-        print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 
 @bp.route('/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def region_page(chrom, start, stop):
     db = get_db()
     try:
-        print 'Rendering region:', chrom, start, stop
-        start,stop = int(start),int(stop)
+        _log()
+        try: start,stop = int(start),int(stop)
+        except: return error_page('Positions not integers: {!r}, {!r}'.format(start, stop))
         if start > stop: return error_page("The region '{chrom}-{start}-{stop}' stops before it starts. Did you mean '{chrom}-{stop}-{start}'?".format(chrom=chrom, start=start, stop=stop))
         if stop-start > MAX_REGION_LENGTH: return error_page("The region '{chrom}-{start}-{stop}' is {:,} bases. We only accept regions shorter than {:,} bases.".format(stop-start, MAX_REGION_LENGTH, chrom=chrom, start=start, stop=stop))
         if start == stop: start -= 20; stop += 20
@@ -435,8 +441,7 @@ def region_page(chrom, start, stop):
             intervalset=intervalset, genes=genes, csq=Consequence.as_obj,
         )
     except Exception, e:
-        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 
 
 @bp.route('/download/gene/<gene_id>')
@@ -447,8 +452,7 @@ def download_gene_variants(gene_id):
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
         return _get_variants_csv_for_intervalset(intervalset, '{}.csv'.format(gene_id))
     except Exception as e:
-        print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 @bp.route('/download/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def download_transcript_variants(transcript_id):
@@ -457,8 +461,7 @@ def download_transcript_variants(transcript_id):
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
         return _get_variants_csv_for_intervalset(intervalset, '{}.csv'.format(transcript_id))
     except Exception as e:
-        print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 @bp.route('/download/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def download_region_variants(chrom, start, stop):
@@ -467,9 +470,9 @@ def download_region_variants(chrom, start, stop):
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return _get_variants_csv_for_intervalset(intervalset, 'chr{}-{}-{}.csv'.format(chrom, start, stop))
     except Exception as e:
-        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 def _get_variants_csv_for_intervalset(intervalset, filename):
+    _log()
     resp = make_response(lookups.get_variants_csv_str_for_intervalset(get_db(), intervalset))
     resp.headers['Content-Disposition'] = 'attachment; filename={}'.format(filename)
     resp.mimetype='text/csv'
@@ -483,8 +486,7 @@ def gene_summary_api(gene_id):
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
         return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
     except Exception as e:
-        print 'Failed with:', gene_id, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 @bp.route('/api/summary/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def transcript_summary_api(transcript_id):
@@ -492,8 +494,7 @@ def transcript_summary_api(transcript_id):
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
         return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
     except Exception as e:
-        print 'Failed with:', transcript_id, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 @bp.route('/api/summary/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def region_summary_api(chrom, start, stop):
@@ -502,8 +503,7 @@ def region_summary_api(chrom, start, stop):
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
     except Exception as e:
-        print 'Failed with:', chrom, start, stop, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 
 
 @bp.route('/api/variants/gene/<gene_id>', methods=['POST'])
@@ -513,8 +513,7 @@ def gene_variants_subset_api(gene_id):
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
         return _get_variants_subset_response_for_intervalset(intervalset)
     except Exception as e:
-        print 'Failed with:', request.form, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, request.form, '; Error=', traceback.format_exc(); abort(404)
 @bp.route('/api/variants/transcript/<transcript_id>', methods=['POST'])
 @require_agreement_to_terms_and_store_destination
 def transcript_variants_subset_api(transcript_id):
@@ -522,8 +521,7 @@ def transcript_variants_subset_api(transcript_id):
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
         return _get_variants_subset_response_for_intervalset(intervalset)
     except Exception as e:
-        print 'Failed with:', request.form, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, request.form, '; Error=', traceback.format_exc(); abort(404)
 @bp.route('/api/variants/region/<chrom>-<start>-<stop>', methods=['POST'])
 @require_agreement_to_terms_and_store_destination
 def region_variants_subset_api(chrom, start, stop):
@@ -532,14 +530,13 @@ def region_variants_subset_api(chrom, start, stop):
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return _get_variants_subset_response_for_intervalset(intervalset)
     except Exception as e:
-        print 'Failed with:', request.form, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, request.form, '; Error=', traceback.format_exc(); abort(404)
 def _get_variants_subset_response_for_intervalset(intervalset):
     db = get_db()
     args = json.loads(request.form['args'])
     assert isinstance(args['draw'], int)
     filter_info = json.loads(request.form['filter_info'])
-    import pprint; pprint.pprint(filter_info)
+    _log('   '+str(filter_info))
     ret = lookups.get_variants_subset_for_intervalset(
         db, intervalset, args['columns'], args['order'], filter_info, skip=args['start'], length=args['length']
     )
@@ -554,8 +551,7 @@ def gene_coverage_api(gene_id):
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
         return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
     except Exception as e:
-        print 'Failed on gene:', gene_id, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 @bp.route('/api/coverage/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def transcript_coverage_api(transcript_id):
@@ -563,8 +559,7 @@ def transcript_coverage_api(transcript_id):
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
         return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
     except Exception as e:
-        print 'Failed on transcript:', transcript_id, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 @bp.route('/api/coverage/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def region_coverage_api(chrom, start, stop):
@@ -573,8 +568,7 @@ def region_coverage_api(chrom, start, stop):
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
     except Exception as e:
-        print 'Failed on region:', chrom, start, stop, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 
 
 @bp.route('/multi_variant_rsid/<rsid>')
@@ -582,7 +576,7 @@ def region_coverage_api(chrom, start, stop):
 def multi_variant_rsid_page(rsid):
     db = get_db()
     try:
-        print 'Rendering multi-variant rsid: %s' % rsid
+        _log()
         variants = lookups.get_variants_by_rsid(db, rsid)
         if variants is None or len(variants) == 0:
             return error_page("There are no variants with the rsid '{}'".format(rsid))
@@ -590,8 +584,7 @@ def multi_variant_rsid_page(rsid):
             rsid,
             ', '.join('{chrom}-{pos}-{ref}-{alt}'.format(**variant) for variant in variants)))
     except Exception, e:
-        print 'Failed on rsid:', rsid, ';Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 
 
 @bp.route('/not_found/<query>')
@@ -613,28 +606,31 @@ def error_page(message):
 @bp.route('/download')
 @require_agreement_to_terms_and_store_destination
 def download_page():
+    _log()
     return render_template('download.html')
 
 
 @bp.route('/download/all')
 @require_agreement_to_terms_and_store_destination
 def download_full_vcf():
+    _log()
     try:
         file_dir='/var/bravo_downloads/'
         file_name='ALL.TOPMed_freeze5_hg38_dbSNP.vcf.gz'
         response = make_response(send_from_directory(file_dir, file_name, as_attachment = True, mimetype='application/gzip'))
         return response
     except Exception as e:
-        print 'Failed during full VCF download;Error=', traceback.format_exc()
-        abort(404)
+        print 'Failed on ', request.full_path, '; Error=', traceback.format_exc(); abort(404)
 
 
 @bp.route('/about')
 def about_page():
+    _log()
     return render_template('about.html')
 
 @bp.route('/terms')
 def terms_page():
+    _log()
     return render_template('terms.html')
 
 
@@ -652,8 +648,10 @@ class User(UserMixin):
         self.agreed_to_terms = agreed_to_terms
     def get_id(self):
         return self.email
+    def __str__(self):
+        return "<{}>".format(self.email or None)
     def __repr__(self):
-        return "<User email={!r} username={!r} agreed_to_terms={!r}>".format(self.email, self.username, self.agreed_to_terms)
+        return "<User email={!r} username={!r} terms={!r}>".format(self.email, self.username, self.agreed_to_terms)
 
 def encode_user(user):
     return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms}
@@ -669,7 +667,6 @@ def load_user(id):
 
     if document:
         u = decode_user(document)
-        print('user [{!r}] found with id [{!r}]'.format(u, id))
     else:
         # This method is supposed to support bad `id`s.
         print('user not found with id [{!r}]'.format(id))
@@ -684,12 +681,12 @@ def agree_to_terms():
         current_user.agreed_to_terms = True
         db = get_db()
         result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})
-    print('User [{!r}] agreed to the terms!'.format(current_user))
+    _log()
     return redirect(url_for('.get_authorized'))
 
 @bp.route('/logout')
 def logout():
-    print('logging out user {!r}'.format(current_user))
+    _log()
     logout_user()
     return redirect(url_for('.homepage'))
 

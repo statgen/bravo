@@ -100,7 +100,6 @@ _regex_chr_pos_ref_alt = re.compile(_regex_pattern_chr_pos_ref_alt+'$')
 
 def get_awesomebar_result(db, query):
     query = query.strip()
-    print 'Query: %s' % query
 
     # rsid
     variants = get_variants_by_rsid(db, query.lower())
