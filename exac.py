@@ -389,9 +389,9 @@ def variant_page(variant_id):
 def gene_page(gene_id):
     db = get_db()
     try:
-        _log()
         gene = lookups.get_gene(db, gene_id)
         if not gene: return error_page('Gene {!r} not found'.format(gene_id))
+        _log('   ({})'.format(gene.get('gene_name')))
         intervalset = IntervalSet.from_gene(db, gene_id)
         genes = TranscriptSet.from_gene(db, gene_id).genes
         return render_template(
