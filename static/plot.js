@@ -517,7 +517,8 @@ function create_variant_table() {
             data: 'worst_csqidx', searchable:true, orderable:true, className: 'dt-pad-left',
             render: function(cell_data, type, row) {
                 return '<b>' + fmt_annotation(cell_data) + '</b>' +
-                    (row.HGVS ? ' ('+row.HGVS+')' : '');
+                    (row.HGVS ? ' ('+row.HGVS+')' : '') +
+                    (row.low_conf ? ' <i>(Low&nbsp;Confidence)</i>':'');
             },
 
         },{

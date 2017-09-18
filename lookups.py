@@ -385,10 +385,14 @@ def get_variants_subset_for_intervalset(db, intervalset, columns_to_return, orde
     cols = {
         # after pre-processing, these will look like:
         # <name>: {'sort': {'project': <projection>, 'sort_key': <key>}, 'return': {'project': <projection>}}
+        # <name>: {'sort': False, 'return': {'project': <projection>}}
         'allele': {'return': ['rsids', 'ref', 'alt']},
         'pos': {'sort': 'xpos'},
-#        'hgvs': {'return':{'project': {'HGVS':'$worst_csq_HGVS'}}},
-        'csq': {'sort': 'worst_csqidx', 'return':{'project': {'worst_csqidx':1, 'HGVS':'$worst_csq_HGVS'}}},
+        'csq': {'sort': 'worst_csqidx', 'return':{'project': {
+            'worst_csqidx':1,
+            'HGVS':'$worst_csq_HGVS',
+            'low_conf': {'$in':[{'k':"LoF",'v':"LC"},{'$objectToArray':{'$arrayElemAt':["$vep_annotations",0]}}]}, # Gross, but I don't know a better way.
+        }}},
         'filter': {},
         'allele_count': {'sort': True},
         'allele_num': {'sort': True},
