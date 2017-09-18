@@ -252,23 +252,30 @@ class TranscriptSet(object):
             exons = sorted(exons, key=lambda exon:exon['start'])
             gene_id = exons[0]['gene_id']
             exons = [{key: exon[key] for key in ['feature_type','strand','start','stop']} for exon in exons]
-            weight = 0 # my heuristic for importance I guess.  similar to common "canonical" definitions
+            weight = 0 # 1e10 * CDS length + 1e5 * UTR length + 1 * exon length
             for exon in exons:
                 length = exon['stop']+1 - exon['start']
-                weight += length * {'CDS':1, 'UTR':0.2, 'exon':0.1}[exon['feature_type']]
+                weight += length * {'CDS':1e10, 'UTR':1e5, 'exon':1}[exon['feature_type']]
             all_transcripts.append({'gene_id':gene_id,'transcript_id':transcript_id,'exons':exons,'weight':weight})
         genes = []
         for gene_id, transcripts in sortedgroupby(all_transcripts, key=lambda trans:trans['gene_id']):
+            transcripts = sorted(transcripts, key=lambda trans:-trans['weight'])
             gene = get_gene(db, gene_id)
             gene_name = gene['gene_name'] if gene else None
-            transcripts = sorted(transcripts, key=lambda trans:-trans['weight'])
+            canonical_transcript_id = gene.get('canonical_transcript') if gene else None
+            for transcript in transcripts:
+                if transcript['transcript_id'] == canonical_transcript_id:
+                    transcript['canonical'] = True
             genes.append({
                 'gene_id': gene_id,
                 'gene_name': gene_name,
                 'transcripts': transcripts,
             })
         genes.sort(key=lambda gene:-gene['transcripts'][0]['weight'])
-        # TODO: remove transcript['gene_id'] and transcript['weight']
+        for gene in genes:
+            for transcript in gene['transcripts']:
+                del transcript['gene_id']
+                del transcript['weight']
         return cls(genes)
 
 

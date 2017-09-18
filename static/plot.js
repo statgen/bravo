@@ -193,9 +193,10 @@ var transcripts_plot = {
 
         var num_transcripts = this.count_transcripts(window.model.genes);
         var gotta_use_subset = num_transcripts > 7;
-        this.render_genes(gotta_use_subset ? this.get_genes_subset() : window.model.genes);
+        var genes = (gotta_use_subset ? this.get_genes_subset() : window.model.genes)
+        this.render_genes(genes);
         if (gotta_use_subset) {
-            this.add_draw_all_button(num_transcripts - 5);
+            this.add_draw_all_button(num_transcripts - this.count_transcripts(genes), window.model.genes.length - genes.length);
         }
     },
     count_transcripts: function(genes){
@@ -220,13 +221,12 @@ var transcripts_plot = {
         genes.forEach(function(gene) {
             gene.transcripts.forEach(function(transcript, i) {
                 var is_coding = _.any(transcript.exons, function(exon) {return exon.feature_type === 'CDS'});
-                var is_canonical = is_coding && (i===0);
-                this.create_one(gene, transcript, is_canonical, is_coding);
+                this.create_one(gene, transcript, is_coding);
             }.bind(this))
         }.bind(this))
     },
-    create_one: function(gene, transcript, is_canonical, is_coding) {
-        var color = (is_canonical ? this.colors.canonical : (is_coding ? this.colors.coding : this.colors.noncoding));
+    create_one: function(gene, transcript, is_coding) {
+        var color = (transcript.canonical ? this.colors.canonical : (is_coding ? this.colors.coding : this.colors.noncoding));
 
         var div = d3.select('#transcripts_plot_container').append('div');
         var label_p = div.append('p').attr('class','transcript-label').style('position','absolute').style('margin',0);
@@ -236,7 +236,7 @@ var transcripts_plot = {
             .style('display', 'block')
             .style('position','relative').style('z-index',1) // allows z-index
             .style('pointer-events','none') // don't capture mouseover, to let it pass thru to label
-        this._populate_label(gene, transcript, is_canonical, is_coding, label_p, svg, color);
+        this._populate_label(gene, transcript, is_coding, label_p, svg, color);
 
         var genome_g = svg.append('g')
             .attr('id', 'gene_track')
@@ -288,7 +288,7 @@ var transcripts_plot = {
             .on('mouseover', exon_tip.show)
             .on('mouseout', exon_tip.hide)
     },
-    _populate_label: function(gene, transcript, is_canonical, is_coding, label_p, svg, color) {
+    _populate_label: function(gene, transcript, is_coding, label_p, svg, color) {
         var grad = svg.append('linearGradient').attr('id', 'label-mask-gradient').attr('x2', 1)
         grad.append('stop').attr('offset',0).attr('stop-opacity',0).attr('stop-color','white')
         grad.append('stop').attr('offset',0.8).attr('stop-opacity',1).attr('stop-color','white')
@@ -299,7 +299,7 @@ var transcripts_plot = {
             .attr('height', this.height)
             .attr('fill', 'url(#label-mask-gradient)')
 
-        var font_weight = is_canonical ? 'bold' : 'inherit';
+        var font_weight = transcript.canonical ? 'bold' : 'inherit';
         label_p
             .style('height', fmt('{0}px', this.height + this.margin.bottom + this.margin.top))
             .on('mouseover', function() { d3.selectAll('.transcript-label').style('z-index', 2) })
@@ -318,17 +318,20 @@ var transcripts_plot = {
         }
         var label = label_p.append('a')
             .attr('href', fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id))
-            .text(transcript.transcript_id)
+            .text(transcript.transcript_id + (transcript.canonical?'*':''))
             .style('color', color)
             .style('font-weight', font_weight)
     },
-    add_draw_all_button: function(num_transcripts_remaining) {
+    add_draw_all_button: function(num_transcripts_remaining, num_genes_remaining) {
+        var text = fmt('Show remaining {0} transcripts',num_transcripts_remaining) +
+            (num_genes_remaining ? fmt(' on {0} more gene{1}',num_genes_remaining,(num_genes_remaining===1?'':'s')) : '');
+
         d3.select('#transcripts_plot_container')
             .append('div')
             .style('text-align', 'center')
             .append('button')
             .attr('class', 'btn btn-default')
-            .text(fmt('Show remaining {0} transcripts',num_transcripts_remaining))
+            .text(text)
             .on('click', function(){
                 d3.select('#transcripts_plot_container').selectAll('*').remove()
                 this.render_genes(window.model.genes);
