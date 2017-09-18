@@ -337,7 +337,7 @@ def homepage():
 def autocomplete():
     query = request.args.get('query', '')
     suggestions = lookups.get_awesomebar_suggestions(get_autocomplete_strings(), query)
-    print('  =>  {} results'.format(len(suggestions)))
+    _log('  =>  {} results'.format(len(suggestions)))
     return jsonify([{'value': s} for s in sorted(suggestions)])
 
 
