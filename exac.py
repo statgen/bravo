@@ -759,7 +759,7 @@ def apply_caching(response):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
-app.register_blueprint(bp, url_prefix = '/freeze5/hg38')
+app.register_blueprint(bp, url_prefix = app.config['URL_PREFIX'])
 
 if __name__ == "__main__":
     import argparse
