@@ -214,6 +214,10 @@ var transcripts_plot = {
             .style('display', 'block')
             .style('position','relative').style('z-index',1) // allows z-index
             .style('pointer-events','none') // don't capture mouseover, to let it pass thru to label
+        svg.append('rect')
+            .attr('transform', fmt('translate({0},0)', genome_coords_margin.left))
+            .style('fill','white').attr('height','100%').attr('width','100%')
+            .style('pointer-events','all');
         this._populate_label(gene, transcript, is_coding, label_p, svg, color);
 
         var genome_g = svg.append('g')
@@ -221,7 +225,6 @@ var transcripts_plot = {
             .attr('class', 'genome_g')
             .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top))
             .style('pointer-events', 'all');
-        genome_g.append('rect').style('fill','white').style('height','100%').style('width','100%');
         var data_g = genome_g.append('g');
         mouse_guide.register(genome_g);
 
@@ -277,7 +280,7 @@ var transcripts_plot = {
         svg.append('rect')
             .attr('x', genome_coords_margin.left-this.label_gradient_width)
             .attr('width', this.label_gradient_width)
-            .attr('height', this.height)
+            .attr('height', '100%')
             .attr('fill', 'url(#label-mask-gradient)')
 
         var font_weight = transcript.canonical ? 'bold' : 'inherit';
