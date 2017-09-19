@@ -252,10 +252,10 @@ class TranscriptSet(object):
             transcript = db.transcripts.find_one({'transcript_id':transcript_id})
             gene_id = exons[0]['gene_id']
             exons = [{key: exon[key] for key in ['feature_type','strand','start','stop']} for exon in exons]
-            weight = 0 # 1e10 * CDS length + 1e5 * UTR length + 1 * exon length
+            weight = 0 # 10 * CDS length + UTR length + exon length + 1e10 * canonical
             for exon in exons:
                 length = exon['stop']+1 - exon['start']
-                weight += length * {'CDS':1e10, 'UTR':1e5, 'exon':1}[exon['feature_type']]
+                weight += length * {'CDS':10, 'UTR':1, 'exon':1}[exon['feature_type']]
             all_transcripts.append({
                 'gene_id':gene_id,'transcript_id':transcript_id,
                 'start':transcript['start'],'stop':transcript['stop'],
@@ -263,13 +263,15 @@ class TranscriptSet(object):
             })
         genes = []
         for gene_id, transcripts in sortedgroupby(all_transcripts, key=lambda trans:trans['gene_id']):
-            transcripts = sorted(transcripts, key=lambda trans:-trans['weight'])
             gene = get_gene(db, gene_id)
             gene_name = gene['gene_name'] if gene else None
             canonical_transcript_id = gene.get('canonical_transcript') if gene else None
+            transcripts = list(transcripts)
             for transcript in transcripts:
                 if transcript['transcript_id'] == canonical_transcript_id:
                     transcript['canonical'] = True
+                    transcript['weight'] += 1e10
+            transcripts = sorted(transcripts, key=lambda trans:-trans['weight'])
             genes.append({
                 'gene_id': gene_id,
                 'gene_name': gene_name,
