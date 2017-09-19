@@ -9,7 +9,7 @@ import gzip
 import random
 import boltons.cacheutils
 
-from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, make_response, send_from_directory, Blueprint
+from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, make_response, send_file, Blueprint
 from flask_compress import Compress
 from flask_errormail import mail_on_500
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
@@ -604,10 +604,8 @@ def download_page():
 def download_full_vcf():
     _log()
     try:
-        file_dir='/var/bravo_downloads/'
-        file_name='ALL.TOPMed_freeze5_hg38_dbSNP.vcf.gz'
-        response = make_response(send_from_directory(file_dir, file_name, as_attachment = True, mimetype='application/gzip'))
-        return response
+        filepath='/var/bravo_downloads/ALL.TOPMed_freeze5_hg38_dbSNP.vcf.gz'
+        return make_response(send_file(filepath, as_attachment=True, mimetype='application/gzip'))
     except:_err(); abort(404)
 
 
