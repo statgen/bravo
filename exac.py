@@ -604,8 +604,7 @@ def download_page():
 def download_full_vcf():
     _log()
     try:
-        filepath='/var/bravo_downloads/ALL.TOPMed_freeze5_hg38_dbSNP.vcf.gz'
-        return make_response(send_file(filepath, as_attachment=True, mimetype='application/gzip'))
+        return make_response(send_file(app.config['DOWNLOAD_ALL_FILEPATH'], as_attachment=True, mimetype='application/gzip'))
     except:_err(); abort(404)
 
 
