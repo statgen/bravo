@@ -10,11 +10,6 @@ window.model.url_suffix = fmt('/region/{0}', {{ intervalset.to_region_dashed()|t
 {% endblock %}
 
 
-{% block include_js %}
-<script type="text/javascript" src="{{ url_for('.static', filename='region.js') }}"></script>
-{% endblock %}
-
-
 {% block in_topleft_col %}
 <h1>Region: {{ 'chr{chrom} : {start:,} - {stop:,}'.format(**intervalset.to_region_dict()) }}</h1>
 <div class="dropdown" style="display:inline-block">

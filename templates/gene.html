@@ -6,13 +6,7 @@
 
 
 {% block in_js %}
-window.model.gene = {{ gene|tojson(separators=(',',':'))|safe }};
 window.model.url_suffix = fmt('/gene/{0}', {{ gene.gene_id|tojson()|safe }});
-{% endblock %}
-
-
-{% block include_js %}
-<script type="text/javascript" src="{{ url_for('.static', filename='gene.js') }}"></script>
 {% endblock %}
 
 
@@ -21,7 +15,7 @@ window.model.url_suffix = fmt('/gene/{0}', {{ gene.gene_id|tojson()|safe }});
       {% if gene.full_gene_name %}
       <p><span class="gene-name">{{ gene.gene_name }}</span>: {{ gene.full_gene_name }}</p>
       {% endif %}
-      <p>region: <a href="{{ url_for('.region_page', **intervalset.to_region_dict()) }}" target="_blank">{{ 'chr{chrom}:{start}-{stop}'.format(**intervalset.to_region_dict()) }}</a></p>
+      <p>region: <a href="{{ url_for('.region_page', **intervalset.to_region_dict()) }}">{{ 'chr{chrom}:{start}-{stop}'.format(**intervalset.to_region_dict()) }}</a></p>
       <div class="dropdown" style="display:inline-block">
         <button class="btn btn-default dropdown-toggle" type="button" id="external_ref_dropdown" data-toggle="dropdown">
           External References

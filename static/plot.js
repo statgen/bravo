@@ -1,20 +1,11 @@
 var genome_coords_margin = {left: 80, right: 30};
 
-var coverage_plot_height = 70;
-var coverage_plot_margin = {top: 8, bottom: 10};
-
-var pos_plot_height = 15;
-var pos_plot_margin = {top: 0, bottom: 0};
-
-var variant_plot_height = 20;
-var variant_plot_margin = {top: 0, bottom: 0};
-
 
 function bootstrap_plot() {
     window.model = window.model || {};
     window.model.plot = window.model.plot || {};
     if (!window.model.plot.svg_width) {
-        window.model.plot.svg_width = $('#coverage_plot_container').width();
+        window.model.plot.svg_width = $('#'+coverage_plot.container_id).width();
         window.model.plot.genome_coords_width = window.model.plot.svg_width - genome_coords_margin.left - genome_coords_margin.right;
     }
     if (!window.model.plot.x) {
@@ -38,149 +29,136 @@ function bootstrap_plot() {
     }
 }
 
-function get_variant_plot_id(variant) { return 'variant-plot-'+get_variant_id(variant); }
-function get_variant_id(variant) { return ''+variant.pos+'-'+variant.ref+'-'+variant.alt; }
 
+var coverage_plot = {
+    container_id: 'coverage_plot_container',
+    height: 70,
+    margin: {top: 8, bottom: 10},
+    color: '#ffa37c',
+    create: function() {
+        var XHR = $.getJSON(window.model.url_prefix + 'api/coverage' + window.model.url_suffix);
+        $(function() {
+            bootstrap_plot();
 
-function create_coverage_plot() {
-    var coverage_XHR = $.getJSON(window.model.url_prefix + 'api/coverage' + window.model.url_suffix);
-    $(function() {
-        bootstrap_plot();
+            var svg = d3.select('#'+this.container_id).append("svg")
+                .attr("width", window.model.plot.svg_width)
+                .attr("height", this.height + this.margin.top + this.margin.bottom)
+                .style('display', 'block');
+            var genome_g = svg.append("g")
+                .attr('id', 'inner_graph')
+                .attr('class', 'genome_g')
+                .attr("transform", "translate(" + genome_coords_margin.left + "," + this.margin.top + ")");
+            genome_g.append('clipPath')
+                .attr('id', 'cov-plot-clip')
+                .append('rect')
+                .attr('x', 0)
+                .attr('width', window.model.plot.genome_coords_width)
+                .attr('y', 0)
+                .attr('height', this.height);
 
-        var svg = d3.select('#coverage_plot_container').append("svg")
-            .attr("width", window.model.plot.svg_width)
-            .attr("height", coverage_plot_height + coverage_plot_margin.top + coverage_plot_margin.bottom)
-            .style('display', 'block');
-        var genome_g = svg.append("g")
-            .attr('id', 'inner_graph')
-            .attr('class', 'genome_g')
-            .attr("transform", "translate(" + genome_coords_margin.left + "," + coverage_plot_margin.top + ")");
-        genome_g.append('clipPath')
-            .attr('id', 'cov-plot-clip')
-            .append('rect')
-            .attr('x', 0)
-            .attr('width', window.model.plot.genome_coords_width)
-            .attr('y', 0)
-            .attr('height', coverage_plot_height);
+            var data_g = genome_g.append('g')
+                .attr('clip-path', 'url(#cov-plot-clip)')
+                .attr('id', 'cov-bar-g');
 
-        var data_g = genome_g.append('g')
-            .attr('clip-path', 'url(#cov-plot-clip)')
-            .attr('id', 'cov-bar-g');
+            mouse_guide.register(genome_g);
 
-        mouse_guide.register(genome_g);
+            var loading_text = genome_g.append('text')
+                .attr('text-anchor','middle').text('loading...')
+                .attr('transform', fmt('translate({0},{1})', window.model.plot.genome_coords_width/2, this.height/2))
 
-        var loading_text = genome_g.append('text')
-            .attr('text-anchor','middle').text('loading...')
-            .attr('transform', fmt('translate({0},{1})', window.model.plot.genome_coords_width/2, coverage_plot_height/2))
+            XHR
+                .done(function(coverage_stats) {
+                    loading_text.remove();
+                    window.model.coverage_stats = coverage_stats;
+                    if (window.model.coverage_stats !== null) this.populate(data_g, genome_g);
+                }.bind(this))
+                .fail(function() { console.error('coverage XHR failed'); });
+        }.bind(this));
+    },
 
-        coverage_XHR
-            .done(function(coverage_stats) {
-                loading_text.remove();
-                window.model.coverage_stats = coverage_stats;
-                if (window.model.coverage_stats !== null) populate_coverage_plot(data_g, genome_g);
-            })
-            .fail(function() { console.error('coverage XHR failed'); });
-    });
-}
+    populate: function(data_g, genome_g) {
+        var metric = 'mean';
+        var max_cov = 1;
+        if (metric === 'mean' || metric === 'median') {
+            max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
+        }
+        var y = d3.scale.linear()
+            .domain([0, max_cov])
+            .range([this.height, 0]);
+        var yAxis = this.y_axis(y, metric);
 
-function populate_coverage_plot(data_g, genome_g) {
-    var color = '#ffa37c';
+        data_g
+            .selectAll("rect.cov_plot_bars")
+            .data(window.model.coverage_stats)
+            .enter()
+            .append("rect")
+            .attr('class', 'cov_plot_bars')
+            .style("fill", this.color)
+            .attr("x", function(d) { return window.model.plot.x(d.start); })
+            .attr("width", function(d) { return window.model.plot.x(d.end + 1) - window.model.plot.x(d.start) + 1; })
+            .attr("y", function(d) { return y(d[metric]) || 0; })
+            .attr("height", function(d) { return (this.height - y(d[metric])) || 0; }.bind(this));
 
-    var metric = 'mean';
-    var max_cov = 1;
-    if (metric === 'mean' || metric === 'median') {
-        max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
-    }
-    var y = d3.scale.linear()
-        .domain([0, max_cov])
-        .range([coverage_plot_height, 0]);
-    var yAxis = _coverage_y_axis(y, metric);
+        genome_g.append("g")
+            .attr("class", "y axis")
+            .call(yAxis);
 
-    data_g
-        .selectAll("rect.cov_plot_bars")
-        .data(window.model.coverage_stats)
-        .enter()
-        .append("rect")
-        .attr('class', 'cov_plot_bars')
-        .style("fill", color)
-        .attr("x", function(d) {
-            return window.model.plot.x(d.start);
-        })
-        .attr("width", function(d) {
-            return window.model.plot.x(d.end + 1) - window.model.plot.x(d.start) + 1;
-        })
-        .attr("y", function(d) {
-            return y(d[metric]) || 0;
-        })
-        .attr("height", function(d) {
-            return (coverage_plot_height - y(d[metric])) || 0;
+        // Handle changes
+        $('.coverage_metric_buttons').change(function () {
+            coverage_plot.change_metric_type($(this).attr('id').replace('_covmet_button', ''));
         });
+        $('#over_x_select').change(function () {
+            coverage_plot.change_metric($(this).val().replace('X', ''));
+        });
+        $('#average_select').change(function () {
+            coverage_plot.change_metric($(this).val());
+        });
+    },
+    y_axis: function(y_scale, metric) {
+        var yAxis = d3.svg.axis()
+            .scale(y_scale)
+            .orient('left')
+            .ticks(3);
+        if (metric === 'mean' || metric === 'median')
+            yAxis = yAxis.tickFormat(function(d) {return d.toString() + '\u00d7'});
+        else
+            yAxis = yAxis.tickFormat(d3.format('%'));
+        return yAxis;
+    },
 
-    genome_g.append("g")
-        .attr("class", "y axis")
-        .call(yAxis);
-
-    // Handle changes
-    $('.coverage_metric_buttons').change(function () {
-        var v = $(this).attr('id').replace('_covmet_button', '');
+    change_metric_type: function(metric_type) {
         $('.coverage_subcat_selectors').hide();
-        if (v == 'covered') {
+        if (metric_type == 'covered') {
             $('#over_x_select_container').show();
-            v = $('#over_x_select').val().replace('X', '');
+            var metric = $('#over_x_select').val().replace('X', '');
         } else {
             $('#average_select_container').show();
-            v = $("#average_select").val();
+            var metric = $("#average_select").val();
         }
-        change_coverage_plot_metric(v);
-    });
-    $('#over_x_select').change(function () {
-        change_coverage_plot_metric($(this).val().replace('X', ''));
-    });
-    $('#average_select').change(function () {
-        change_coverage_plot_metric($(this).val());
-    });
-}
+        this.change_metric(metric);
+    },
+    change_metric: function(metric) {
+        var max_cov = 1;
+        if (metric === 'mean' || metric === 'median') {
+            max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
+        }
 
-function _coverage_y_axis(y_scale, metric) {
-    var yAxis = d3.svg.axis()
-        .scale(y_scale)
-        .orient('left')
-        .ticks(3);
+        var y = d3.scale.linear()
+            .domain([0, max_cov])
+            .range([this.height, 0]);
 
-    if (metric === 'mean' || metric === 'median')
-        yAxis = yAxis.tickFormat(function(d) {return d.toString() + '\u00d7'});
-    else
-        yAxis = yAxis.tickFormat(d3.format('%'));
+        var svg = d3.select('#'+this.container_id).select('#inner_graph');
 
-    return yAxis;
-}
+        var yAxis = this.y_axis(y, metric);
+        svg.select(".y.axis").call(yAxis);
 
-function change_coverage_plot_metric(metric) {
-    var max_cov = 1;
-    if (metric === 'mean' || metric === 'median') {
-        max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
-    }
-
-    var y = d3.scale.linear()
-        .domain([0, max_cov])
-        .range([coverage_plot_height, 0]);
-
-    var svg = d3.select('#coverage_plot_container').select('#inner_graph');
-
-    var yAxis = _coverage_y_axis(y, metric);
-    svg.select(".y.axis")
-        .transition()
-        .duration(200)
-        .call(yAxis);
-
-    svg.select('#cov-bar-g')
-        .selectAll("rect.cov_plot_bars")
-        .data(window.model.coverage_stats)
-        .transition()
-        .duration(500)
-        .attr("y", function(d) { return y(d[metric]); })
-        .attr("height", function(d) { return coverage_plot_height - y(d[metric]); });
-}
+        svg.select('#cov-bar-g')
+            .selectAll("rect.cov_plot_bars")
+            .data(window.model.coverage_stats)
+            .attr("y", function(d) { return y(d[metric]); })
+            .attr("height", function(d) { return this.height - y(d[metric]); }.bind(this));
+    },
+};
 
 
 var transcripts_plot = {
@@ -321,7 +299,7 @@ var transcripts_plot = {
         }
         var label = label_p.append('a')
             .attr('href', fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id))
-            .text(transcript.transcript_id + (transcript.canonical?'*':''))
+            .text(transcript.transcript_id + (transcript.canonical?' (canonical)':''))
             .style('color', color)
             .style('font-weight', font_weight)
     },
@@ -340,149 +318,152 @@ var transcripts_plot = {
                 this.render_genes(window.model.genes);
             }.bind(this))
     },
-}
+};
 
 
-function create_pos_plot() {
-    bootstrap_plot();
-
-    var svg = d3.select('#pos_plot_container').append('svg')
-        .attr('width', window.model.plot.svg_width)
-        .attr('height', pos_plot_height + pos_plot_margin.top + pos_plot_margin.bottom)
-        .style('display', 'block');
-    var genome_g = svg.append('g')
-        .attr('class', 'genome_g')
-        .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, pos_plot_margin.top));
-    genome_g.append('text').attr('id', 'pos_plot_text')
-        .attr('text-anchor', 'middle');
-    mouse_guide.register(genome_g, true);
-}
-
-
-
-function create_variant_plot() {
-    bootstrap_plot();
-
-    var svg = d3.select('#variant_plot_container').append("svg")
-        .attr("width", window.model.plot.svg_width)
-        .attr("height", variant_plot_height + variant_plot_margin.top + variant_plot_margin.bottom)
-        .style('display', 'block');
-    var genome_g = svg.append("g")
-        .attr('id', 'variant_track')
-        .attr('class', 'genome_g')
-        .attr("transform", fmt('translate({0},{1})', genome_coords_margin.left, variant_plot_margin.top));
-
-    genome_g.append('clipPath')
-        .attr('id', 'variant-plot-clip')
-        .append('rect')
-        .attr('x', 0)
-        .attr('width', window.model.plot.genome_coords_width)
-        .attr('y', 0)
-        .attr('height', coverage_plot_height);
-
-    genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#variant-plot-clip)');
-
-    genome_g.selectAll('line.intervals')
-        .data(window.model.intervalset.list_of_pairs)
-        .enter()
-        .append('line')
-        .attr("y1", variant_plot_height/2)
-        .attr("y2", variant_plot_height/2)
-        .attr("x1", function(d) { return window.model.plot.x(d[0]) })
-        .attr("x2", function(d) { return window.model.plot.x(d[1]) })
-        .attr("stroke-width", 1)
-        .attr("stroke", "lightsteelblue");
-
-    mouse_guide.register(genome_g);
-    var data_g = genome_g.append('g').attr('class','data_g');
-
-    window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
-        return group_thousands_html(d.pos) + '<br>' +
-            fmt_annotation(d, 20) + '<br>' +
-            (d.filter === 'PASS' ? '' : 'FAIL<br>') +
-            'MAF: ' + perc_sigfigs_html(d.allele_freq, 2);
-        //return JSON.stringify(d);
-    });
-    svg.call(window.model.plot.oval_tip);
-}
-
-function change_variant_plot(variants) {
-    var selection = d3.select('#variant_track .data_g')
-        .selectAll('.variant-circle')
-        .data(variants, get_variant_id); // define data-joining 2nd method to allow move-to-front
-    window._debug.selection = selection;
-    var variant_circles = selection.enter()
-        .append('ellipse')
-        .attr('class', 'variant-circle')
-        .attr('ry', 6)
-        .attr('rx', 6)
-        .attr('cy', variant_plot_height/2)
-        .attr('cx', function(d) { return window.model.plot.x(d.pos); })
-        .style('fill', variant_color)
-        .style('stroke', 'orange')
-        .style('stroke-width', 0)
-        .attr('id', get_variant_plot_id)
-        .on('mouseover', function(variant) {
-            window.model.plot.oval_tip.show(variant);
-            variant_plot_default_style();
-            variant_plot_hilited_style(d3.select(this));
-            window.model.tbl.rows()[0].forEach(function(row_idx) {
-                $(window.model.tbl.row(row_idx).nodes()).removeClass('highlight');
-            });
-            window.model.tbl.rows()[0].forEach(function(row_idx) {
-                var cur_var = window.model.tbl.row(row_idx).data();
-                if (cur_var.pos === variant.pos && cur_var.ref === variant.ref && cur_var.alt === variant.alt) {
-                    $(window.model.tbl.row(row_idx).nodes()).addClass('highlight');
-                }
-            });
-            d3.select(this).moveToFront();
-        })
-        .on('mouseout', function(variant) {
-            variant_plot_default_style(d3.select(this));
-            window.model.plot.oval_tip.hide(variant);
-            window.model.tbl.rows()[0].forEach(function(row_idx) {
-                var cur_var = window.model.tbl.row(row_idx).data();
-                if (cur_var.pos === variant.pos && cur_var.ref === variant.ref && cur_var.alt === variant.alt) {
-                    $(window.model.tbl.row(row_idx).nodes()).removeClass('highlight');
-                }
-            });
-        })
-    variant_plot_default_style(variant_circles);
-    selection.exit()
-        .remove()
-    order_selection_by_data_reversed(selection);
-}
-
-function order_selection_by_data_reversed(selection){
-    // this is like selection.order() but it uses the reverse order.
-    // it puts elements from the beginning of the data at the end in the DOM, which is rendered last (on top).
-    var n_datasets = selection.length;
-    for(var dataset_idx=0;dataset_idx<n_datasets;dataset_idx++) {
-        var elems=selection[dataset_idx];
-        for(var idx=1;idx<elems.length;idx++) {
-            var better = elems[idx-1];
-            var lesser = elems[idx];
-            if (better && lesser && lesser.nextSibling !== better)
-                better.parentNode.insertBefore(lesser, better); // put lesser before better
-        }
+var pos_plot = {
+    container_id: 'pos_plot_container',
+    height: 15,
+    margin: {top: 0, bottom: 0},
+    create: function() {
+        bootstrap_plot();
+        var svg = d3.select('#'+this.container_id).append('svg')
+            .attr('width', window.model.plot.svg_width)
+            .attr('height', this.height + this.margin.top + this.margin.bottom)
+            .style('display', 'block');
+        var genome_g = svg.append('g')
+            .attr('class', 'genome_g')
+            .attr('transform', fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top));
+        genome_g.append('text').attr('id', 'pos_plot_text')
+            .attr('text-anchor', 'middle');
+        mouse_guide.register(genome_g, true);
     }
-}
-
-function variant_plot_default_style(selection) {
-    if (typeof selection === "undefined") { selection = d3.selectAll('.variant-circle'); }
-    return selection
-        .style('stroke-width', 0);
-}
-
-function variant_plot_hilited_style(selection) {
-    return selection
-        .style('stroke-width', '3px');
-}
+};
 
 
 
-function create_variant_table() {
-    var columns = [
+var variant_plot = {
+    container_id: 'variant_plot_container',
+    height: 20,
+    margin: {top: 0, bottom: 0},
+
+    create: function() {
+        bootstrap_plot();
+
+        var svg = d3.select('#'+this.container_id).append("svg")
+            .attr("width", window.model.plot.svg_width)
+            .attr("height", this.height + this.margin.top + this.margin.bottom)
+            .style('display', 'block');
+        var genome_g = svg.append("g")
+            .attr('id', 'variant_track')
+            .attr('class', 'genome_g')
+            .attr("transform", fmt('translate({0},{1})', genome_coords_margin.left, this.margin.top));
+
+        genome_g.append('clipPath')
+            .attr('id', 'variant-plot-clip')
+            .append('rect')
+            .attr('x', 0)
+            .attr('width', window.model.plot.genome_coords_width)
+            .attr('y', 0)
+            .attr('height', this.height);
+
+        genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#variant-plot-clip)');
+
+        genome_g.selectAll('line.intervals')
+            .data(window.model.intervalset.list_of_pairs)
+            .enter()
+            .append('line')
+            .attr("y1", this.height/2)
+            .attr("y2", this.height/2)
+            .attr("x1", function(d) { return window.model.plot.x(d[0]) })
+            .attr("x2", function(d) { return window.model.plot.x(d[1]) })
+            .attr("stroke-width", 1)
+            .attr("stroke", "lightsteelblue");
+
+        mouse_guide.register(genome_g);
+        var data_g = genome_g.append('g').attr('class','data_g');
+
+        window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
+            return group_thousands_html(d.pos) + '<br>' +
+                fmt_annotation(d, 20) + '<br>' +
+                (d.filter === 'PASS' ? '' : 'FAIL<br>') +
+                'MAF: ' + perc_sigfigs_html(d.allele_freq, 2);
+        });
+        svg.call(window.model.plot.oval_tip);
+    },
+    get_variant_name: function(variant) { return ''+variant.pos+'-'+variant.ref+'-'+variant.alt },
+    get_variant_id: function(variant) { return 'variant-plot-'+this.get_variant_name(variant) },
+    change: function(variants) {
+        var selection = d3.select('#variant_track .data_g')
+            .selectAll('.variant-circle')
+            .data(variants, function(variant) { return this.get_variant_name(variant) }.bind(this)); // define data-joining 2nd method to allow move-to-front
+        var variant_circles = selection.enter()
+            .append('ellipse')
+            .attr('class', 'variant-circle')
+            .attr('ry', 6)
+            .attr('rx', 6)
+            .attr('cy', this.height/2)
+            .attr('cx', function(d) { return window.model.plot.x(d.pos); })
+            .style('fill', variant_color)
+            .style('stroke', 'orange')
+            .style('stroke-width', 0)
+            .attr('id', function(d) { return this.get_variant_id(d) }.bind(this))
+            .on('mouseover', function(variant) {
+                window.model.plot.oval_tip.show(variant);
+                variant_plot.default_style();
+                variant_plot.hilited_style(d3.select(this));
+                window.model.tbl.rows()[0].forEach(function(row_idx) {
+                    $(window.model.tbl.row(row_idx).nodes()).removeClass('highlight');
+                });
+                window.model.tbl.rows()[0].forEach(function(row_idx) {
+                    var cur_var = window.model.tbl.row(row_idx).data();
+                    if (cur_var.pos === variant.pos && cur_var.ref === variant.ref && cur_var.alt === variant.alt) {
+                        $(window.model.tbl.row(row_idx).nodes()).addClass('highlight');
+                    }
+                });
+                d3.select(this).moveToFront();
+            })
+            .on('mouseout', function(variant) {
+                variant_plot.default_style(d3.select(this));
+                window.model.plot.oval_tip.hide(variant);
+                window.model.tbl.rows()[0].forEach(function(row_idx) {
+                    var cur_var = window.model.tbl.row(row_idx).data();
+                    if (cur_var.pos === variant.pos && cur_var.ref === variant.ref && cur_var.alt === variant.alt) {
+                        $(window.model.tbl.row(row_idx).nodes()).removeClass('highlight');
+                    }
+                });
+            })
+        this.default_style(variant_circles);
+        selection.exit().remove()
+        this.order_selection_by_data_reversed(selection);
+    },
+
+    default_style: function(selection) {
+        return (selection || d3.selectAll('.variant-circle')).style('stroke-width', 0);
+    },
+    hilited_style: function(selection) {
+        return selection.style('stroke-width', '3px');
+    },
+
+    order_selection_by_data_reversed: function(selection){
+        // this is like selection.order() but it uses the reverse order.
+        // it puts elements from the beginning of the data at the end in the DOM, which is rendered last (on top).
+        var n_datasets = selection.length;
+        for(var dataset_idx=0;dataset_idx<n_datasets;dataset_idx++) {
+            var elems=selection[dataset_idx];
+            for(var idx=1;idx<elems.length;idx++) {
+                var better = elems[idx-1];
+                var lesser = elems[idx];
+                if (better && lesser && lesser.nextSibling !== better)
+                    better.parentNode.insertBefore(lesser, better); // put lesser before better
+            }
+        }
+    },
+};
+
+
+var variant_table = {
+    columns: [
         {
             title: 'Alleles (rsID)', name: 'allele',
             searchable: false, orderable: false,
@@ -552,87 +533,90 @@ function create_variant_table() {
             render: function(cell_data, type, row) { return perc_sigfigs_html(cell_data, 2); },
 
         },
-    ];
+    ],
 
-    window.model = window.model || {};
-    window.model.filter_info = window.model.filter_info || {};
-
-    var update_filter_info = function() {
+    update_filter_info: function() {
         window.model.filter_info.maf_ge = parseFloat($('input#maf_ge').val()) / 100; // %
         window.model.filter_info.maf_le = parseFloat($('input#maf_le').val()) / 100; // %
         window.model.filter_info.filter_value = $('select#filter_value').val();
         window.model.filter_info.category = $('#vtf_category > .btn.active').text();
-    };
-    update_filter_info();
+    },
+    create: function() {
 
-    window.model.tbl = $('#variant_table').DataTable({
-        serverSide: true, /* API does all the real work */
+        window.model = window.model || {};
+        window.model.filter_info = window.model.filter_info || {};
 
-        processing: true, /* show "processing" over table while waiting for API */
-        deferRender: true, /* only render rows when they're being displayed */
+        this.update_filter_info();
 
-        paging: true,
-        pagingType: 'full', /* [first, prev, next, last] */
-        pageLength: 100,
-        lengthMenu: [10, 100, 1000],
+        window.model.tbl = $('#variant_table').DataTable({
+            serverSide: true, /* API does all the real work */
 
-        searching: false,
+            processing: true, /* show "processing" over table while waiting for API */
+            deferRender: true, /* only render rows when they're being displayed */
 
-        scrollX: true,
+            paging: true,
+            pagingType: 'full', /* [first, prev, next, last] */
+            pageLength: 100,
+            lengthMenu: [10, 100, 1000],
 
-        ajax: {
-            url: window.model.url_prefix + 'api/variants' + window.model.url_suffix,
-            type: 'POST',
-            data: function(args) { /* modify request form parameters */
-                return {
-                    args: JSON.stringify(args), // jsonify all params rather than using `columns[0][search][value]` php form syntax
-                    filter_info: JSON.stringify(window.model.filter_info),
-                };
+            searching: false,
+
+            scrollX: true,
+
+            ajax: {
+                url: window.model.url_prefix + 'api/variants' + window.model.url_suffix,
+                type: 'POST',
+                data: function(args) { /* modify request form parameters */
+                    return {
+                        args: JSON.stringify(args), // jsonify all params rather than using `columns[0][search][value]` php form syntax
+                        filter_info: JSON.stringify(window.model.filter_info),
+                    };
+                },
+                dataSrc: function(resp) { /* modify API's response (for debugging) */
+                    window._debug = window._debug || {}; window._debug.resp = resp;
+                    variant_plot.change(resp.data);
+                    return resp.data;
+                },
             },
-            dataSrc: function(resp) { /* modify API's response (for debugging) */
-                window._debug = window._debug || {}; window._debug.resp = resp;
-                change_variant_plot(resp.data);
-                return resp.data;
-            },
-        },
 
-        order: [
-            [columns.findIndex(function(d){return d.name==='csq'}), 'asc'],
-            [columns.findIndex(function(d){return d.name==='cadd_phred'}), 'desc'],
-        ],
-        columns: columns,
+            order: [
+                [this.columns.findIndex(function(d){return d.name==='csq'}), 'asc'],
+                [this.columns.findIndex(function(d){return d.name==='cadd_phred'}), 'desc'],
+            ],
+            columns: this.columns,
 
-        dom: '<ipl>rft', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
+            dom: '<ipl>rft', // default is 'lfrtip'.  l=length f=filtering t=table i=info p=paging, r=processing
 
-        language: {
-            info: 'Showing variants _START_ - _END_ of _TOTAL_',
-            infoFiltered: '(filtered from _MAX_ variants)',
-            infoEmpty: 'No matching variants',
-            thousands: '\u202f',
-            lengthMenu: 'Show _MENU_ variants',
-        }
+            language: {
+                info: 'Showing variants _START_ - _END_ of _TOTAL_',
+                infoFiltered: '(filtered from _MAX_ variants)',
+                infoEmpty: 'No matching variants',
+                thousands: '\u202f',
+                lengthMenu: 'Show _MENU_ variants',
+            }
 
-    });
+        });
 
-    $('.variant_table_filter').on('change', function() { update_filter_info(); window.model.tbl.draw(); });
+        $('.variant_table_filter').on('change', function() { variant_table.update_filter_info(); window.model.tbl.draw(); });
 
-    // hilite corresponding variant-plot circle
-    $('#variant_table tbody').on('mouseleave', 'tr', function() {
-        var variant = window.model.tbl.row(this).data();
-        if (variant) { variant_plot_default_style(d3.select('#' + get_variant_plot_id(variant))); }
-        mouse_guide.hide();
-    });
-    $('#variant_table tbody').on('mouseenter', 'tr', function() {
-        var variant = window.model.tbl.row(this).data();
-        variant_plot_default_style();
-        if (variant) {
-            var selection = d3.select('#' + get_variant_plot_id(variant));
-            selection.moveToFront();
-            variant_plot_hilited_style(selection);
-            mouse_guide.show_at(selection.attr('cx'));
-        }
-    });
-}
+        // hilite corresponding variant-plot circle
+        $('#variant_table tbody').on('mouseleave', 'tr', function() {
+            var variant = window.model.tbl.row(this).data();
+            if (variant) { variant_plot.default_style(d3.select('#' + variant_plot.get_variant_id(variant))); }
+            mouse_guide.hide();
+        });
+        $('#variant_table tbody').on('mouseenter', 'tr', function() {
+            var variant = window.model.tbl.row(this).data();
+            variant_plot.default_style();
+            if (variant) {
+                var selection = d3.select('#' + variant_plot.get_variant_id(variant));
+                selection.moveToFront();
+                variant_plot.hilited_style(selection);
+                mouse_guide.show_at(selection.attr('cx'));
+            }
+        });
+    },
+};
 
 
 var mouse_guide = {
@@ -651,7 +635,7 @@ var mouse_guide = {
             d3.selectAll('.mouse_guide').attr('x', x - 1);
             var genome_coord = Math.round(window.model.plot.x.invert(x));
             d3.select('#pos_plot_text')
-                .attr('transform', fmt('translate({0},{1})', x, pos_plot_height))
+                .attr('transform', fmt('translate({0},{1})', x, pos_plot.height))
                 .text(group_thousands(genome_coord));
         } else {
             mouse_guide.hide();
@@ -673,21 +657,33 @@ var mouse_guide = {
 }
 
 
+var summary_table = {
+    container_id: 'summary_table',
+    create: function() {
+        var summary_XHR = $.getJSON(window.model.url_prefix + 'api/summary' + window.model.url_suffix);
+        $(function() {
+            summary_XHR
+                .done(function(summary) {
+                    $('#'+summary_table.container_id).DataTable({
+                        paging: false, searching: false, info: false, ordering: false,
+                        data: summary,
+                        columns: [
+                            {title: 'variant type'},
+                            {title: 'count (PASS-only)', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}
+                        ],
+                    });
+                })
+                .fail(function() { console.error('summary XHR failed'); });
+        });
+    },
+};
 
-function create_summary_table() {
-    var summary_XHR = $.getJSON(window.model.url_prefix + 'api/summary' + window.model.url_suffix);
-    $(function() {
-        summary_XHR
-            .done(function(summary) {
-                $('#summary_table').DataTable({
-                    paging: false, searching: false, info: false, ordering: false,
-                    data: summary,
-                    columns: [
-                        {title: 'variant type'},
-                        {title: 'count (PASS-only)', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}
-                    ],
-                });
-            })
-            .fail(function() { console.error('summary XHR failed'); });
-    });
-}
+
+summary_table.create();
+coverage_plot.create();
+$(function() {
+    transcripts_plot.create();
+    variant_plot.create();
+    variant_table.create();
+    pos_plot.create();
+});
