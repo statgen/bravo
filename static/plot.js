@@ -370,7 +370,7 @@ var variant_plot = {
             .attr('y', 0)
             .attr('height', this.height);
 
-        genome_g.append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#variant-plot-clip)');
+        mouse_guide.register(genome_g);
 
         genome_g.selectAll('line.intervals')
             .data(window.model.intervalset.list_of_pairs)
@@ -383,7 +383,6 @@ var variant_plot = {
             .attr("stroke-width", 1)
             .attr("stroke", "lightsteelblue");
 
-        mouse_guide.register(genome_g);
         var data_g = genome_g.append('g').attr('class','data_g');
 
         window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
@@ -626,7 +625,8 @@ var mouse_guide = {
     register: function(genome_g, no_line) {
         if (!no_line) {
             genome_g
-                .append('rect').attr('class', 'mouse_guide').attr('x', -999).attr('clip-path', 'url(#cov-plot-clip)')
+                .append('rect').attr('class', 'mouse_guide')
+                .attr('x', -999).attr('width','2px').attr('height','100%')
         }
         genome_g
             .on('mousemove', function() {var coords = d3.mouse(d3.select(this).node()); mouse_guide.show_at(coords[0]); })

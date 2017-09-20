@@ -6,7 +6,7 @@
 
 
 {% block in_js %}
-window.model.url_suffix = fmt('/transcript/{0}', window.model.transcript.transcript_id);
+window.model.url_suffix = '/transcript/{{ transcript.transcript_id }}';
 {% endblock %}
 
 
