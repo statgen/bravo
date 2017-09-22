@@ -1,4 +1,4 @@
-var genome_coords_margin = {left: 80, right: 30};
+var genome_coords_margin = {left: 80, right: 5};
 
 
 function bootstrap_plot() {
@@ -134,12 +134,12 @@ var coverage_plot = {
     },
 
     change_metric_type: function(metric_type) {
-        $('.coverage_subcat_selectors').hide();
+        $('.coverage_subcat_selectors').css('display', 'none');
         if (metric_type == 'covered') {
-            $('#over_x_select_container').show();
+            $('#over_x_select_container').css('display', 'inline-block');
             var metric = $('#over_x_select').val().replace('X', '');
         } else {
-            $('#average_select_container').show();
+            $('#average_select_container').css('display', 'inline-block');
             var metric = $("#average_select").val();
         }
         this.change_metric(metric);
@@ -239,12 +239,12 @@ var transcripts_plot = {
             .attr('class', 'd3-tip')
             .style('z-index', 2)
             .html(function(d) {
-            return transcript.transcript_id + '<br>' +
-                (d.feature_type==='CDS'?'Coding Sequence':d.feature_type) + '<br>' +
-                'start: ' + group_thousands_html(d.start) + '<br>' +
-                'stop: ' + group_thousands_html(d.stop) + '<br>' +
-                'strand: ' + d.strand;
-        });
+                return transcript.transcript_id + '<br>' +
+                    (d.feature_type==='CDS'?'Coding Sequence':d.feature_type) + '<br>' +
+                    'start: ' + group_thousands_html(d.start) + '<br>' +
+                    'stop: ' + group_thousands_html(d.stop) + '<br>' +
+                    'strand: ' + d.strand;
+            });
         svg.call(exon_tip);
 
         var intervals_to_show = window.model.intervalset.list_of_pairs
@@ -265,7 +265,7 @@ var transcripts_plot = {
             .data(transcript.exons)
             .enter()
             .append('a')
-            .attr('xlink:href', fmt('{0}transcript/{1}', window.model.url_prefix, transcript.transcript_id))
+            .attr('xlink:href', function(d){return fmt('{0}region/{1}-{2}-{3}', window.model.url_prefix, window.model.intervalset.chrom, d.start, d.stop)})
             .append('rect')
             .attr('class', 'exon')
             .style('fill', color)
@@ -669,27 +669,144 @@ var mouse_guide = {
 
 var summary_table = {
     container_id: 'summary_table',
-    create: function() {
-        var summary_XHR = $.getJSON(window.model.url_prefix + 'api/summary' + window.model.url_suffix);
-        $(function() {
-            summary_XHR
-                .done(function(summary) {
-                    $('#'+summary_table.container_id).DataTable({
-                        paging: false, searching: false, info: false, ordering: false,
-                        data: summary,
-                        columns: [
-                            {title: 'variant type'},
-                            {title: 'count (PASS-only)', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}
-                        ],
-                    });
-                })
-                .fail(function() { console.error('summary XHR failed'); });
+    populate: function(summary) {
+        $('#'+summary_table.container_id).DataTable({
+            paging: false, searching: false, info: false, ordering: false,
+            data: summary,
+            columns: [
+                {title: 'variant type'},
+                {title: 'count (PASS-only)', className:'dt-right', render: function(cell_data, type, row) { return group_thousands_html(cell_data); }}
+            ],
         });
     },
 };
 
 
-summary_table.create();
+var density_plot = {
+    container_id: 'density_plot_container',
+    height: 60,
+    margin: {top: 5, bottom: 15},
+    color: {variants:'#999', singletons:'#ddd', '.1%+':'#555'},
+    create: function() {
+        if (window.model.intervalset.list_of_pairs.length === 1 && window.model.intervalset.list_of_pairs[0][1] - window.model.intervalset.list_of_pairs[0][0] < 200) return;
+        bootstrap_plot();
+        var svg = d3.select('#'+density_plot.container_id).append('svg')
+            .attr("width", window.model.plot.svg_width)
+            .attr("height", this.height + this.margin.top + this.margin.bottom)
+            .style('display', 'block');
+        var genome_g = svg.append("g")
+            .attr('class', 'genome_g')
+            .attr("transform", "translate(" + genome_coords_margin.left + "," + this.margin.top + ")");
+        var data_g = genome_g.append('g')
+            .attr('class', 'data_g');
+        mouse_guide.register(genome_g);
+
+        genome_g.append('text')
+            .attr('class', 'loading')
+            .attr('text-anchor','middle').text('loading...')
+            .attr('transform', fmt('translate({0},{1})', window.model.plot.genome_coords_width/2, this.height/2))
+
+    },
+    populate: function(interval_summaries) {
+        interval_summaries.forEach(function(isumm) {
+            isumm.length = isumm.stop - isumm.start + 1;
+            isumm.variant_density = isumm.variants / isumm.length * 1000;
+            isumm.singleton_density = isumm.singletons / isumm.length * 1000;
+            isumm['.1%+_density'] = isumm['.1%+'] / isumm.length * 1000;
+        });
+        var svg = d3.select('#'+density_plot.container_id).select('svg');
+        if (svg.empty()) return;
+        var genome_g = svg.select('.genome_g');
+        var data_g = svg.select('.data_g');
+        genome_g.select('.loading').remove();
+        var tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .html(function(isumm) {
+                return 'start: ' + group_thousands_html(isumm.start) + '<br>' +
+                    'stop: ' + group_thousands_html(isumm.stop) + '<br>' +
+                    group_thousands_html(isumm.length) + ' bases<br><br>' +
+                    group_thousands_html(isumm.variants) + ' variants<br>' +
+                    group_thousands_html(isumm.singletons) + ' singletons<br>' +
+                    group_thousands_html(isumm['.1%+']) + ' AF>0.1%<br><br>' +
+                    group_thousands_html(Math.round(isumm.variant_density)) + ' variants/kb<br>' +
+                    group_thousands_html(Math.round(isumm.singleton_density)) + ' singletons/kb<br>' +
+                    group_thousands_html(Math.round(isumm['.1%+_density'])) + ' AF>0.1%/kb<br><br>' +
+                    (isumm.variants ? perc_sigfigs_html(isumm.singletons/isumm.variants, 2, 0) + ' singletons' : '')
+            });
+        svg.call(tip);
+
+        var y = d3.scale.linear()
+            .domain([0, d3.max(interval_summaries, function(isumm){return isumm.variant_density})])
+            .range([this.height, 0]);
+        data_g
+            .selectAll('rect.tip_target')
+            .data(interval_summaries)
+            .enter()
+            .append('rect')
+            .attr('class', 'tip_target')
+            .style('fill', 'white')
+            .attr('x', function(d) { return window.model.plot.x(d.start) })
+            .attr('width', function(d) { return window.model.plot.x(d.stop + 1) - window.model.plot.x(d.start) + 1; })
+            .attr('y', function(d) { return 0 })
+            .attr('height', function(d) { return density_plot.height })
+            .on('mouseover', tip.show)
+            .on('mouseout', tip.hide);
+        data_g
+            .selectAll('rect.num_variants')
+            .data(interval_summaries)
+            .enter()
+            .append('rect')
+            .attr('class', 'num_variants')
+            .style('fill', density_plot.color.variants)
+            .attr('x', function(d) { return window.model.plot.x(d.start) })
+            .attr('width', function(d) { return window.model.plot.x(d.stop + 1) - window.model.plot.x(d.start) + 1; })
+            .attr('y', function(d) { return y(d.variant_density) })
+            .attr('height', function(d) { return (density_plot.height - y(d.variant_density)) || 0 })
+            .style('pointer-events', 'none');
+        data_g
+            .selectAll('rect.num_singletons')
+            .data(interval_summaries)
+            .enter()
+            .append('rect')
+            .attr('class', 'num_singletons')
+            .style('fill', density_plot.color.singletons)
+            .attr('x', function(d) { return window.model.plot.x(d.start) })
+            .attr('width', function(d) { return window.model.plot.x(d.stop + 1) - window.model.plot.x(d.start) + 1; })
+            .attr('y', function(d) { return y(d.singleton_density) })
+            .attr('height', function(d) { return (density_plot.height - y(d.singleton_density)) || 0 })
+            .style('pointer-events', 'none');
+        data_g
+            .selectAll('rect.num_common')
+            .data(interval_summaries)
+            .enter()
+            .append('rect')
+            .attr('class', 'num_common')
+            .style('fill', density_plot.color['.1%+'])
+            .attr('x', function(d) { return window.model.plot.x(d.start) })
+            .attr('width', function(d) { return window.model.plot.x(d.stop + 1) - window.model.plot.x(d.start) + 1; })
+            .attr('y', function(d) { return y(d.variant_density) })
+            .attr('height', function(d) { return (density_plot.height - y(d['.1%+_density'])) || 0 })
+            .style('pointer-events', 'none');
+
+        var yAxis = d3.svg.axis().scale(y).orient('left').ticks(2).tickFormat(function(d){return d+'/kb'});
+        genome_g.append('g')
+            .attr('class', 'y axis')
+            .call(yAxis)
+    }
+};
+
+
+var summary_XHR = $.getJSON(window.model.url_prefix + 'api/summary' + window.model.url_suffix);
+$(function() {
+    density_plot.create();
+    summary_XHR
+        .done(function(summary_resp) {
+            summary_table.populate(summary_resp.summary);
+            density_plot.populate(summary_resp.interval_summaries);
+            // singleton_density_plot.populate(summary_resp.interval_summaries);
+        })
+        .fail(function() { console.error('summary XHR failed'); });
+});
 coverage_plot.create();
 $(function() {
     transcripts_plot.create();

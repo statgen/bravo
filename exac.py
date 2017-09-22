@@ -502,7 +502,7 @@ def transcript_summary_api(transcript_id):
 def region_summary_api(chrom, start, stop):
     try:
         start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
-        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
+        intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop).split()
         return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
     except:_err(); abort(404)
 

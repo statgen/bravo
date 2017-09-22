@@ -208,6 +208,17 @@ class IntervalSet(object):
                 regions[-1][1] = stop
         return cls(exons[0]['chrom'], regions)
 
+    def split(self, num_pieces=100, min_piece_length=1000):
+        '''Split the intervalset into pieces (for /api/summary/region)'''
+        assert len(self._list_of_pairs) == 1
+        start, stop = self._list_of_pairs[0]
+        length = stop - start + 1
+        if length < num_pieces * min_piece_length: num_pieces = int(length / min_piece_length)
+        if num_pieces == 0: num_pieces = 1
+        piece_length = float(length) / num_pieces
+        self._list_of_pairs = [[int(start + i*piece_length), int(start + (i+1)*piece_length)-1] for i in range(num_pieces)]
+        return self
+
     def to_obj(self):
         return {'chrom': self.chrom, 'list_of_pairs': self._list_of_pairs}
     def to_mongo(self):
@@ -331,9 +342,11 @@ def get_summary_for_intervalset(db, intervalset):
         'mis': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof']]},     {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}]},
         'syn': {'$and': [{'$gte': ['$worst_csqidx', Consequence.as_obj['n_lof_mis']]}, {'$lt':['$worst_csqidx', Consequence.as_obj['n_lof_mis_syn']]}]},
         'indel': {'$or': [{'$ne': [1, {'$strLenBytes':'$ref'}]}, {'$ne': [1, {'$strLenBytes':'$alt'}]}]},
+        'singleton': {'$eq': ['$allele_count', 1]},
+        '1e-3+': {'$gte': ['$allele_freq', 1e-3]},
     }
-    keys = 'lof lof_lc mis syn indel total'.split()
-    ret = {key:0 for key in keys}
+    keys = 'lof lof_lc mis syn indel singleton 1e-3+ total'.split()
+    interval_summaries = []
     for mongo_match_region in intervalset.to_list_of_mongos():
         x = db.variants.aggregate([
             {'$match': mkdict(mongo_match_region, {'filter':'PASS'})},
@@ -344,22 +357,45 @@ def get_summary_for_intervalset(db, intervalset):
                 'mis':  {'$sum':{'$cond':[mongo_match_cond['mis'],1,0]}},
                 'syn':  {'$sum':{'$cond':[mongo_match_cond['syn'],1,0]}},
                 'indel':{'$sum':{'$cond':[mongo_match_cond['indel'],1,0]}},
+                'singleton':{'$sum':{'$cond':[mongo_match_cond['singleton'],1,0]}},
+                '1e-3+':{'$sum':{'$cond':[mongo_match_cond['1e-3+'],1,0]}},
                 'total':{'$sum':1},
             }},
         ])
         x = list(x);
-        if len(x) == 0: continue # no variants in interval
-        assert len(x) == 1; x = x[0]
-        for key in keys: ret[key] += x.get(key,0)
-    print '## SUMMARY: spent {:0.3f} seconds tabulating {} variants'.format(time.time() - st, ret['total'])
-    return [
-        ('All - SNPs', ret['total'] - ret['indel']),
-        ('All - Indels', ret['indel']),
-        ('Coding - LoF', ret['lof']),
-        ('Coding - LoF - Low Confidence', ret['lof_lc']),
-        ('Coding - Missense', ret['mis']),
-        ('Coding - Synonymous', ret['syn']),
-    ]
+        if len(x) == 0: # no variants in interval
+            x = {key:0 for key in keys}
+        else:
+            assert len(x) == 1; x = x[0]
+        interval_summaries.append({
+            'interval': {'start': Xpos.to_pos(mongo_match_region['xpos']['$gte']),
+                         'stop': Xpos.to_pos(mongo_match_region['xpos']['$lte'])},
+            'summary': {key:x[key] for key in keys},
+        })
+    summary = {key: sum(isumm['summary'][key] for isumm in interval_summaries) for key in keys}
+    print '## SUMMARY: spent {:0.3f} seconds tabulating {} variants'.format(time.time() - st, summary['total'])
+    return {
+        'summary': [
+            ('All', summary['total']),
+            ('All - SNPs', summary['total'] - summary['indel']),
+            ('All - Indels', summary['indel']),
+            ('All - Singletons', summary['singleton']),
+            ('All - AF>0.1%', summary['1e-3+']),
+            ('Coding - LoF', summary['lof']),
+            ('Coding - LoF - Low Confidence', summary['lof_lc']),
+            ('Coding - Missense', summary['mis']),
+            ('Coding - Synonymous', summary['syn']),
+        ],
+        'interval_summaries': [
+            {
+                'start':isumm['interval']['start'],
+                'stop':isumm['interval']['stop'],
+                'variants':isumm['summary']['total'],
+                'singletons':isumm['summary']['singleton'],
+                '.1%+':isumm['summary']['1e-3+'],
+            } for isumm in interval_summaries
+        ]
+    }
 
 
 def get_variants_subset_for_intervalset(db, intervalset, columns_to_return, order, filter_info, skip, length):

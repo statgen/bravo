@@ -26,10 +26,14 @@ window.model.genes = {{ genes|tojson(separators=(',',':'))|safe }};
     background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 25%, rgba(255,255,255,0.9) 75%, rgba(255,255,255,0) 100%);
  }
 
- .d3-tip { font-family: Arial, Sans-serif; /* Helvetica Neue ignores thinspace */ }
+ .d3-tip { font-family: Arial, Sans-serif; /* Helvetica Neue ignores thinspace */ ; z-index:3; }
 
  #coverage_plot_container .axis path { fill: None; stroke: black; }
  #coverage_plot_container .axis .tick line { stroke: black; }
+ #density_plot_container .axis path { fill: None; stroke: black; }
+ #density_plot_container .axis .tick line { stroke: black; }
+ #singleton_density_plot_container .axis path { fill: None; stroke: black; }
+ #singleton_density_plot_container .axis .tick line { stroke: black; }
  #variant_table .highlight { background-color: orange !important }
  .table-hover>tbody>tr:hover { background-color: orange !important }
 
@@ -53,47 +57,36 @@ window.model.genes = {{ genes|tojson(separators=(',',':'))|safe }};
       <table id="summary_table" class="table table-bordered table-hover table-condensed"><tbody></tbody></table>
     </div>
   </div>
+  <hr>
   <div class="row">
     <div class="col-xs-12">
-      <div class="panel panel-default" style="margin-bottom:10px">
-        <div class="panel-heading">
-         <h3 style="margin-bottom:0; margin-top:0">Coverage Depth</h3>
-        </div>
-        <div class="panel-body">
-          {% include 'coverage_selectors.html' %}
-          <br style="clear:both"/>
-          <div id="coverage_plot_container"></div>
-          <div id="transcripts_plot_container"></div>
-          <div id="pos_plot_container"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="row">
-    <div class="col-xs-12">
-      <div class="panel panel-default">
-        <div class="panel-heading">
-          <h3 style="margin-bottom:0; margin-top:0">Variants</h3>
-        </div>
-        <div class="panel-body">
-          <p style="display: inline-block;margin:0 10px 5px"><span class="btn-group btn-group-sm" data-toggle="buttons" id="vtf_category">
-              <button class="btn btn-primary variant_table_filter"><input type="radio" name="i1">LoF</input></button>
-              <button class="btn btn-primary variant_table_filter"><input type="radio" name="i1">LoF+Missense</input></button>
-              <button class="btn btn-primary variant_table_filter active"><input type="radio" name="i1">All</input></button>
-            </span></p>
-          <p style="display:inline-block;margin: 0 10px 5px">MAF between
-            <input type="number" class="variant_table_filter" id="maf_ge" value=0  min=0 max=50 step=1 style="width:5em">% and
-            <input type="number" class="variant_table_filter" id="maf_le" value=50 min=0 max=50 step=1 style="width:4em">%
-          </p>
-          <p style="display:inline-block;margin:0 10px 5px">Quality: <select class='variant_table_filter' id='filter_value'>
-              <option value='*'>PASS+FAIL</option>
-              <option selected value='PASS'>PASS</option>
-              <option value='not PASS'>FAIL</option>
-          </select></p>
-          <div id="variant_plot_container"></div>
-          <table id="variant_table" class="table table-bordered table-hover table-condensed"><tbody></tbody></table>
-        </div>
-      </div>
+      <h3 style="display:inline-block;margin-top:0;">Coverage Depth:</h3>
+      {% include 'coverage_selectors.html' %}
+      <br style="clear:both"/>
+      <div id="coverage_plot_container"></div>
+      <div id="density_plot_container"></div>
+      <div id="singleton_density_plot_container"></div>
+      <div id="transcripts_plot_container"></div>
+      <div id="pos_plot_container"></div>
+
+      <hr style="margin: 5px 0">
+      <h3 style="display:inline-block;margin-top:0;">Variants:</h3>
+      <p style="display: inline-block;margin:0 10px 5px"><span class="btn-group btn-group-sm" data-toggle="buttons" id="vtf_category">
+        <button class="btn btn-primary variant_table_filter"><input type="radio" name="i1">LoF</input></button>
+        <button class="btn btn-primary variant_table_filter"><input type="radio" name="i1">LoF+Missense</input></button>
+        <button class="btn btn-primary variant_table_filter active"><input type="radio" name="i1">All</input></button>
+      </span></p>
+      <p style="display:inline-block;margin: 0 10px 5px">MAF between
+        <input type="number" class="variant_table_filter" id="maf_ge" value=0  min=0 max=50 step=1 style="width:5em">% and
+        <input type="number" class="variant_table_filter" id="maf_le" value=50 min=0 max=50 step=1 style="width:4em">%
+      </p>
+      <p style="display:inline-block;margin:0 10px 5px">Quality: <select class='variant_table_filter' id='filter_value'>
+        <option value='*'>PASS+FAIL</option>
+        <option selected value='PASS'>PASS</option>
+        <option value='not PASS'>FAIL</option>
+      </select></p>
+      <div id="variant_plot_container"></div>
+      <table id="variant_table" class="table table-bordered table-hover table-condensed"><tbody></tbody></table>
     </div>
   </div>
 </div>
