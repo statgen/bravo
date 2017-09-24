@@ -327,6 +327,7 @@ def _log(message=''):
     url = request.full_path.rstrip('?')
     if url.startswith(app.config['URL_PREFIX']): url = url[len(app.config['URL_PREFIX']):]
     print('{}  {}{}'.format(current_user, url, message))
+
 def _err():
     url = request.full_path.rstrip('?')
     if url.startswith(app.config['URL_PREFIX']): url = url[len(app.config['URL_PREFIX']):]
@@ -355,6 +356,31 @@ def awesome():
     _log('  =>  {}_page({})'.format(datatype, redirect_args))
     return redirect(url_for('.{}_page'.format(datatype), **redirect_args))
 
+
+@bp.route('/profile', methods=['GET', 'POST'])
+@require_agreement_to_terms_and_store_destination
+def user_profile_page():
+    try:
+        _log()
+        error = None
+        success = None
+        if request.method == 'POST':
+            enabled_api = False if request.form.get('enabled_api', '').lower() != 'on' else True
+            no_newsletters = False if request.form.get('no_newsletters', '').lower() != 'on' else True
+            google_client_id = request.form.get('google_client_id', None)
+            if enabled_api:
+                if google_client_id is None:
+                    error = 'Sorry, your forgot to enter your Google Client ID'
+                else:
+                    google_client_id = google_client_id.strip()
+                    if not google_client_id:
+                        error = 'Please, enter your Google Client ID if you want to use API'
+            if error is None:
+                db = get_db()
+                result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"enabled_api": enabled_api, "google_client_id": google_client_id, "no_newsletters": no_newsletters}})
+                success = True
+        return render_template('user_profile.html', error = error, success = success)
+    except: _err(); abort(404)
 
 @bp.route('/variant/<variant_id>')
 @require_agreement_to_terms_and_store_destination
@@ -627,10 +653,15 @@ lm.login_view = 'bp.homepage'
 
 class User(UserMixin):
     "A user's id is their email address."
-    def __init__(self, username=None, email=None, agreed_to_terms=False):
+    def __init__(self, username=None, email=None, agreed_to_terms=False, picture=None, enabled_api=False, google_client_id=None, no_newsletters=False):
         self.username = username
         self.email = email
         self.agreed_to_terms = agreed_to_terms
+        self.picture = picture
+        self.enabled_api = enabled_api
+        self.google_client_id = google_client_id
+        self.no_newsletters = no_newsletters
+
     def get_id(self):
         return self.email
     def __str__(self):
@@ -639,24 +670,22 @@ class User(UserMixin):
         return "<User email={!r} username={!r} terms={!r}>".format(self.email, self.username, self.agreed_to_terms)
 
 def encode_user(user):
-    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms}
+    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms, 'picture': user.picture, 'enabled_api': user.enabled_api, 'google_client_id': user.google_client_id, 'no_newsletters': user.no_newsletters}
 
 def decode_user(document):
     assert document['_type'] == 'User'
-    return User(document['username'], document['email'], document['agreed_to_terms'])
+    return User(document['username'], document['email'], document['agreed_to_terms'], document.get('picture', None), document.get('enabled_api', False), document.get('google_client_id', None), document.get('no_newsletters', False))
 
 @lm.user_loader
 def load_user(id):
     db = get_db()
     document = db.users.find_one({'user_id': id}, projection = {'_id': False})
-
     if document:
         u = decode_user(document)
     else:
         # This method is supposed to support bad `id`s.
         print('user not found with id [{!r}]'.format(id))
         u = None
-
     return u
 
 @bp.route('/agree_to_terms')
@@ -701,7 +730,7 @@ def oauth_callback_google():
     if not current_user.is_anonymous:
         return redirect(url_for('.homepage'))
     try:
-        username, email = google_sign_in.callback() # oauth.callback reads request.args.
+        username, email, picture = google_sign_in.callback() # oauth.callback reads request.args.
     except:
         print('Error in google_sign_in.callback():')
         print(traceback.format_exc())
@@ -724,14 +753,16 @@ def oauth_callback_google():
 
     if document:
         user = decode_user(document)
+        if picture and picture != user.picture:
+            result = db.users.update_one({"user_id": user.get_id()}, {"$set": {"picture": picture}})
+            user.picture = picture
     else:
-        user = User(email=email, username=username or email.split('@')[0])
+        user = User(email=email, username=username or email.split('@')[0], picture=picture)
         db.users.insert(encode_user(user))
-
+    session['picture'] = None
     # Log in the user, by default remembering them for their next visit
     # unless they log out.
     login_user(user, remember=True)
-
     return redirect(url_for('.get_authorized'))
 
 @bp.after_request
