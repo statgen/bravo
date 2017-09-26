@@ -1,0 +1,153 @@
+#!/usr/bin/python
+
+import argparse
+import os
+import json
+import urllib
+import requests
+import time
+
+
+argparser = argparse.ArgumentParser(description = 'Manage Google Oauth 2.0 authentication for Bravo API.')
+commands = argparser.add_subparsers(dest = 'command', title = 'Commands')
+login_command = commands.add_parser('login', help = 'Authorize access to Bravo API.')
+token_command = commands.add_parser('print-access-token', help = 'Display access token for Bravo API.')
+revoke_command = commands.add_parser('revoke', help = 'Revoke access token for Bravo API.')
+
+
+USER_HOME = os.path.expanduser("~")
+BRAVO_DIR = '.bravo'
+BRAVO_CREDSTORE = 'credstore'
+BRAVO_TOKEN_API = 'http://browser.csgstat.sph.umich.edu:7776/auth/token'
+
+
+GOOGLE_CLIENT_ID = '27789452673-oba39dcqb63aj4q2l0hk9m5dsid366lm.apps.googleusercontent.com'
+GOOGLE_AUTH_API = 'https://accounts.google.com/o/oauth2/v2/auth'
+GOOGLE_REVOKE_API = 'https://accounts.google.com/o/oauth2/revoke'
+GOOGLE_AUTH_SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
+GOOGLE_ACCESS_TYPE = 'offline'
+GOOGLE_RESPONSE_TYPE = 'code'
+GOOGLE_REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
+
+
+def credstore_exists():
+    return os.path.isfile(os.path.join(USER_HOME, BRAVO_DIR, BRAVO_CREDSTORE))
+
+
+def create_credstore():
+    p = os.path.join(USER_HOME, BRAVO_DIR)
+    if not os.path.isdir(p):
+        os.mkdir(p, 0700)
+    p = os.path.join(p, BRAVO_CREDSTORE)
+    if not os.path.isfile(p):
+        open(p, 'a').close()
+        os.chmod(p, 0600)
+
+
+def read_credstore():
+    required = ['access_token', 'expires_in', 'created', 'token_type', 'refresh_token', 'revoked']
+    with open(os.path.join(USER_HOME, BRAVO_DIR, BRAVO_CREDSTORE), 'r') as credstore_file:
+        credstore = json.load(credstore_file)
+        if not all(k in credstore for k in required):
+            raise Exception('Invalid access token entry.')
+        if credstore['revoked']:
+            raise Exception('Access was revoked.')
+        return credstore
+
+
+def write_credstore(data):
+    path = os.path.join(USER_HOME, BRAVO_DIR, BRAVO_CREDSTORE)
+    with open(path, 'w') as credstore:
+        json.dump(data, credstore, indent = 4)
+    os.chmod(path, 0600)
+
+
+def login():
+    if not credstore_exists():
+        create_credstore()
+    else:
+        try:
+            credstore = read_credstore()
+            if not credstore['revoked']:
+                print 'You are already signed in.'
+                return
+        except:
+            pass
+    payload = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'redirect_uri': GOOGLE_REDIRECT_URI,
+        'access_type': GOOGLE_ACCESS_TYPE,
+        'response_type': GOOGLE_RESPONSE_TYPE,
+        'scope': GOOGLE_AUTH_SCOPE
+    }
+    auth_url = '{}?{}'.format(GOOGLE_AUTH_API, urllib.urlencode(payload))
+    print 'Go to the following link in your browser:\n\n{}\n'.format(auth_url)
+    auth_code = raw_input('Copy authorization code from your browser: ')
+    print '\nContacting Bravo API for access tokens...'
+    payload = {
+        'code': auth_code
+    }
+    bravo_response = requests.post(BRAVO_TOKEN_API, data = payload)
+    bravo_response_data = bravo_response.json()
+    if bravo_response.status_code != 200:
+        raise Exception(bravo_response_data['error'])
+
+    credstore = {
+        'access_token': bravo_response_data['access_token'],
+        'expires_in': bravo_response_data['expires_in'],
+        'token_type': bravo_response_data['token_type'],
+        'refresh_token': bravo_response_data['refresh_token'],
+        'created': int(time.time()),
+        'revoked': False
+    }
+
+    write_credstore(credstore)
+    print 'Done.'
+
+
+def refresh_access_token():
+    credstore = read_credstore()
+    payload = {
+        'refresh_token': credstore['refresh_token']
+    }
+    bravo_response = requests.post(BRAVO_TOKEN_API, data = payload)
+    bravo_response_data = bravo_response.json()
+    if bravo_response.status_code != 200:
+        raise Exception(bravo_response_data['error'])
+    credstore['access_token'] = bravo_response_data['access_token']
+    credstore['expires_in'] = bravo_response_data['expires_in']
+    credstore['token_type'] = bravo_response_data['token_type']
+    credstore['created'] = int(time.time())
+    write_credstore(credstore)
+
+
+def print_access_token():
+    credstore = read_credstore()
+    if (abs(int(time.time()) - credstore['created']) > credstore['expires_in'] - 30): # if less than 30 seconds left, then refresh access token
+        refresh_access_token()
+        print_access_token()
+    else:
+        print credstore['access_token']
+
+
+def revoke():
+    credstore = read_credstore()
+    payload = {
+        'token': credstore['refresh_token']
+    }
+    google_response = requests.get(GOOGLE_REVOKE_API, params = payload, headers = {'Content-type': 'application/x-www-form-urlencoded'})
+    if google_response.status_code != 200:
+        raise Exception(google_response.json().get('error', 'Failed to revoke access.'))
+    credstore['revoked'] = True
+    write_credstore(credstore)
+
+
+if __name__ == '__main__':
+    args = argparser.parse_args()
+    if args.command == 'login':
+        login()
+    elif args.command == 'print-access-token':
+        print_access_token()
+    elif args.command == 'revoke':
+        revoke()
+
