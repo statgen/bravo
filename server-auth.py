@@ -1,21 +1,24 @@
-from flask import Flask, request, jsonify, abort, url_for
+from flask import Flask, request, jsonify, abort, url_for, Blueprint
 import requests
 from pymongo import MongoClient
-from webargs import fields
-from webargs.flaskparser import parser
 import functools
 import urllib
 import jwt
 from datetime import datetime
 import hashlib
 import os
+import argparse
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')
+argparser.add_argument('--port', type = int, default = 5000, help = 'an integer for the accumulator')
+
+
+bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 'static')
 
 app = Flask(__name__)
 
 api_version = 'v1'
-
-port = 7776
-
 
 mongo_host = 'localhost'
 mongo_port = 27017
@@ -34,6 +37,8 @@ GOOGLE_RESPONSE_TYPE = 'code'
 
 BRAVO_AUTH_SECRET = '8pSYh4AXudNuN7IIIc06'
 BRAVO_ACCESS_SECRET = '0y66U2gtPk1YGZrFoIBO'
+
+URL_PREFIX = '/api/dev'
 
 
 def setup_auth_tokens_collection(mongo, db_name):
@@ -82,20 +87,20 @@ class UserError(Exception):
         self.message = message
 
 
-@app.errorhandler(UserError)
+@bp.errorhandler(UserError)
 def handle_user_error(error):
     response = jsonify({ 'error': error.message })
     response.status_code = error.status_code
     return response
 
 
-@app.route('/auth', methods = ['GET'])
+@bp.route('/auth', methods = ['GET'])
 def auth():
     issued_at = datetime.utcnow()
     auth_token = jwt.encode({'ip': request.remote_addr, 'iat': issued_at}, BRAVO_AUTH_SECRET, algorithm = 'HS256')
     payload = {
         'client_id': GOOGLE_CLIENT_ID,
-        'redirect_uri': url_for('auth_callback', _external = True),
+        'redirect_uri': url_for('.auth_callback', _external = True, _scheme = 'https'),
         'access_type': GOOGLE_ACCESS_TYPE,
         'response_type': GOOGLE_RESPONSE_TYPE,
         'scope': GOOGLE_AUTH_SCOPE,
@@ -111,7 +116,7 @@ def auth():
     return response
 
 
-@app.route('/auth/callback', methods = ['GET'])
+@bp.route('/auth/callback', methods = ['GET'])
 def auth_callback():
     auth_token = request.args.get('state', None)
     auth_code = request.args.get('code', None)
@@ -126,7 +131,7 @@ def auth_callback():
         'client_id': GOOGLE_CLIENT_ID,
         'client_secret': GOOGLE_CLIENT_SECRET,
         'code': auth_code,
-        'redirect_uri': url_for('auth_callback', _external = True),
+        'redirect_uri': url_for('.auth_callback', _external = True, _scheme = 'https'),
         'grant_type': 'authorization_code'
     }
     google_response = requests.post(GOOGLE_TOKEN_API, data = payload)
@@ -146,7 +151,7 @@ def auth_callback():
     return jsonify({'status': 'OK'}), 200
 
 
-@app.route('/token', methods = ['POST'])
+@bp.route('/token', methods = ['POST'])
 def get_token():
     auth_token = request.form.get('auth_token', None)
     if auth_token is None:
@@ -172,7 +177,7 @@ def get_token():
     return response
 
 
-@app.route('/revoke', methods = ['GET'])
+@bp.route('/revoke', methods = ['GET'])
 def revoke_token():
     access_token = request.args.get('access_token', None)
     if access_token is None:
@@ -195,5 +200,8 @@ def revoke_token():
     return response
 
 
+app.register_blueprint(bp, url_prefix = URL_PREFIX)
+
 if __name__ == '__main__':   
-   app.run(host = '0.0.0.0', port = port, debug = True)
+    args = argparser.parse_args()
+    app.run(host = args.host, port = args.port, threaded = True, use_reloader = True)
