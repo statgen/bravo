@@ -38,7 +38,7 @@ GOOGLE_RESPONSE_TYPE = 'code'
 BRAVO_AUTH_SECRET = '8pSYh4AXudNuN7IIIc06'
 BRAVO_ACCESS_SECRET = '0y66U2gtPk1YGZrFoIBO'
 
-URL_PREFIX = '/api/dev'
+URL_PREFIX = '/api/dev/auth'
 
 
 def setup_auth_tokens_collection(mongo, db_name):
