@@ -18,12 +18,10 @@ revoke_command = commands.add_parser('revoke', help = 'Revoke access token for B
 USER_HOME = os.path.expanduser("~")
 BRAVO_DIR = '.bravo'
 BRAVO_CREDSTORE = 'credstore'
-BRAVO_AUTH_API = 'http://localhost:7776/auth'
-BRAVO_TOKEN_API = 'http://localhost:7776/token'
-BRAVO_REVOKE_API = 'http://localhost:7776/revoke'
-#BRAVO_AUTH_API = 'http://browser.csgstat.sph.umich.edu:7776/auth'
-#BRAVO_TOKEN_API = 'http://browser.csgstat.sph.umich.edu:7776/token'
-#BRAVO_REVOKE_API = 'http://browser.csgstat.sph.umich.edu:7776/revoke'
+BRAVO_AUTH_API = 'https://bravo.sph.umich.edu/api/dev/auth/auth'
+BRAVO_TOKEN_API = 'https://bravo.sph.umich.edu/api/dev/auth/token'
+BRAVO_REVOKE_API = 'https://bravo.sph.umich.edu/api/dev/auth/revoke'
+
 
 def credstore_exists():
     return os.path.isfile(os.path.join(USER_HOME, BRAVO_DIR, BRAVO_CREDSTORE))
