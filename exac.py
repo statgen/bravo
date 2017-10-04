@@ -367,18 +367,12 @@ def user_profile_page():
         if request.method == 'POST':
             enabled_api = False if request.form.get('enabled_api', '').lower() != 'on' else True
             no_newsletters = False if request.form.get('no_newsletters', '').lower() != 'on' else True
-            google_client_id = request.form.get('google_client_id', None)
-            if enabled_api:
-                if google_client_id is None:
-                    error = 'Sorry, your forgot to enter your Google Client ID'
-                else:
-                    google_client_id = google_client_id.strip()
-                    if not google_client_id:
-                        error = 'Please, enter your Google Client ID if you want to use API'
             if error is None:
                 db = get_db()
-                result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"enabled_api": enabled_api, "google_client_id": google_client_id, "no_newsletters": no_newsletters}})
+                result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"enabled_api": enabled_api, "no_newsletters": no_newsletters}})
                 success = True
+                current_user.enabled_api = enabled_api
+                current_user.no_newsletters = no_newsletters
         return render_template('user_profile.html', error = error, success = success)
     except: _err(); abort(404)
 
@@ -669,6 +663,7 @@ class User(UserMixin):
     def __repr__(self):
         return "<User email={!r} username={!r} terms={!r}>".format(self.email, self.username, self.agreed_to_terms)
 
+
 def encode_user(user):
     return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms, 'picture': user.picture, 'enabled_api': user.enabled_api, 'google_client_id': user.google_client_id, 'no_newsletters': user.no_newsletters}
 
@@ -759,7 +754,7 @@ def oauth_callback_google():
     else:
         user = User(email=email, username=username or email.split('@')[0], picture=picture)
         db.users.insert(encode_user(user))
-    session['picture'] = None
+    #session['picture'] = None
     # Log in the user, by default remembering them for their next visit
     # unless they log out.
     login_user(user, remember=True)
