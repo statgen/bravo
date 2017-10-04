@@ -1,14 +1,23 @@
-from flask import Flask, request, jsonify, abort
-import requests
+from flask import Flask, request, jsonify, abort, Blueprint
 from pymongo import MongoClient
 from webargs import fields
 from webargs.flaskparser import parser
 import functools
-from rauth import OAuth2Service
+import argparse
+import jwt
+from datetime import datetime
+from utils import Xpos
+
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')
+argparser.add_argument('--port', type = int, default = 5000, help = 'an integer for the accumulator')
+
+
+bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 'static')
+
 
 app = Flask(__name__)
 
-port = 7776
 
 mongo_host = 'localhost'
 mongo_port = 27017
@@ -17,43 +26,16 @@ mongo_db_name = 'topmed_freeze5_hg38_testing'
 name = 'TOPMed'
 version = 'Freeze5'
 hg_build = 'GRCh38'
-api_version = 'v1'
+api_version = 'dev'
 
 pageSize = 10
 maxRegion = 100000
 
 
-GOOGLE_CLIENT_ID = '27789452673-oba39dcqb63aj4q2l0hk9m5dsid366lm.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = 'luYXkZfETMgu8Gmyxf-Xwpv-'
-redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
-
-google_tokeninfo_api = 'https://www.googleapis.com/oauth2/v3/tokeninfo?access_token={}'
-google_authorization_scope = 'https://www.googleapis.com/auth/userinfo.email'
-google_token_api = 'https://www.googleapis.com/oauth2/v4/token'
-
+BRAVO_ACCESS_SECRET = '0y66U2gtPk1YGZrFoIBO'
+URL_PREFIX = '/api/' + api_version
 
 mongo = MongoClient(mongo_host, mongo_port, connect = True)
-
-class Xpos:
-    CHROMOSOME_STRINGS = [str(x) for x in range(1, 22+1)] + ['X', 'Y', 'M']
-    CHROMOSOME_STRING_TO_NUMBER = {chrom: idx+1 for idx,chrom in enumerate(CHROMOSOME_STRINGS) }
-    CHROMOSOME_NUMBER_TO_STRING = {chrom_num: chrom for chrom,chrom_num in CHROMOSOME_STRING_TO_NUMBER.items()}
-    @staticmethod
-    def from_chrom_pos(chrom, pos):
-        if chrom.startswith('chr'): chrom = chrom[3:]
-        return Xpos.CHROMOSOME_STRING_TO_NUMBER[chrom] * int(1e9) + pos
-    @staticmethod
-    def to_chrom_pos(xpos):
-        pos = xpos % int(1e9)
-        chrom = Xpos.CHROMOSOME_NUMBER_TO_STRING[int(xpos) / int(1e9)]
-        return (chrom, pos)
-    @staticmethod
-    def to_pos(xpos):
-        return xpos % int(1e9)
-    @staticmethod
-    def check_chrom(chrom):
-        if chrom.startswith('chr'): chrom = chrom[3:]
-        return chrom in Xpos.CHROMOSOME_STRING_TO_NUMBER
 
 
 class UserError(Exception):
@@ -67,43 +49,22 @@ def get_db():
    return mongo[mongo_db_name]
 
 
-# Validates Google OAuth2 access token and returns email and google Client ID
-def validate_google_access_token(access_token):
-   google_response = requests.get(google_tokeninfo_api.format(access_token))
-   if google_response.status_code != 200:
+def validate_access_token(access_token):
+   try:
+      decoded_access_token = jwt.decode(access_token, BRAVO_ACCESS_SECRET)
+   except jwt.InvalidTokenError:
       return (None, None)
-   access_token_data = google_response.json()
-   if 'aud' not in access_token_data or \
-      'expires_in' not in access_token_data or \
-      'scope' not in access_token_data or \
-      'email' not in access_token_data or \
-      'email_verified' not in access_token_data:
-      return (None, None)   
-   if int(access_token_data['expires_in']) <= 0:
-      return (None, None)
-   if google_authorization_scope not in access_token_data['scope'].split():
-      return (None, None)
-   if access_token_data['email_verified'] != 'true':
-      return (None, None)
-   return (access_token_data['email'], access_token_data['aud'])
+   return (decoded_access_token.get('email', None), decoded_access_token.get('iat', None))
 
 
-# Checks if user with given email exists in our database, has agreed to terms of use, and has registered Google Client ID.
-# Returns True if user is authorized for access, otherwise returns False.
-def authorize_user(token_email, token_google_client_id):
-   document = get_db().users.find_one({ 'email': token_email }, projection = {'_id': False})
+def authorize_access_token(email, issued_at):
+   document = get_db().users.find_one({ 'email': email, 'enabled_api': True, 'agreed_to_terms': True }, projection = {'_id': False})
    if not document:
       return False
-   if not document['agreed_to_terms']:
+   issued_at = datetime.utcfromtimestamp(issued_at)
+   revoked_at = document.get('access_token_revoked_at', None)
+   if revoked_at is not None and revoked_at > issued_at:
       return False
-   if not document.get('enabled_api', False):
-      return False
-   user_google_client_id = document.get('google_client_id', None)
-   if token_google_client_id != GOOGLE_CLIENT_ID:
-      if user_google_client_id is None:
-         return false
-      if user_google_client_id != google_client_id:
-         return False
    return True
 
 
@@ -116,21 +77,17 @@ def request_is_valid(request):
    token_type = authorization[0].lower()
    if token_type != 'bearer':
       return False
-   email, client_id = validate_google_access_token(authorization[1])
-   if not email or not client_id:
+   email, issued_at = validate_access_token(authorization[1])
+   if not email or not issued_at:
       return False
-   if not authorize_user(email, client_id):
-      return False
-   return True
+   return authorize_access_token(email, issued_at)
 
 
 def require_authorization(func):
    @functools.wraps(func)
    def authorization_wrapper(*args, **kwargs):
       if not request_is_valid(request):
-         response = jsonify({ 'error': 'not authorized' })
-         response.status_code = 400
-         return response
+         raise UserError('not authorized')
       else:
          return func(*args, **kwargs)
    return authorization_wrapper
@@ -143,14 +100,14 @@ def handle_parsing_error(error):
    abort(response)
 
 
-@app.errorhandler(UserError)
+@bp.errorhandler(UserError)
 def handle_user_error(error):
     response = jsonify({ 'error': error.message })
     response.status_code = error.status_code
     return response
 
 
-@app.route('/', methods = ['GET'])
+@bp.route('/', methods = ['GET'])
 @require_authorization
 def get_name():
    response = jsonify({
@@ -163,28 +120,47 @@ def get_name():
    return response
 
 
-@app.route('/variants', methods = ['GET'])
+@bp.route('/variants', methods = ['GET'])
 @require_authorization
 def get_variants():
    args = parser.parse({
-      'chrom': fields.Str(required = True),
-      'start': fields.Int(required = True),
-      'end': fields.Int(required = True)
+      'variant': fields.Str(required = False),
+      'chrom': fields.Str(required = False),
+      'start': fields.Int(required = False),
+      'end': fields.Int(required = False)
       }, request)
-   db = get_db()
-   if not Xpos.check_chrom(args['chrom']):
-      raise UserError('Invalid chromosome name.')
-   xstart = Xpos.from_chrom_pos(args['chrom'], args['start'])
-   xend = Xpos.from_chrom_pos(args['chrom'], args['end'])
-   if xend - xstart > maxRegion:
-      raise UserError('Larger than {} bp regions are not allowed.'.format(maxRegion))
-   variants = list(db.variants.find({'xpos': {'$lte': xend, '$gte': xstart}}, projection={'_id': False}))
+   if 'variant' in args:
+      db = get_db()
+      try:
+         chrom, pos, ref, alt = args['variant'].split('-')
+         pos = int(pos)
+      except ValueError as e:
+         raise UserError('Invalid variant name format.')
+      if not Xpos.check_chrom(chrom):
+         raise UserError('Invalid chromosome name.')
+      xpos = Xpos.from_chrom_pos(chrom, pos)
+      data = db.variants.find_one({'xpos': xpos, 'ref': ref, 'alt': alt}, projection={'_id': False})
+   elif all(x in args for x in ['chrom', 'start', 'end']):
+      db = get_db()
+      if not Xpos.check_chrom(args['chrom']):
+         raise UserError('Invalid chromosome name.')
+      xstart = Xpos.from_chrom_pos(args['chrom'], args['start'])
+      xend = Xpos.from_chrom_pos(args['chrom'], args['end'])
+      if xend - xstart > maxRegion:
+         raise UserError('Larger than {} bp regions are not allowed.'.format(maxRegion))
+      data = list(db.variants.find({'xpos': {'$lte': xend, '$gte': xstart}}, projection={'_id': False}))
+   else:
+      raise UserError('Invalid Request')
    response = jsonify({
-      'data': variants
+      'data': data
    })
    response.status_code = 200
    return response
 
 
+app.register_blueprint(bp, url_prefix = URL_PREFIX)
+
+
 if __name__ == '__main__':   
-   app.run(host = '0.0.0.0', port = port, debug = True)
+   args = argparser.parse_args()
+   app.run(host = args.host, port = args.port, threaded = True, use_reloader = True)
