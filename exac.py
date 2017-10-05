@@ -638,6 +638,11 @@ def terms_page():
     _log()
     return render_template('terms.html')
 
+@bp.route('/help')
+def help_page():
+    _log()
+    return render_template('help.html')
+
 
 # OAuth2
 google_sign_in = auth.GoogleSignIn(app)
