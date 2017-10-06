@@ -364,7 +364,10 @@ def variant_page(variant_id):
         _log()
         variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant=True)
         if not variant: return error_page('Variant {!r} not found'.format(variant_id))
-        if 'pop_afs' in variant: variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
+        if 'pop_afs' in variant:
+            pop_names = {k+'_AF': '1000G '+v for k,v in {'AFR':'African', 'AMR':'American', 'EAS':'East Asian', 'EUR':'European', 'SAS':'South Asian'}.items()}
+            variant['pop_afs'] = {pop_names.get(k, k):v for k,v in variant['pop_afs'].items()}
+            variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
 
         consequence_drilldown = ConsequenceDrilldown.from_variant(variant)
         gene_for_top_csq, top_HGVSs = ConsequenceDrilldown.get_top_gene_and_HGVSs(consequence_drilldown)
