@@ -71,9 +71,16 @@ var coverage_plot = {
                     loading_text.remove();
                     window.model.coverage_stats = coverage_stats;
                     if (window.model.coverage_stats !== null) this.populate(data_g, genome_g);
+                    if (window.model.coverage_stats.length === 0) this.no_coverage(genome_g);
                 }.bind(this))
-                .fail(function() { console.error('coverage XHR failed'); });
+                .fail(function() { this.no_coverage(genome_g) });
         }.bind(this));
+    },
+
+    no_coverage: function(genome_g) {
+        genome_g.append('text')
+            .attr('text-anchor', 'middle').text('No Coverage')
+            .attr('transform', fmt('translate({0},{1})', window.model.plot.genome_coords_width/2, this.height/2))
     },
 
     populate: function(data_g, genome_g) {
