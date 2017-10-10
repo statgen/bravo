@@ -686,7 +686,7 @@ var density_plot = {
     container_id: 'density_plot_container',
     height: 60,
     margin: {top: 5, bottom: 15},
-    color: {variants:'#999', singletons:'#ddd', '.1%+':'#555'},
+    color: {variants:'#999', singletons:'#ccc', '.1%+':'#555'},
     create: function() {
         if (window.model.intervalset.list_of_pairs.length === 1 && window.model.intervalset.list_of_pairs[0][1] - window.model.intervalset.list_of_pairs[0][0] < 200) return;
         bootstrap_plot();
@@ -772,7 +772,7 @@ var density_plot = {
             .style('fill', density_plot.color.singletons)
             .attr('x', function(d) { return window.model.plot.x(d.start) })
             .attr('width', function(d) { return window.model.plot.x(d.stop + 1) - window.model.plot.x(d.start) + 1; })
-            .attr('y', function(d) { return y(d.singleton_density) })
+            .attr('y', function(d) { return y(d.variant_density) })
             .attr('height', function(d) { return (density_plot.height - y(d.singleton_density)) || 0 })
             .style('pointer-events', 'none');
         data_g
@@ -784,7 +784,7 @@ var density_plot = {
             .style('fill', density_plot.color['.1%+'])
             .attr('x', function(d) { return window.model.plot.x(d.start) })
             .attr('width', function(d) { return window.model.plot.x(d.stop + 1) - window.model.plot.x(d.start) + 1; })
-            .attr('y', function(d) { return y(d.variant_density) })
+            .attr('y', function(d) { return y(d['.1%+_density']) })
             .attr('height', function(d) { return (density_plot.height - y(d['.1%+_density'])) || 0 })
             .style('pointer-events', 'none');
 
