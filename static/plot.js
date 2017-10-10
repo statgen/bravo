@@ -537,7 +537,7 @@ var variant_table = {
             render: function(cell_data, type, row) {return group_thousands_html(row.hom_count);},
 
         },{
-            title: 'Frequency', name: 'allele_freq',
+            title: 'Frequency (%)', name: 'allele_freq',
             data: 'allele_freq', searchable:true, orderable:true, orderSequence:['desc','asc'], className: 'dt-pad-left',
             render: function(cell_data, type, row) { return perc_sigfigs_html(cell_data, 2); },
 
