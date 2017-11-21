@@ -7,6 +7,7 @@ import pymongo
 import pysam
 import gzip
 import random
+import os
 import boltons.cacheutils
 
 from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, make_response, send_file, Blueprint
@@ -35,6 +36,7 @@ bp = Blueprint('bp', __name__, template_folder='templates', static_folder='stati
 
 app = Flask(__name__)
 app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
+if 'GVS_URL_PREFIX' in os.environ: app.config['URL_PREFIX'] = os.environ['GVS_URL_PREFIX']
 mail_on_500(app, app.config['ADMINS'])
 app.config['COMPRESS_LEVEL'] = 2 # Since we don't cache, faster=better
 Compress(app)
