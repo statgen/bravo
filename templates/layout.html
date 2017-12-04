@@ -67,9 +67,25 @@
             <ul class="nav navbar-nav navbar-right">
                 <li><a href="{{ url_for('.about_page') }}" style="color: #333; font-weight: bold;">About</a></li>
  		<li><a href="{{ url_for('.download_page') }}" style="color: #333; font-weight: bold;">dbSNP</a></li>
+                <li><a href="{{ url_for('.help_page') }}" style="color: #333; font-weight: bold;">API</a></li>
            	<li><a href="{{ url_for('.terms_page') }}" style="color: #333; font-weight: bold;">Terms</a></li>
      		{% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('.logout') }}" style="color: #333; font-weight: bold;">Logout ({{ current_user.email }})</a></li>
+                <li class="dropdown" style="margin: 0px 0px 0px 0px;">
+                    <a href="#" class="dropdown-toggle" style="padding-top: 10px; padding-bottom: 10px;" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                    {% if current_user.picture is none %}
+                    <span class="glyphicon glyphicon-user" style="font-size: 20px"></span>
+                    {% else %}
+                    <img src="{{ current_user.picture }}" style="width: 30px; height: 30px; padding: 0px; border-radius: 50%;">
+                    {% endif %}
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li style="display: inline-block; padding: 3px 20px;"><b>{{ current_user.username }}</b><br />{{ current_user.email }}</li>
+                        <li role="separator" class="divider"></li>
+                        <li><a href="{{ url_for('.user_profile_page') }}">Settings</a></li>
+                        <li role="separator" class="divider"></li>
+                        <li><a href="{{ url_for('.logout') }}" style="color: #333; font-weight: bold;">Logout</a></li>
+                    </ul>
+                </li>
                 {% endif %}
             </ul>
         </div><!-- /.navbar-collapse -->
