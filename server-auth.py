@@ -18,7 +18,7 @@ bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 's
 
 app = Flask(__name__)
 
-api_version = 'v1'
+api_version = 'dev'
 
 mongo_host = 'localhost'
 mongo_port = 27017
@@ -38,8 +38,7 @@ GOOGLE_RESPONSE_TYPE = 'code'
 BRAVO_AUTH_SECRET = '8pSYh4AXudNuN7IIIc06'
 BRAVO_ACCESS_SECRET = '0y66U2gtPk1YGZrFoIBO'
 
-URL_PREFIX = '/api/dev/auth'
-
+URL_PREFIX = '/api/' + api_version + '/auth'
 
 def setup_auth_tokens_collection(mongo, db_name):
     db = mongo[db_name]
