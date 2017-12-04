@@ -124,31 +124,39 @@ def get_name():
 @require_authorization
 def get_variants():
    args = parser.parse({
-      'variant': fields.Str(required = False),
+      'variant_id': fields.Str(required = False),
       'chrom': fields.Str(required = False),
-      'start': fields.Int(required = False),
-      'end': fields.Int(required = False)
+      'start_bp': fields.Int(required = False),
+      'end_bp': fields.Int(required = False),
+      'position_bp': fields.Int(required = False)
       }, request)
-   if 'variant' in args:
+   projection = {'_id': False, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True}
+   if 'variant_id' in args:
       db = get_db()
       try:
-         chrom, pos, ref, alt = args['variant'].split('-')
+         chrom, pos, ref, alt = args['variant_id'].split('-')
          pos = int(pos)
       except ValueError as e:
          raise UserError('Invalid variant name format.')
       if not Xpos.check_chrom(chrom):
          raise UserError('Invalid chromosome name.')
       xpos = Xpos.from_chrom_pos(chrom, pos)
-      data = db.variants.find_one({'xpos': xpos, 'ref': ref, 'alt': alt}, projection={'_id': False})
-   elif all(x in args for x in ['chrom', 'start', 'end']):
+      data = db.variants.find_one({'xpos': xpos, 'ref': ref, 'alt': alt}, projection=projection)
+   elif all(x in args for x in ['chrom', 'position_bp']):
       db = get_db()
       if not Xpos.check_chrom(args['chrom']):
          raise UserError('Invalid chromosome name.')
-      xstart = Xpos.from_chrom_pos(args['chrom'], args['start'])
-      xend = Xpos.from_chrom_pos(args['chrom'], args['end'])
+      xposition = Xpos.from_chrom_pos(args['chrom'], args['position_bp'])
+      data = list(db.variants.find({'xpos': xposition}, projection=projection))
+   elif all(x in args for x in ['chrom', 'start_bp', 'end_bp']):
+      db = get_db()
+      if not Xpos.check_chrom(args['chrom']):
+         raise UserError('Invalid chromosome name.')
+      xstart = Xpos.from_chrom_pos(args['chrom'], args['start_bp'])
+      xend = Xpos.from_chrom_pos(args['chrom'], args['end_bp'])
       if xend - xstart > maxRegion:
-         raise UserError('Larger than {} bp regions are not allowed.'.format(maxRegion))
-      data = list(db.variants.find({'xpos': {'$lte': xend, '$gte': xstart}}, projection={'_id': False}))
+         raise UserError('Regions larger than {} base-pairs are not allowed.'.format(maxRegion))
+      data = list(db.variants.find({'xpos': {'$lte': xend, '$gte': xstart}}, projection=projection))
    else:
       raise UserError('Invalid Request')
    response = jsonify({
