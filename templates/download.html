@@ -1,4 +1,18 @@
 {% extends "layout.html" %}
+
+{% block in_head %}
+<script type="text/javascript">
+$(function() {
+  var download_url = window.location.href + "/all";
+  var cookie = document.cookie;
+  cookie = cookie.replace(new RegExp("'", "g"), "'\"'\"'"); /* escape single quotes just in case */
+  var curl_template = "curl 'URL' -H 'Accept-Encoding: gzip, deflate, br' -H 'Cookie: COOKIE' --compressed > bravo-dbsnp-all.vcf.gz";
+  var curl_code = curl_template.replace("URL", download_url).replace("COOKIE", cookie);
+  $("#curl_code").html(curl_code);
+});
+</script>
+{% endblock %}
+
 {% block body %}
     <div class="container" style="margin-top: 3em">
         <div class="row" style="font-size: 120%;">
@@ -8,22 +22,22 @@
 		The variants list is saved in <a href="https://vcftools.github.io/index.html">Variant Call Format (VCF)</a> following dbSNP <a href="https://www.ncbi.nlm.nih.gov/snp/docs/submission/vcf_submission_guidelines/">guidelines</a>.</p>
 	    </div>
         </div>
-    </div>
-    <div class="container" style="margin-top: 3em">
-	<div class="row">
-            <div class="col-md-1 col-md-offset-5">
+	<div class="row" style="margin-top:3em">
+            <div class="col-xs-10 col-xs-offset-1" style="text-align:center">
                 <a href="{{ url_for('.download_full_vcf') }}" class="btn btn-effets btn-primary"><span>Download VCF</span></a>
             </div>
 	</div>
-    </div>
-
-    <div class="container" style="margin-top: 3em">
 	<div class="row">
 	    <div class="col-xs-10 col-xs-offset-1">
  	        <p>MD5 checksum: <code>773e9e97759a4a5b4555c5d7e1e14313</code></p>
             </div>
 	</div>
+        <div class="row" style="margin-top:3em">
+          <div class="col-xs-10 col-xs-offset-1">
+            <p>To download with <code>curl</code>, run:</p>
+            <p><pre id="curl_code"></pre></p>
+            <p>Please do not share this command, because it is only for your account.</p>
+          </div>
+        </div>
     </div>
-
-
 {% endblock %}
