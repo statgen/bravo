@@ -8,6 +8,7 @@
 		    <li><a href="#section_setup">Setup</a></li>
                     <li><a href="#section_endpoints">Endpoints</a></li>
                     <li><a href="#section_results">Results</a></li>
+                    <li><a href="#section_restrictions">Restrictions</a></li>
 		</ul>
                 <h2 id="section_setup" style="margin-top: 2em">Setup</h2>
                 <p>The following steps describe how to setup Bravo API on your server or local machine.</p>
@@ -26,7 +27,7 @@
                     </li> 
                 </ol>
                 <h2 id="section_endpoints" style="margin-top: 2em">Endpoints</h2>
-                <p>The following table lists all Bravo API endpoints currently available at <code>http://bravo.sph.umich.edu/api/dev/</code>.</p>
+                <p>The following table lists all Bravo API endpoints currently available at <code>https://bravo.sph.umich.edu/api/dev/</code>.</p>
                 <table class="table table-condensed">
                     <tr>
                        <th>API endpoint</th>
@@ -41,23 +42,23 @@
                     <tr>
                        <td><code>/variants?variant_id=value</code></td>
                        <td>Find a variant with given variant identifier. Variant identifier must have the form CHROM-POS-REF-ALT.</td>
-                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" http://bravo.sph.umich.edu/api/dev/variants?variant_id=chr22-16389447-A-G<code></td>
+                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" https://bravo.sph.umich.edu/api/dev/variants?variant_id=chr22-16389447-A-G<code></td>
                     </tr>
                     <tr>
                        <td><code>/variants?chrom=value&amp;position_bp=value</code></td>
                        <td>Find all viariants with given chromosome and position in base-pairs.</td>
-                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" "http://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;position_bp=16390137"</code></td>
+                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;position_bp=16390137"</code></td>
                     </tr>
                     <tr>
                        <td><code>/variants?chrom=value&amp;start_bp=value&amp;end_bp=value</code></td>
                        <td>Find all variants within a given chromosome given start and end positions (in base-pairs).</td>
-                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" "http://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;start_bp=16387675&amp;end_bp=16390908"</code></td>
+                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;start_bp=16387675&amp;end_bp=16390908"</code></td>
                     </tr>
                 </table>
                 <h2 id="section_results" style="margin-top: 2em">Results</h2>
                 <p>Bravo API returns results in JSON format. Query result is stored inside <code>data</code> attribute, which has <code>null</code> value in case of no data. In case of error, error message is stored inside <code>error</code> attribute and <code>data</code> attribute is absent. Below are provided several examples.</p>
                 <ol>
-                <li>Get information about variant 22-16389447-A-G: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" http://bravo.sph.umich.edu/api/dev/variants?variant_id=chr22-16389447-A-G</code><pre>{
+                <li>Get information about variant 22-16389447-A-G: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" https://bravo.sph.umich.edu/api/dev/variants?variant_id=chr22-16389447-A-G</code><pre>{
   "data": {
     "allele_count": 6261, 
     "allele_freq": 0.0498614, 
@@ -71,7 +72,7 @@
     "variant_id": "22-16389447-A-G"
   }
 }</pre></li>
-               <li>Get all variants between 16,387,675 bp and 16,390,908 bp on chromosome 22:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "http://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;start_bp=16387675&amp;end_bp=16390908"</code>
+               <li>Get all variants between 16,387,675 bp and 16,390,908 bp on chromosome 22:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;start_bp=16387675&amp;end_bp=16390908"</code>
 <pre>{
   "data": [
     {
@@ -125,6 +126,12 @@
   ]
 }</pre></li>
                </ol>
+            <h2 id="section_restrictions" style="margin-top: 2em">Restrictions</h2>
+            <p>Restrictions on using Bravo API:</p>
+            <ol>
+               <li>Only chromosomal regions up to 100,000 base-pairs are allowed.</li>
+               <li>Every user can submit up to 180 queries per 15 minutes. If this threshold is exceeded, no more queries are processed until 15 minutes expire.</li>
+            </ol>
             </div>
         </div>
     </div>
