@@ -7,6 +7,8 @@ import argparse
 import jwt
 from datetime import datetime
 from utils import Xpos
+from flask_limiter import Limiter
+
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')
@@ -110,6 +112,13 @@ def handle_parsing_error(error):
    abort(response)
 
 
+@bp.errorhandler(429)
+def handle_ratelimit(error):
+    response = jsonify({ 'error': 'too many requests' })
+    response.status_code = 429
+    return response
+
+
 @bp.errorhandler(UserError)
 def handle_user_error(error):
     response = jsonify({ 'error': error.message })
@@ -175,6 +184,9 @@ def get_variants():
 
 
 app.register_blueprint(bp, url_prefix = BRAVO_API_URL_PREFIX)
+
+
+limiter = Limiter(app, default_limits = ["180/15 minute"], key_func = get_user_ip)
 
 
 if __name__ == '__main__':   
