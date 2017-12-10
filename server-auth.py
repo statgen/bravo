@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort, url_for, Blueprint
+from flask import Flask, request, jsonify, abort, url_for, Blueprint, render_template
 import requests
 from pymongo import MongoClient
 import functools
@@ -8,6 +8,7 @@ from datetime import datetime
 import hashlib
 import os
 import argparse
+import ipaddress
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')
@@ -17,16 +18,19 @@ argparser.add_argument('--port', type = int, default = 5000, help = 'an integer 
 bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 'static')
 
 app = Flask(__name__)
+app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
 
-api_version = 'dev'
+BRAVO_AUTH_URL_PREFIX = app.config['BRAVO_AUTH_URL_PREFIX']
+BRAVO_AUTH_SECRET = app.config['BRAVO_AUTH_SECRET']
+BRAVO_ACCESS_SECRET = app.config['BRAVO_ACCESS_SECRET']
 
-mongo_host = 'localhost'
-mongo_port = 27017
-mongo_db_name = 'topmed_freeze5_hg38_testing'
+mongo_host = app.config['MONGO']['host']
+mongo_port = app.config['MONGO']['port']
+mongo_db_name = app.config['MONGO']['name']
 
+GOOGLE_CLIENT_ID = app.config['GOOGLE_LOGIN_CLIENT_ID']
+GOOGLE_CLIENT_SECRET = app.config['GOOGLE_LOGIN_CLIENT_SECRET']
 
-GOOGLE_CLIENT_ID = '27789452673-oi53pfnke1a6mk8shbg7uf5ooe24bdsq.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = '-2f288sVZVIuxNUTtNzglLzJ'
 GOOGLE_AUTH_API = 'https://accounts.google.com/o/oauth2/v2/auth'
 GOOGLE_TOKEN_API = 'https://www.googleapis.com/oauth2/v4/token'
 GOOGLE_TOKENINFO_API = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
@@ -34,11 +38,6 @@ GOOGLE_AUTH_SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 GOOGLE_ACCESS_TYPE = 'offline'
 GOOGLE_RESPONSE_TYPE = 'code'
 
-
-BRAVO_AUTH_SECRET = '8pSYh4AXudNuN7IIIc06'
-BRAVO_ACCESS_SECRET = '0y66U2gtPk1YGZrFoIBO'
-
-URL_PREFIX = '/api/' + api_version + '/auth'
 
 def setup_auth_tokens_collection(mongo, db_name):
     db = mongo[db_name]
@@ -96,7 +95,8 @@ def handle_user_error(error):
 @bp.route('/auth', methods = ['GET'])
 def auth():
     issued_at = datetime.utcnow()
-    auth_token = jwt.encode({'ip': request.remote_addr, 'iat': issued_at}, BRAVO_AUTH_SECRET, algorithm = 'HS256')
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    auth_token = jwt.encode({'ip': ip, 'iat': issued_at}, BRAVO_AUTH_SECRET, algorithm = 'HS256')
     payload = {
         'client_id': GOOGLE_CLIENT_ID,
         'redirect_uri': url_for('.auth_callback', _external = True, _scheme = 'https'),
@@ -145,9 +145,9 @@ def auth_callback():
     if not authorize_user(email, client_id):
         get_db().auth_tokens.update_one({ 'auth_token': auth_token}, {'$set': {'error': 'You are not authorized for API access.'}})
         raise UserError('Not authorized')
-    access_token = jwt.encode({'email': email, 'iat': datetime.utcnow()}, BRAVO_ACCESS_SECRET, algorithm = 'HS256')
+    access_token = jwt.encode({'email': email, 'ip': decoded_auth_token['ip'], 'iat': datetime.utcnow()}, BRAVO_ACCESS_SECRET, algorithm = 'HS256')
     get_db().auth_tokens.update_one({ 'auth_token': auth_token}, {'$set': {'access_token': access_token}})
-    return jsonify({'status': 'OK'}), 200
+    return render_template('auth_ok.html')
 
 
 @bp.route('/token', methods = ['POST'])
@@ -159,7 +159,7 @@ def get_token():
         decoded_auth_token = jwt.decode(auth_token, BRAVO_AUTH_SECRET)
     except jwt.InvalidTokenError:
         raise UserError('Bad authorization token.')
-    if decoded_auth_token['ip'] != request.remote_addr:
+    if decoded_auth_token['ip'] != request.headers.get('X-Forwarded-For', request.remote_addr):
         raise UserError('This authorization token was issued for different IP address.') 
     document = get_db().auth_tokens.find_one({ 'auth_token': auth_token }, projection = {'_id': False})
     if not document:
@@ -186,6 +186,13 @@ def revoke_token():
     except jwt.InvalidTokenError:
         raise UserError('Bad access token.')
     email = decoded_access_token['email']
+    try:
+        network = ipaddress.ip_network(decoded_access_token['ip'] + '/24', strict = False)
+        request_network = ipaddress.ip_network(request.headers.get('X-Forwarded-For', request.remote_addr) + '/24', strict = False)
+        if network.compare_networks(request_network) != 0:
+            raise UserError('This access token was issued for different IP address.')
+    except (AddressValueError, TypeError) as e:
+        raise UserError('This access token was issued for different IP address.')
     issued_at = datetime.utcfromtimestamp(decoded_access_token['iat'])
     document = get_db().users.find_one({ 'email': email }, projection = {'_id': False})
     if not document:
@@ -199,7 +206,7 @@ def revoke_token():
     return response
 
 
-app.register_blueprint(bp, url_prefix = URL_PREFIX)
+app.register_blueprint(bp, url_prefix = BRAVO_AUTH_URL_PREFIX)
 
 if __name__ == '__main__':   
     args = argparser.parse_args()
