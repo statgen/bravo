@@ -56,7 +56,7 @@ def get_db():
    return mongo[mongo_db_name]
 
 
-def get_user_ip(request):
+def get_user_ip():
    if proxy:
       x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
       return x_forwarded_for[-1].strip() if len(x_forwarded_for) > 1 else ''
@@ -104,7 +104,7 @@ def handle_user_error(error):
 
 @bp.route('/ip', methods = ['GET'])
 def ip():
-    ip = get_user_ip(request)
+    ip = get_user_ip()
     response = jsonify({ 'ip': ip })
     response.status_code = 200
     return response
@@ -113,7 +113,7 @@ def ip():
 @bp.route('/auth', methods = ['GET'])
 def auth():
     issued_at = datetime.utcnow()
-    ip = get_user_ip(request)
+    ip = get_user_ip()
     auth_token = jwt.encode({'ip': ip, 'iat': issued_at}, BRAVO_AUTH_SECRET, algorithm = 'HS256')
     payload = {
         'client_id': GOOGLE_CLIENT_ID,
@@ -177,7 +177,7 @@ def get_token():
         decoded_auth_token = jwt.decode(auth_token, BRAVO_AUTH_SECRET)
     except jwt.InvalidTokenError:
         raise UserError('Bad authorization token.')
-    ip = get_user_ip(request)
+    ip = get_user_ip()
     if decoded_auth_token['ip'] != ip:
         raise UserError('This authorization token was issued for different IP address.') 
     document = get_db().auth_tokens.find_one({ 'auth_token': auth_token }, projection = {'_id': False})

@@ -46,7 +46,7 @@ class UserError(Exception):
         self.message = message
 
 
-def get_user_ip(request):
+def get_user_ip():
    if proxy:
       x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
       return x_forwarded_for[-1].strip() if len(x_forwarded_for) > 1 else ''
@@ -76,7 +76,7 @@ def authorize_access_token(email, issued_at):
    return True
 
 
-def request_is_valid(request):
+def request_is_valid():
    if 'Authorization' not in request.headers:
        return False
    authorization = request.headers.get('Authorization').split()
@@ -88,7 +88,7 @@ def request_is_valid(request):
    email, issued_at, ip = validate_access_token(authorization[1])
    if email is None or issued_at is None or ip is None:
       return False
-   if ip != get_user_ip(request):
+   if ip != get_user_ip():
       return False
    return authorize_access_token(email, issued_at)
 
@@ -96,7 +96,7 @@ def request_is_valid(request):
 def require_authorization(func):
    @functools.wraps(func)
    def authorization_wrapper(*args, **kwargs):
-      if not request_is_valid(request):
+      if not request_is_valid():
          raise UserError('not authorized')
       else:
          return func(*args, **kwargs)
