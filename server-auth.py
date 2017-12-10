@@ -8,7 +8,7 @@ from datetime import datetime
 import hashlib
 import os
 import argparse
-import ipaddress
+
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')
@@ -48,6 +48,7 @@ def setup_auth_tokens_collection(mongo, db_name):
 
 mongo = MongoClient(mongo_host, mongo_port, connect = True)
 setup_auth_tokens_collection(mongo, mongo_db_name)
+
 
 def get_db():
    return mongo[mongo_db_name]
@@ -89,6 +90,14 @@ class UserError(Exception):
 def handle_user_error(error):
     response = jsonify({ 'error': error.message })
     response.status_code = error.status_code
+    return response
+
+
+@bp.route('/ip', methods = ['GET'])
+def ip():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    response = jsonify({ 'ip': ip })
+    response.status_code = 200
     return response
 
 
@@ -159,7 +168,8 @@ def get_token():
         decoded_auth_token = jwt.decode(auth_token, BRAVO_AUTH_SECRET)
     except jwt.InvalidTokenError:
         raise UserError('Bad authorization token.')
-    if decoded_auth_token['ip'] != request.headers.get('X-Forwarded-For', request.remote_addr):
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if decoded_auth_token['ip'] != ip:
         raise UserError('This authorization token was issued for different IP address.') 
     document = get_db().auth_tokens.find_one({ 'auth_token': auth_token }, projection = {'_id': False})
     if not document:
@@ -169,13 +179,20 @@ def get_token():
         raise UserError(document['error'])
     if document['access_token'] is not None:
         get_db().auth_tokens.remove({ 'auth_token': auth_token })
-        response = jsonify({'access_token': document['access_token'], 'token_type': 'Bearer'})
+        response = jsonify({
+            'access_token': document['access_token'],
+            'token_type': 'Bearer',
+            'ip': ip
+        })
     else:    
-        response = jsonify({'access_token': None})
+        response = jsonify({
+            'access_token': None
+        })
     response.status_code = 200
     return response
 
 
+# We don't check for IP here because we want to allow access token holder be able to revoke access when their IP changed permanently.
 @bp.route('/revoke', methods = ['GET'])
 def revoke_token():
     access_token = request.args.get('access_token', None)
@@ -186,13 +203,6 @@ def revoke_token():
     except jwt.InvalidTokenError:
         raise UserError('Bad access token.')
     email = decoded_access_token['email']
-    try:
-        network = ipaddress.ip_network(decoded_access_token['ip'] + '/24', strict = False)
-        request_network = ipaddress.ip_network(request.headers.get('X-Forwarded-For', request.remote_addr) + '/24', strict = False)
-        if network.compare_networks(request_network) != 0:
-            raise UserError('This access token was issued for different IP address.')
-    except (AddressValueError, TypeError) as e:
-        raise UserError('This access token was issued for different IP address.')
     issued_at = datetime.utcfromtimestamp(decoded_access_token['iat'])
     document = get_db().users.find_one({ 'email': email }, projection = {'_id': False})
     if not document:
@@ -200,8 +210,12 @@ def revoke_token():
     revoked_at = document.get('access_token_revoked_at', None)
     if revoked_at is not None and revoked_at > issued_at:
         raise UserError('Bad access token.')
-    get_db().users.update_one({ 'email': email }, {'$set': {'access_token_revoked_at': datetime.utcnow()}})
-    response = jsonify({'revoked': True})
+    revoked_at = datetime.utcnow()
+    get_db().users.update_one({ 'email': email }, {'$set': {'access_token_revoked_at': revoked_at}})
+    response = jsonify({
+        'revoked': True,
+        'revoked_at': revoked_at
+    })
     response.status_code = 200
     return response
 
