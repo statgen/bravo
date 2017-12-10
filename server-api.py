@@ -19,6 +19,8 @@ bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 's
 app = Flask(__name__)
 app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
 
+proxy = app.config['PROXY']
+
 BRAVO_API_URL_PREFIX = app.config['BRAVO_API_URL_PREFIX']
 BRAVO_ACCESS_SECRET = app.config['BRAVO_ACCESS_SECRET']
 
@@ -42,6 +44,13 @@ class UserError(Exception):
     def __init__(self, message, status_code = None):
         Exception.__init__(self)
         self.message = message
+
+
+def get_user_ip(request):
+   if proxy:
+      x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
+      return x_forwarded_for[-1].strip() if len(x_forwarded_for) > 1 else ''
+   return request.remote_addr
 
 
 def get_db():
@@ -79,7 +88,7 @@ def request_is_valid(request):
    email, issued_at, ip = validate_access_token(authorization[1])
    if email is None or issued_at is None or ip is None:
       return False
-   if ip != request.headers.get('X-Forwarded-For', request.remote_addr):
+   if ip != get_user_ip(request):
       return False
    return authorize_access_token(email, issued_at)
 
