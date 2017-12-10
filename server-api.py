@@ -17,23 +17,22 @@ bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 's
 
 
 app = Flask(__name__)
+app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
+
+BRAVO_API_URL_PREFIX = app.config['BRAVO_API_URL_PREFIX']
+BRAVO_ACCESS_SECRET = app.config['BRAVO_ACCESS_SECRET']
+
+mongo_host = app.config['MONGO']['host']
+mongo_port = app.config['MONGO']['port']
+mongo_db_name = app.config['MONGO']['name']
 
 
-mongo_host = 'localhost'
-mongo_port = 27017
-mongo_db_name = 'topmed_freeze5_hg38_testing'
-
-name = 'TOPMed'
-version = 'Freeze5'
-hg_build = 'GRCh38'
-api_version = 'dev'
+dataset_name = app.config['DATASET_NAME']
+bravo_api_version = app.config['BRAVO_API_VERSION']
 
 pageSize = 10
 maxRegion = 100000
 
-
-BRAVO_ACCESS_SECRET = '0y66U2gtPk1YGZrFoIBO'
-URL_PREFIX = '/api/' + api_version
 
 mongo = MongoClient(mongo_host, mongo_port, connect = True)
 
@@ -53,8 +52,8 @@ def validate_access_token(access_token):
    try:
       decoded_access_token = jwt.decode(access_token, BRAVO_ACCESS_SECRET)
    except jwt.InvalidTokenError:
-      return (None, None)
-   return (decoded_access_token.get('email', None), decoded_access_token.get('iat', None))
+      return (None, None, None)
+   return (decoded_access_token.get('email', None), decoded_access_token.get('iat', None), decoded_access_token.get('ip', None))
 
 
 def authorize_access_token(email, issued_at):
@@ -77,8 +76,10 @@ def request_is_valid(request):
    token_type = authorization[0].lower()
    if token_type != 'bearer':
       return False
-   email, issued_at = validate_access_token(authorization[1])
-   if not email or not issued_at:
+   email, issued_at, ip = validate_access_token(authorization[1])
+   if email is None or issued_at is None or ip is None:
+      return False
+   if ip != request.headers.get('X-Forwarded-For', request.remote_addr):
       return False
    return authorize_access_token(email, issued_at)
 
@@ -111,10 +112,8 @@ def handle_user_error(error):
 @require_authorization
 def get_name():
    response = jsonify({
-      'name': name,
-      'version': version,
-      'hg_build': hg_build,
-      'api_version': api_version
+      'dataset': dataset_name,
+      'api_version': bravo_api_version
    })
    response.status_code = 200
    return response
@@ -166,7 +165,7 @@ def get_variants():
    return response
 
 
-app.register_blueprint(bp, url_prefix = URL_PREFIX)
+app.register_blueprint(bp, url_prefix = BRAVO_API_URL_PREFIX)
 
 
 if __name__ == '__main__':   
