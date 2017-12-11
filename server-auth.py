@@ -59,7 +59,7 @@ def get_db():
 def get_user_ip():
    if proxy:
       x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
-      return x_forwarded_for[-1].strip() if len(x_forwarded_for) > 1 else ''
+      return x_forwarded_for[-1].strip() if len(x_forwarded_for) > 0 else ''
    return request.remote_addr
 
 
