@@ -5,76 +5,75 @@
             <div class="col-xs-10 col-xs-offset-1">
                 <h1 style="margin-bottom: 0.5em">Bravo API</h1>
                 <ul style="list-style: none; padding: 0; margin 0; font-size: 22px">
-		    <li><a href="#section_setup">Setup</a></li>
-                    <li><a href="#section_endpoints">Endpoints</a></li>
-                    <li><a href="#section_results">Results</a></li>
-                    <li><a href="#section_restrictions">Restrictions</a></li>
+		    <li><a href="#section_setup">1. Setup</a></li>
+                    <li><a href="#section_constraints">2. Constraints</a></li>
+                    <li><a href="#section_formats">3. Responses</a>
+                       <ul style="list-style: none;">
+                          <li><a href="#section_formats_json">3.1. JSON</a></li>
+                          <li><a href="#section_formats_vcf">3.2. VCF</a></li>
+                          <li><a href="#section_formats_pagination">3.3. Pagination</a></li>
+                          <li><a href="#section_formats_errors">3.4. Handling errors</a></li>
+                       </ul>
+                    </li>
+                    <li><a href="#section_endpoints">4. Queries</a>
+                    <ul style="list-style: none;">
+                       <li><a href="#section_single_variant_query">4.1. Single variant</a></li>
+                       <ul style="list-style: none;">
+                          <li><a href="#section_single_variant_query_examples">4.1.1 Examples</a></li>
+                       </ul>
+                       <li><a href="#section_region_query">4.2. Region</a>
+                       <ul style="list-style: none;">
+                          <li><a href="#section_region_query_filter">4.2.1. Filtering</a></li>
+                          <li><a href="#section_region_query_examples">4.2.2. Examples</a></li>
+                       </ul>
+                       </li>
+                       <li><a href="#section_gene_query">4.3. Gene</a>
+                       <ul style="list-style: none;">
+                          <li><a href="#section_gene_query_examples">4.3.1. Examples</a></li>
+                       </ul>
+                       </li>
+                    </ul>
+                    </li>
 		</ul>
-                <h2 id="section_setup" style="margin-top: 2em">Setup</h2>
-                <p>The following steps describe how to setup Bravo API on your server or local machine.</p>
+                <h2 id="section_setup" style="margin-top: 2em">1. Setup</h2>
+                <p>The steps below describe how to setup the Bravo API on your server or local machine.</p>
                 <ol>
-                    <li>Enable API access from your Profile-&gtSettings page.</li>
+                    <li>Enable API access from your Profile-&gt;Settings page.</li>
                     <img src="{{ url_for('.static', filename='img/settings.png') }}" width="800px" />
-                    <li>Download <code>bravo</code> command line tool (for Linux and Mac OS X only) from <a href={{ url_for('.static', filename='tools/bravo')  }}>here</a>.</li>
+                    <li>Download the <code>bravo</code> command line tool (for Linux and Mac OS X only) from <a href={{ url_for('.static', filename='tools/bravo')  }}>here</a>.</li>
                     <li>Run <code>./bravo login</code> from your command line and go to the provided link in your browser.</li>
                     <img src="{{ url_for('.static', filename='img/bravo_api_login.png') }}" width="800px" />
                     <li>Sign in with your Google account.</li>
                     <img src="{{ url_for('.static', filename='img/google_signin.png') }}" width="800px" />
-                    <li>Within several seconds <code>bravo</code> will receive your authorization and you may start using Bravo API.</li>
+                    <li>Within several seconds <code>bravo</code> will receive your authorization and you may start using the Bravo API.</li>
                     <img src="{{ url_for('.static', filename='img/bravo_api_login_end.png') }}" width="800px" />
-                    <li>Each request must have Authorization header with valid Bearer access token. To get your access token, execute <code>./bravo print-access-token</code>. For example, to make an API call with <code>curl</code>, execute:<br>
+                    <li>To get your access token, execute <code>./bravo print-access-token</code>.</li>
+                    <li>Each request to the Bravo API must have <code>Authorization</code> header with a valid Bearer access token. For example, to make an API call with <code>curl</code>, execute:<br>
                     <code>curl -H "Authorization: Bearer `./bravo print-access-token`" https://bravo.sph.umich.edu/api/dev/</code>
                     </li> 
+                    <li>You need to login using <code>./bravo login</code> each time you access the Bravo API from within a different network.</li>
                 </ol>
-                <h2 id="section_endpoints" style="margin-top: 2em">Endpoints</h2>
-                <p>The following table lists all Bravo API endpoints currently available at <code>https://bravo.sph.umich.edu/api/dev/</code>.</p>
-                <table class="table table-condensed">
-                    <tr>
-                       <th>API endpoint</th>
-                       <th>Description</th>
-                       <th>Example</th>
-                    </tr>
-                    <tr>
-                       <td><code>/</code></td>
-                       <td>Returns name and version of dataset and API.</td>
-                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" https://bravo.sph.umich.edu/api/dev/</code></td>
-                    </tr>
-                    <tr>
-                       <td><code>/variants?variant_id=value</code></td>
-                       <td>Find a variant with given variant identifier. Variant identifier must have the form CHROM-POS-REF-ALT.</td>
-                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" https://bravo.sph.umich.edu/api/dev/variants?variant_id=chr22-16389447-A-G<code></td>
-                    </tr>
-                    <tr>
-                       <td><code>/variants?chrom=value&amp;position_bp=value</code></td>
-                       <td>Find all viariants with given chromosome and position in base-pairs.</td>
-                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;position_bp=16390137"</code></td>
-                    </tr>
-                    <tr>
-                       <td><code>/variants?chrom=value&amp;start_bp=value&amp;end_bp=value</code></td>
-                       <td>Find all variants within a given chromosome given start and end positions (in base-pairs).</td>
-                       <td><code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;start_bp=16387675&amp;end_bp=16390908"</code></td>
-                    </tr>
-                </table>
-                <h2 id="section_results" style="margin-top: 2em">Results</h2>
-                <p>Bravo API returns results in JSON format. Query result is stored inside <code>data</code> attribute, which has <code>null</code> value in case of no data. In case of error, error message is stored inside <code>error</code> attribute and <code>data</code> attribute is absent. Below are provided several examples.</p>
+                <h2 id="section_constraints" style="margin-top: 2em">2. Constraints</h2>
                 <ol>
-                <li>Get information about variant 22-16389447-A-G: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" https://bravo.sph.umich.edu/api/dev/variants?variant_id=chr22-16389447-A-G</code><pre>{
-  "data": {
-    "allele_count": 6261, 
-    "allele_freq": 0.0498614, 
-    "allele_num": 125568, 
-    "alt": "G", 
-    "chrom": "22", 
-    "filter": "PASS", 
-    "pos": 16389447, 
-    "ref": "A", 
-    "site_quality": 255.0, 
-    "variant_id": "22-16389447-A-G"
-  }
-}</pre></li>
-               <li>Get all variants between 16,387,675 bp and 16,390,908 bp on chromosome 22:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variants?chrom=chr22&amp;start_bp=16387675&amp;end_bp=16390908"</code>
+                    <li>Your Bravo API access token is tied to your public IP address.</li>
+                    <li>You can submit up to 180 queries within a 15 minute window. When this threshold is exceeded, queries will not be processed until the 15 minute window passes.</li>
+                    <li>All query results are paginated with a maximum of 1,000 variants per page.
+                    <li>Region queries are restricted to up to 250,000 base-pairs.</li>
+                </ol>
+                <h2 id="section_formats" style="margin-top: 2em">3. Responses</h2>
+                <p>
+                The Bravo API sends a response as a JSON object with three mandatory keys <code>data</code>, <code>format</code> and <code>next</code>.
+                The <code>data</code> key points to the array of variants that satisfies your query, <code>format</code> specifies the format in which the varints are stored in <code>data</code>, and <code>next</code> stores the link to the next results page.
 <pre>{
-  "data": [
+   "data": [ ... ],
+   "format": "...",
+   "next": "https://bravo.sph.umich.edu/..."
+}</pre>
+                </p>
+                <h3 id="section_formats_json" style="margin-top: 2em">3.1. JSON</h3>
+                <p>By default, variants in the <code>data</code> array are represented as JSON objects.
+<pre class="pre-scrollable">{
+ "data": [
     {
       "allele_count": 2, 
       "allele_freq": 1.59276e-05, 
@@ -98,19 +97,131 @@
       "ref": "C", 
       "site_quality": 157.0, 
       "variant_id": "22-16387678-C-T"
-    }, 
+    }
+  ], 
+  "format": "json", 
+  "next": null
+}</pre>
+                </p>
+                <h3 id="section_formats_vcf" style="margin-top: 2em">3.2. VCF</h3>
+                <p>
+                To encode variants inside the <code>data</code> array in VCF format, you must specify the <code>vcf=1</code> (or <code>vcf=True</code>) option as a parameter in your <code>GET</code> query.
+                When using VCF format, additional <code>header</code> and <code>meta</code> keys in the response JSON object store the VCF header line and VCF meta-information lines, respectively.
+<pre class="pre-scrollable">{
+  "data": [
+    "22\t16387678\t22-16387678-C-G\tC\tG\t255.0\tPASS\tAN=125568;AC=2;AF=1.59276e-05", 
+    "22\t16387678\t22-16387678-C-T\tC\tT\t157.0\tPASS\tAN=125568;AC=1;AF=7.96381e-06"
+  ], 
+  "format": "vcf", 
+  "header": "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", 
+  "meta": [
+    "##fileformat=VCFv4.2", 
+    "##FILTER=&lt;ID=PASS,Description=\"All filters passed\"&gt;", 
+    "##FILTER=&lt;ID=CEN,Description=\"Variant located in centromeric region with inferred sequences\"&gt;", 
+    "##FILTER=&lt;ID=SVM,Description=\"Variant failed SVM filter\"&gt;", 
+    "##FILTER=&lt;ID=DISC,Description=\"Mendelian or duplicate genotype discordance is high (3/5% or more)\"&gt;", 
+    "##FILTER=&lt;ID=CHRXHET,Description=\"Excess heterozygosity in chrX in males\"&gt;", 
+    "##FILTER=&lt;ID=EXHET,Description=\"Excess heterozygosity with HWE p-value &lt; 1e-6\"&gt;", 
+    "##INFO=&lt;ID=AN,Number=1,Type=Integer,Description=\"Number of Alleles in Samples with Coverage\"&gt;", 
+    "##INFO=&lt;ID=AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts in Samples with Coverage\"&gt;", 
+    "##INFO=&lt;ID=AF,Number=A,Type=Float,Description=\"Alternate Allele Frequencies\""
+  ], 
+  "next": null
+}</pre>
+                </p>
+                <h3 id="section_formats_pagination" style="margin-top: 2em">3.3. Pagination</h3>
+                <p>
+                The Bravo API splits large query results into pages of up to 1,000 variants.
+                A link to the next page is stored in the <code>next</code> key in the response JSON object.
+                If no more results are available, then <code>next</code> will have <code>null</code> value.
+                You may change the number of variants returned per page with the <code>limit=N</code> query parameter, where <code>N</code> is any integer between 1 and 1,000.
+                </p>
+                <h3 id="section_formats_errors" style="margin-top: 2em">3.4. Handling errors</h3>
+                <p>
+                Upon success, the Bravo API sends the response with HTTP status code 200.
+                If client error, the response has HTTP status code 400, and the returned JSON object has only one key, <code>error</code>, with error message.
+                </p>
+                <h2 id="section_endpoints" style="margin-top: 2em">4. Queries</h2>
+                <p>The following table lists all Bravo API endpoints currently available at <code>https://bravo.sph.umich.edu/api/dev/</code>.</p>
+                <table class="table table-condensed">
+                    <tr>
+                       <th>API endpoint</th>
+                       <th>Description</th>
+                    </tr>
+                    <tr>
+                       <td><code>/</code></td>
+                       <td>Retrieve meta-information about dataset.</td>
+                    </tr>
+                    <tr>
+                       <td><code>/variant</code></td>
+                       <td>Query single variant by chromosomal position or identifier.</td>
+                    </tr>
+                    <tr>
+                       <td><code>/region</code></td>
+                       <td>Query all variants within a chromosomal region.</td>
+                    </tr>
+                    <tr>
+                       <td><code>/gene</code></td>
+                       <td>Query all variants within a gene.</td>
+                    </tr>
+                </table>
+                <h3 id="section_single_variant_query" style="margin-top: 2em">4.1. Single variant query</h3>
+                <p>
+                To query a single variant, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu/api/dev/variant</code>.
+                The following table lists all supported parameters.
+                <table class="table table-condensed">
+                    <tr>
+                       <th>Parameter</th>
+                       <th>Required</th>
+                       <th>Description</th>
+                    </tr>
+                    <tr>
+                       <td><code>variant_id</code></td>
+                       <td>Only if single parameter</td>
+                       <td>Variant identifier CHROM-POS-REF-ALT.</td>
+                    </tr>
+                    <tr>
+                       <td><code>chrom</code></td>
+                       <td>Only with <code>pos</code></td>
+                       <td>Chromosome name.</td>
+                    <tr>
+                    <tr>
+                       <td><code>pos</code></td>
+                       <td>Only with <code>chrom</code></td>
+                       <td>Chromosomal position in base-pairs.</td>
+                    </tr>
+                    <tr>
+                       <td><code>vcf</code></td>
+                       <td>No</td>
+                       <td>Format output as VCF entries. Default is 0 (False).</td>
+                    </tr>
+                </table>
+                </p>
+                <h4 id="section_single_variant_query_examples" style="margin-top: 2em">4.1.1. Examples</h4>
+                <ol>
+                <li>Find a variant with chr22-16389447-A-G identifier: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variant?variant_id=chr22-16389447-A-G"</code>.
+<pre class="pre-scrollable">{
+  "data": [
     {
-      "allele_count": 1, 
-      "allele_freq": 7.96381e-06, 
+      "allele_count": 6261, 
+      "allele_freq": 0.0498614, 
       "allele_num": 125568, 
-      "alt": "T", 
+      "alt": "G", 
       "chrom": "22", 
       "filter": "PASS", 
-      "pos": 16387688, 
-      "ref": "C", 
+      "pos": 16389447, 
+      "ref": "A", 
       "site_quality": 255.0, 
-      "variant_id": "22-16387688-C-T"
-    }, 
+      "variant_id": "22-16389447-A-G"
+    }
+  ], 
+  "format": "json", 
+  "next": null
+}</pre>
+                </li>
+                <li>Find all variants at position 16,390,137 bp on chromosome 22: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variant?chrom=chr22&amp;pos=16390137"</code>.
+<pre class="pre-scrollable">{
+  "data": [
     {
       "allele_count": 2, 
       "allele_freq": 1.59276e-05, 
@@ -118,21 +229,325 @@
       "alt": "A", 
       "chrom": "22", 
       "filter": "PASS", 
-      "pos": 16387694, 
-      "ref": "G", 
-      "site_quality": 132.0, 
-      "variant_id": "22-16387694-G-A"
+      "pos": 16390137, 
+      "ref": "T", 
+      "site_quality": 255.0, 
+      "variant_id": "22-16390137-T-A"
+    }, 
+    {
+      "allele_count": 1, 
+      "allele_freq": 7.96381e-06, 
+      "allele_num": 125568, 
+      "alt": "C", 
+      "chrom": "22", 
+      "filter": "PASS", 
+      "pos": 16390137, 
+      "ref": "T", 
+      "site_quality": 255.0, 
+      "variant_id": "22-16390137-T-C"
     }
-  ]
-}</pre></li>
-               </ol>
-            <h2 id="section_restrictions" style="margin-top: 2em">Restrictions</h2>
-            <p>Restrictions on using Bravo API:</p>
-            <ol>
-               <li>Only chromosomal regions up to 100,000 base-pairs are allowed.</li>
-               <li>Every user can submit up to 180 queries per 15 minutes. If this threshold is exceeded, no more queries are processed until 15 minutes expire.</li>
-            </ol>
-            </div>
+  ], 
+  "format": "json", 
+  "next": null
+}</pre>
+                </li>
+                </ol>
+
+                <h3 id="section_region_query" style="margin-top: 2em">3.2. Region query</h3>
+                <p>
+                To query all variants within a region, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu/api/dev/region</code>.
+                The following table lists all supported parameters. 
+                </p>
+                <table class="table table-condensed">
+                    <tr>
+                       <th>Parameter</th>
+                       <th>Required</th>
+                       <th>Description</th>
+                    </tr>
+                    <tr>
+                       <td><code>chrom</code></td>
+                       <td>Yes</td>
+                       <td>Chromosome name.</td>
+                    </tr>
+                    <tr>
+                       <td><code>start</code></td>
+                       <td>Yes</td>
+                       <td>Chromosomal start position in base-pairs.</td>
+                    </tr>
+                    <tr>
+                       <td><code>end</code></td>
+                       <td>Yes</td>
+                       <td>Chromosomal end position in base-pairs.</td>
+                    </tr>
+                    <tr>
+                       <td><code>allele_count</code></td>
+                       <td>No</td>
+                       <td>Filter variants by alternate allele count in samples with coverage.</td>
+                    </tr>
+                    <tr>
+                       <td><code>allele_freq</code></td>
+                       <td>No</td>
+                       <td>Filter variants by alternate allele frequency.</td>
+                    </tr>
+                    <tr>
+                       <td><code>allele_num</code></td>
+                       <td>No</td>
+                       <td>Filter variants by number of alleles in samples with coverage.</td>
+                    </tr>
+                    <tr>
+                       <td><code>site_quality</code></td>
+                       <td>No</td>
+                       <td>Filter variants by phred-scaled quality score.</td>
+                    </tr>
+                    <tr>
+                       <td><code>filter</code></td>
+                       <td>No</td>
+                       <td>Filter variants by their status, e.g. PASS.</td>
+                    </tr>
+                    <tr>
+                       <td><code>sort</code></td>
+                       <td>No</td>
+                       <td>
+                       Comma-separated list of fields on which to sort the results.
+                       Sort directions <code>asc</code> (ascending) or <code>desc</code> (descending) can optionally be appended to each field separated by the <code>:</code> character.
+                       The following fields can be sorted: <code>pos</code>, <code>allele_count</code>, <code>allele_freq</code>, <code>allele_num</code>, <code>site_quality</code>, <code>filter</code>.
+                       By default, results are sorted by chromosome position in ascending order.
+                       </td>
+                    </tr>
+                    <tr>
+                       <td><code>limit</code></td>
+                       <td>No</td>
+                       <td>Number of variants per results page. Default is 1,000.</td>
+                    </tr>
+                    <tr>
+                       <td><code>vcf</code></td>
+                       <td>No</td>
+                       <td>Format output as VCF entries. Default is 0 (False).</td>
+                    </tr>
+                </table>
+                <h4 id="section_region_query_filter" style="margin-top: 2em">3.2.1. Filtering</h4>
+                <p>Bravo API supports following comparison operators: <code>eq</code> (equal), <code>ne</code> (not equal), <code>gt</code> (greater than), <code>lt</code> (less than), <code>gte</code> (greater than or equal to), <code>lte</code> (less than or equal to).
+                Operators must be followed by the <code>:</code> character, so the query <code>allele_freq=gte:0.01</code> searches for variants with allele frequency less than or equal to 0.01.
+                Simple equality is the default operation, and is performed as <code>filter=PASS</code> (same as <code>filter=eq:PASS</code>).
+                If needed, you can escape operators with quotes, so the query <code>filter="ne:"</code> searches for variants with "ne:" in the <code>filter</code> field.
+                </p>
+                <h4 id="section_region_query_examples" style="margin-top: 2em">3.2.2. Examples</h4>
+                <ol>
+                <li>Extract all non-PASS variants between 16,387,675 bp and 16,390,908 bp on chromosome 22, sort results by decreasing allele frequency, and paginate result into pages of up to 5 variants:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/region?chrom=chr22&amp;end=16390908&amp;start=16387675&amp;filter=ne:PASS&amp;sort=allele_freq:desc&amp;limit=5</code>
+<pre class="pre-scrollable">
+{
+  "data": [
+    {
+      "allele_count": 3392, 
+      "allele_freq": 0.0270133, 
+      "allele_num": 125568, 
+      "alt": "C", 
+      "chrom": "22", 
+      "filter": "SVM;DISC;EXHET", 
+      "pos": 16390907, 
+      "ref": "T", 
+      "site_quality": 143.0, 
+      "variant_id": "22-16390907-T-C"
+    }, 
+    {
+      "allele_count": 2610, 
+      "allele_freq": 0.0207856, 
+      "allele_num": 125568, 
+      "alt": "C", 
+      "chrom": "22", 
+      "filter": "SVM;DISC;EXHET", 
+      "pos": 16390901, 
+      "ref": "A", 
+      "site_quality": 117.0, 
+      "variant_id": "22-16390901-A-C"
+    }, 
+    {
+      "allele_count": 150, 
+      "allele_freq": 0.00119457, 
+      "allele_num": 125568, 
+      "alt": "C", 
+      "chrom": "22", 
+      "filter": "SVM;DISC", 
+      "pos": 16389436, 
+      "ref": "G", 
+      "site_quality": 27.0, 
+      "variant_id": "22-16389436-G-C"
+    }, 
+    {
+      "allele_count": 21, 
+      "allele_freq": 0.00016724, 
+      "allele_num": 125568, 
+      "alt": "AAGCAGCGGCTGG", 
+      "chrom": "22", 
+      "filter": "SVM", 
+      "pos": 16390735, 
+      "ref": "A", 
+      "site_quality": 147.0, 
+      "variant_id": "22-16390735-A-AAGCAGCGGCTGG"
+    }, 
+    {
+      "allele_count": 11, 
+      "allele_freq": 8.76019e-05, 
+      "allele_num": 125568, 
+      "alt": "A", 
+      "chrom": "22", 
+      "filter": "SVM", 
+      "pos": 16390780, 
+      "ref": "C", 
+      "site_quality": 255.0, 
+      "variant_id": "22-16390780-C-A"
+    }
+  ], 
+  "format": "json", 
+  "next": "https://bravo.sph.umich.edu/api/test/region?sort=allele_freq:desc&amp;filter=ne:PASS&amp;end=16390908&amp;start=16387675&amp;limit=5&amp;chrom=chr22&amp;last=59a8c9b38e3f1b1a035a5475:8.76019e-05"
+}
+</pre>
+                </li>
+                </ol>
+                <h3 id="section_gene_query" style="margin-top: 2em">3.2. Gene query</h3>
+                <p>
+                In addition to region query which allows extracting variants between explicitely specified start and end chromosomal positions, the Bravo API allows you to query variants within a specified gene.
+                Given a gene name or gene identifier, the Bravo API will lookup corresponding chromosome and gene boundaries for you.
+                To query all variants within a region, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu/api/dev/gene</code>.
+                The following table lists all supported parameters.
+                <table class="table table-condensed">
+                    <tr>
+                       <th>Parameter</th>
+                       <th>Required</th>
+                       <th>Description</th>
+                    </tr>
+                    <tr>
+                       <td><code>name</code></td>
+                       <td>Yes</td>
+                       <td>Gene name or gene identifier.</td>
+                    </tr>
+                    <td><code>allele_count</code></td>
+                       <td>No</td>
+                       <td>Filter variants by alternate allele count in samples with coverage.</td>
+                    </tr>
+                    <tr>
+                       <td><code>allele_freq</code></td>
+                       <td>No</td>
+                       <td>Filter variants by alternate allele frequency.</td>
+                    </tr>
+                    <tr>
+                       <td><code>allele_num</code></td>
+                       <td>No</td>
+                       <td>Filter variants by number of alleles in samples with coverage.</td>
+                    </tr>
+                    <tr>
+                       <td><code>site_quality</code></td>
+                       <td>No</td>
+                       <td>Filter variants by phred-scaled quality score.</td>
+                    </tr>
+                    <tr>
+                       <td><code>filter</code></td>
+                       <td>No</td>
+                       <td>Filter variants by their status, e.g. PASS.</td>
+                    </tr>
+                    <tr>
+                    <tr>
+                       <td><code>sort</code></td>
+                       <td>No</td>
+                       <td>
+                       Comma-separated list of fields on which to sort the results.
+                       Sort directions <code>asc</code> (ascending) or <code>desc</code> (descending) can optionally be appended to each field separated by the <code>:</code> character.
+                       The following fields can be sorted: <code>pos</code>, <code>allele_count</code>, <code>allele_freq</code>, <code>allele_num</code>, <code>site_quality</code>, <code>filter</code>.
+                       By default, results are sorted by chromosome position in ascending order.
+                       </td>
+                    </tr>
+                    <tr>
+                       <td><code>limit</code></td>
+                       <td>No</td>
+                       <td>Number of variants per results page. Default is 1,000.</td>
+                    </tr>
+                    <tr>
+                       <td><code>vcf</code></td>
+                       <td>No</td>
+                       <td>Format output as VCF entries. Default is 0 (False).</td>
+                    </tr>
+                </table>
+                </p>
+                <h4 id="section_gene_query_examples" style="margin-top: 2em">3.2.1. Examples</h4>
+                <ol>
+                <li>Extract non-PASS variants in gene <i>ABCD1P4</i> sorted by alternate allele frequency in increasing order, receive 5 variants at a time:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/test/gene?name=ABCD1P4&amp;filter=ne:PASS&amp;sort=allele_freq:asc&amp;limit=5"</code>
+<pre class="pre-scrollable">{
+  "data": [
+    {
+      "allele_count": 1, 
+      "allele_freq": 7.96381e-06, 
+      "allele_num": 125568, 
+      "alt": "C", 
+      "chrom": "22", 
+      "filter": "SVM", 
+      "pos": 16387844, 
+      "ref": "G", 
+      "site_quality": 50.0, 
+      "variant_id": "22-16387844-G-C"
+    }, 
+    {
+      "allele_count": 1, 
+      "allele_freq": 7.96381e-06, 
+      "allele_num": 125568, 
+      "alt": "T", 
+      "chrom": "22", 
+      "filter": "SVM", 
+      "pos": 16388018, 
+      "ref": "C", 
+      "site_quality": 44.0, 
+      "variant_id": "22-16388018-C-T"
+    }, 
+    {
+      "allele_count": 1, 
+      "allele_freq": 7.96381e-06, 
+      "allele_num": 125568, 
+      "alt": "A", 
+      "chrom": "22", 
+      "filter": "SVM", 
+      "pos": 16388182, 
+      "ref": "C", 
+      "site_quality": 32.0, 
+      "variant_id": "22-16388182-C-A"
+    }, 
+    {
+      "allele_count": 1, 
+      "allele_freq": 7.96381e-06, 
+      "allele_num": 125568, 
+      "alt": "C", 
+      "chrom": "22", 
+      "filter": "SVM", 
+      "pos": 16388371, 
+      "ref": "T", 
+      "site_quality": 255.0, 
+      "variant_id": "22-16388371-T-C"
+    }, 
+    {
+      "allele_count": 1, 
+      "allele_freq": 7.96381e-06, 
+      "allele_num": 125568, 
+      "alt": "T", 
+      "chrom": "22", 
+      "filter": "SVM", 
+      "pos": 16388398, 
+      "ref": "G", 
+      "site_quality": 255.0, 
+      "variant_id": "22-16388398-G-T"
+    }
+  ], 
+  "format": "json", 
+  "gene": {
+    "chrom": "22", 
+    "id": "ENSG00000225293", 
+    "name": "ABCD1P4", 
+    "start": 16387695, 
+    "stop": 16390888, 
+    "strand": "+"
+  }, 
+  "next": "https://bravo.sph.umich.edu/api/test/gene?filter=ne:PASS&amp;sort=allele_freq:asc&amp;limit=5&amp;name=ABCD1P4&amp;last=59a8c9b38e3f1b1a035a516b:7.96381e-06"
+}</pre>                
+                </li>
+                </ol>
+           </div>
         </div>
     </div>
 
