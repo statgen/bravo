@@ -18,7 +18,7 @@ revoke_command = commands.add_parser('revoke', help = 'Revoke all access tokens 
 USER_HOME = os.path.expanduser("~")
 BRAVO_DIR = '.bravo'
 BRAVO_CREDSTORE = 'credstore'
-BRAVO_API_VERSION = 'test'
+BRAVO_API_VERSION = 'v1'
 BRAVO_AUTH_API = 'https://bravo.sph.umich.edu/api/{}/auth/auth'.format(BRAVO_API_VERSION)
 BRAVO_TOKEN_API = 'https://bravo.sph.umich.edu/api/{}/auth/token'.format(BRAVO_API_VERSION)
 BRAVO_REVOKE_API = 'https://bravo.sph.umich.edu/api/{}/auth/revoke'.format(BRAVO_API_VERSION)

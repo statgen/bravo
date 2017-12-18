@@ -25,6 +25,7 @@ app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
 
 proxy = app.config['PROXY']
 
+URL_PREFIX = app.config['URL_PREFIX']
 BRAVO_API_URL_PREFIX = app.config['BRAVO_API_URL_PREFIX']
 BRAVO_ACCESS_SECRET = app.config['BRAVO_ACCESS_SECRET']
 
@@ -505,7 +506,7 @@ def get_gene():
    return response
 
 
-app.register_blueprint(bp, url_prefix = BRAVO_API_URL_PREFIX)
+app.register_blueprint(bp, url_prefix = URL_PREFIX + BRAVO_API_URL_PREFIX)
 
 
 limiter = Limiter(app, default_limits = ["180/15 minute"], key_func = get_user_ip)

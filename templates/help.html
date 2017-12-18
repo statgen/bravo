@@ -49,7 +49,7 @@
                     <img src="{{ url_for('.static', filename='img/bravo_api_login_end.png') }}" width="800px" />
                     <li>To get your access token, execute <code>./bravo print-access-token</code>.</li>
                     <li>Each request to the Bravo API must have <code>Authorization</code> header with a valid Bearer access token. For example, to make an API call with <code>curl</code>, execute:<br>
-                    <code>curl -H "Authorization: Bearer `./bravo print-access-token`" https://bravo.sph.umich.edu/api/dev/</code>
+                    <code>curl -H "Authorization: Bearer `./bravo print-access-token`" https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/</code>
                     </li> 
                     <li>You need to login using <code>./bravo login</code> each time you access the Bravo API from within a different network.</li>
                 </ol>
@@ -142,7 +142,7 @@
                 If client error, the response has HTTP status code 400, and the returned JSON object has only one key, <code>error</code>, with error message.
                 </p>
                 <h2 id="section_endpoints" style="margin-top: 2em">4. Queries</h2>
-                <p>The following table lists all Bravo API endpoints currently available at <code>https://bravo.sph.umich.edu/api/dev/</code>.</p>
+                <p>The following table lists all Bravo API endpoints currently available at <code>https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}</code>.</p>
                 <table class="table table-condensed">
                     <tr>
                        <th>API endpoint</th>
@@ -167,7 +167,7 @@
                 </table>
                 <h3 id="section_single_variant_query" style="margin-top: 2em">4.1. Single variant query</h3>
                 <p>
-                To query a single variant, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu/api/dev/variant</code>.
+                To query a single variant, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/variant</code>.
                 The following table lists all supported parameters.
                 <table class="table table-condensed">
                     <tr>
@@ -199,7 +199,7 @@
                 </p>
                 <h4 id="section_single_variant_query_examples" style="margin-top: 2em">4.1.1. Examples</h4>
                 <ol>
-                <li>Find a variant with chr22-16389447-A-G identifier: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variant?variant_id=chr22-16389447-A-G"</code>.
+                <li>Find a variant with chr22-16389447-A-G identifier: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/variant?variant_id=chr22-16389447-A-G"</code>.
 <pre class="pre-scrollable">{
   "data": [
     {
@@ -219,7 +219,7 @@
   "next": null
 }</pre>
                 </li>
-                <li>Find all variants at position 16,390,137 bp on chromosome 22: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/variant?chrom=chr22&amp;pos=16390137"</code>.
+                <li>Find all variants at position 16,390,137 bp on chromosome 22: <code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/variant?chrom=chr22&amp;pos=16390137"</code>.
 <pre class="pre-scrollable">{
   "data": [
     {
@@ -255,7 +255,7 @@
 
                 <h3 id="section_region_query" style="margin-top: 2em">3.2. Region query</h3>
                 <p>
-                To query all variants within a region, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu/api/dev/region</code>.
+                To query all variants within a region, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/region</code>.
                 The following table lists all supported parameters. 
                 </p>
                 <table class="table table-condensed">
@@ -333,7 +333,7 @@
                 </p>
                 <h4 id="section_region_query_examples" style="margin-top: 2em">3.2.2. Examples</h4>
                 <ol>
-                <li>Extract all non-PASS variants between 16,387,675 bp and 16,390,908 bp on chromosome 22, sort results by decreasing allele frequency, and paginate result into pages of up to 5 variants:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/dev/region?chrom=chr22&amp;end=16390908&amp;start=16387675&amp;filter=ne:PASS&amp;sort=allele_freq:desc&amp;limit=5</code>
+                <li>Extract all non-PASS variants between 16,387,675 bp and 16,390,908 bp on chromosome 22, sort results by decreasing allele frequency, and paginate result into pages of up to 5 variants:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/region?chrom=chr22&amp;end=16390908&amp;start=16387675&amp;filter=ne:PASS&amp;sort=allele_freq:desc&amp;limit=5</code>
 <pre class="pre-scrollable">
 {
   "data": [
@@ -399,7 +399,7 @@
     }
   ], 
   "format": "json", 
-  "next": "https://bravo.sph.umich.edu/api/test/region?sort=allele_freq:desc&amp;filter=ne:PASS&amp;end=16390908&amp;start=16387675&amp;limit=5&amp;chrom=chr22&amp;last=59a8c9b38e3f1b1a035a5475:8.76019e-05"
+  "next": "https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/region?sort=allele_freq:desc&amp;filter=ne:PASS&amp;end=16390908&amp;start=16387675&amp;limit=5&amp;chrom=chr22&amp;last=59a8c9b38e3f1b1a035a5475:8.76019e-05"
 }
 </pre>
                 </li>
@@ -408,7 +408,7 @@
                 <p>
                 In addition to region query which allows extracting variants between explicitely specified start and end chromosomal positions, the Bravo API allows you to query variants within a specified gene.
                 Given a gene name or gene identifier, the Bravo API will lookup corresponding chromosome and gene boundaries for you.
-                To query all variants within a region, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu/api/dev/gene</code>.
+                To query all variants within a region, the <code>GET</code> request must be sent to <code>https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/gene</code>.
                 The following table lists all supported parameters.
                 <table class="table table-condensed">
                     <tr>
@@ -470,7 +470,7 @@
                 </p>
                 <h4 id="section_gene_query_examples" style="margin-top: 2em">3.2.1. Examples</h4>
                 <ol>
-                <li>Extract non-PASS variants in gene <i>ABCD1P4</i> sorted by alternate allele frequency in increasing order, receive 5 variants at a time:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu/api/test/gene?name=ABCD1P4&amp;filter=ne:PASS&amp;sort=allele_freq:asc&amp;limit=5"</code>
+                <li>Extract non-PASS variants in gene <i>ABCD1P4</i> sorted by alternate allele frequency in increasing order, receive 5 variants at a time:<code>curl -H "Authorization: Bearer `./bravo print-access-token`" "https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/gene?name=ABCD1P4&amp;filter=ne:PASS&amp;sort=allele_freq:asc&amp;limit=5"</code>
 <pre class="pre-scrollable">{
   "data": [
     {
@@ -543,7 +543,7 @@
     "stop": 16390888, 
     "strand": "+"
   }, 
-  "next": "https://bravo.sph.umich.edu/api/test/gene?filter=ne:PASS&amp;sort=allele_freq:asc&amp;limit=5&amp;name=ABCD1P4&amp;last=59a8c9b38e3f1b1a035a516b:7.96381e-06"
+  "next": "https://bravo.sph.umich.edu{{ config['URL_PREFIX'] }}{{ config['BRAVO_API_URL_PREFIX'] }}/gene?filter=ne:PASS&amp;sort=allele_freq:asc&amp;limit=5&amp;name=ABCD1P4&amp;last=59a8c9b38e3f1b1a035a516b:7.96381e-06"
 }</pre>                
                 </li>
                 </ol>
