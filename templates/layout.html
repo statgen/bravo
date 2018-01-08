@@ -82,6 +82,9 @@
                         <li style="display: inline-block; padding: 3px 20px;"><b>{{ current_user.username }}</b><br />{{ current_user.email }}</li>
                         <li role="separator" class="divider"></li>
                         <li><a href="{{ url_for('.user_profile_page') }}">Settings</a></li>
+                        {% if current_user.admin %}
+                        <li><a href="{{ url_for('.administration_page') }}">Administration</a></li>
+                        {% endif %}
                         <li role="separator" class="divider"></li>
                         <li><a href="{{ url_for('.logout') }}" style="color: #333; font-weight: bold;">Logout</a></li>
                     </ul>

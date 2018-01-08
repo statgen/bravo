@@ -378,6 +378,46 @@ def user_profile_page():
         return render_template('user_profile.html', error = error, success = success)
     except: _err(); abort(404)
 
+@bp.route('/administration', methods = ['GET', 'POST'])
+@require_agreement_to_terms_and_store_destination
+def administration_page():
+    if not current_user.admin:
+        abort(404)
+    try:
+        _log()
+        error = None
+        success = None
+        return render_template('administration.html', error = error, success = success)
+    except: _err(); abort(404)
+
+@bp.route('/administration/users', methods = ['POST'])
+@require_agreement_to_terms_and_store_destination
+def administration_users_api():
+    if not current_user.admin:
+        abort(404)
+    db = get_db()
+    args = json.loads(request.form['args'])
+
+    mongo_projection = {'_id': False, 'username': True, 'email': True, 'enabled_api': {'$ifNull': ['$enabled_api', False]}}
+
+    mongo_sort = {}
+    for order in args['order']:
+        mongo_sort[args['columns'][order['column']]['name']] = pymongo.ASCENDING if order['dir'] == 'asc' else pymongo.DESCENDING
+
+    mongo_filter = {}
+    for column in args['columns']:
+        if column['search']['value'].lstrip():
+            mongo_filter[column['name']] = {'$regex': '.*{}.*'.format(column['search']['value'].lstrip())};
+
+    try:
+        n_total_users = db.users.find().count()
+        n_filtered_users = db.users.find(mongo_filter).count() if mongo_filter else n_total_users
+        users = list(db.users.aggregate([ {'$match': mongo_filter}, {'$sort': mongo_sort}, {'$skip': args['start']}, {'$limit': args['length']}, {'$project': mongo_projection} ]))       
+        response = { 'recordsFiltered': n_filtered_users, 'recordsTotal': n_total_users, 'data': users , 'draw': args['draw'] }
+        return jsonify(response)
+    except: _err(); abort(404)
+
+
 @bp.route('/variant/<variant_id>')
 @require_agreement_to_terms_and_store_destination
 def variant_page(variant_id):
@@ -657,7 +697,7 @@ lm.login_view = 'bp.homepage'
 
 class User(UserMixin):
     "A user's id is their email address."
-    def __init__(self, username=None, email=None, agreed_to_terms=False, picture=None, enabled_api=False, google_client_id=None, no_newsletters=False):
+    def __init__(self, username=None, email=None, agreed_to_terms=False, picture=None, enabled_api=False, google_client_id=None, no_newsletters=False, admin=False):
         self.username = username
         self.email = email
         self.agreed_to_terms = agreed_to_terms
@@ -665,21 +705,22 @@ class User(UserMixin):
         self.enabled_api = enabled_api
         self.google_client_id = google_client_id
         self.no_newsletters = no_newsletters
+        self.admin = admin
 
     def get_id(self):
         return self.email
     def __str__(self):
         return "<{}>".format(self.email or None)
     def __repr__(self):
-        return "<User email={!r} username={!r} terms={!r}>".format(self.email, self.username, self.agreed_to_terms)
+        return "<User email={!r} username={!r} terms={!r} admin={!r}>".format(self.email, self.username, self.agreed_to_terms, self.admin)
 
 
 def encode_user(user):
-    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms, 'picture': user.picture, 'enabled_api': user.enabled_api, 'google_client_id': user.google_client_id, 'no_newsletters': user.no_newsletters}
+    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms, 'picture': user.picture, 'enabled_api': user.enabled_api, 'google_client_id': user.google_client_id, 'no_newsletters': user.no_newsletters, 'admin': user.admin}
 
 def decode_user(document):
     assert document['_type'] == 'User'
-    return User(document['username'], document['email'], document['agreed_to_terms'], document.get('picture', None), document.get('enabled_api', False), document.get('google_client_id', None), document.get('no_newsletters', False))
+    return User(document['username'], document['email'], document['agreed_to_terms'], document.get('picture', None), document.get('enabled_api', False), document.get('google_client_id', None), document.get('no_newsletters', False), document.get('admin', False))
 
 @lm.user_loader
 def load_user(id):
