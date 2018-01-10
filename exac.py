@@ -397,8 +397,14 @@ def administration_users_api():
         abort(404)
     db = get_db()
     args = json.loads(request.form['args'])
-
-    mongo_projection = {'_id': False, 'username': True, 'email': True, 'enabled_api': {'$ifNull': ['$enabled_api', False]}}
+ 
+    mongo_projection = {
+        '_id': False, 
+        'username': True,
+        'email': True, 
+        'enabled_api': {'$ifNull': ['$enabled_api', False]},
+        'no_newsletters': {'ifNull': ['no_newsletters', False]},
+    }
 
     mongo_sort = {}
     for order in args['order']:
@@ -407,12 +413,15 @@ def administration_users_api():
     mongo_filter = {}
     for column in args['columns']:
         if column['search']['value'].lstrip():
-            mongo_filter[column['name']] = {'$regex': '.*{}.*'.format(column['search']['value'].lstrip())};
+            if column['name'] not in {'enabled_api', 'no_newsletters'}:
+                mongo_filter[column['name']] = {'$regex': '.*{}.*'.format(column['search']['value'].lstrip())}
+            elif any(column['search']['value'] == x for x in ['Yes', 'No']):
+                mongo_filter[column['name']] = True if column['search']['value'] == 'Yes' else {'$ne': True}
 
     try:
         n_total_users = db.users.find().count()
         n_filtered_users = db.users.find(mongo_filter).count() if mongo_filter else n_total_users
-        users = list(db.users.aggregate([ {'$match': mongo_filter}, {'$sort': mongo_sort}, {'$skip': args['start']}, {'$limit': args['length']}, {'$project': mongo_projection} ]))       
+        users = list(db.users.aggregate([ {'$match': mongo_filter}, {'$sort': mongo_sort}, {'$skip': args['start']}, {'$limit': args['length']}, {'$project': mongo_projection} ]))
         response = { 'recordsFiltered': n_filtered_users, 'recordsTotal': n_total_users, 'data': users , 'draw': args['draw'] }
         return jsonify(response)
     except: _err(); abort(404)
