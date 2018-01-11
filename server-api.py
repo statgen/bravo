@@ -13,8 +13,10 @@ from flask_limiter import Limiter
 
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')
-argparser.add_argument('--port', type = int, default = 5000, help = 'an integer for the accumulator')
+argparser.add_argument('--host', default = '0.0.0.0', help = 'The hostname to use to access this server.')
+argparser.add_argument('--port', type = int, default = 5000, help = 'An integer for the port number.')
+argparser.add_argument('--url-prefix', type = str, help = 'URL prefix.')
+argparser.add_argument('--collection', type = str, default = 'variants', help = 'Mongo collection name that stores list of variants.')
 
 
 bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 'static')
@@ -34,6 +36,7 @@ mongo_port = app.config['MONGO']['port']
 mongo_db_name = app.config['MONGO']['name']
 
 dataset_name = app.config['DATASET_NAME']
+collection_name = None
 bravo_api_version = app.config['BRAVO_API_VERSION']
 
 pageSize = 1000
@@ -187,7 +190,8 @@ def get_variant():
    data = []
    response = { 'next': None }
    db = get_db()
-   cursor = db.variants.find(mongo_filter, projection=projection)
+   collection = db[collection_name]
+   cursor = collection.find(mongo_filter, projection=projection)
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
@@ -410,7 +414,8 @@ def get_region():
    last_variant = None
    last_object_id = None
    db = get_db()
-   cursor = db.variants.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit']) 
+   collection = db[collection_name]
+   cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit']) 
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
@@ -479,7 +484,8 @@ def get_gene():
    last_variant = None
    last_object_id = None
    db = get_db()
-   cursor = db.variants.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
+   collection = db[collection_name]
+   cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
@@ -506,12 +512,13 @@ def get_gene():
    return response
 
 
-app.register_blueprint(bp, url_prefix = URL_PREFIX + BRAVO_API_URL_PREFIX)
-
-
 limiter = Limiter(app, default_limits = ["180/15 minute"], key_func = get_user_ip)
 
 
 if __name__ == '__main__':   
    args = argparser.parse_args()
+   collection_name = args.collection
+   if args.url_prefix is not None and len(args.url_prefix.strip()) > 0:
+      BRAVO_API_URL_PREFIX = BRAVO_API_URL_PREFIX + '/' + args.url_prefix.strip()
+   app.register_blueprint(bp, url_prefix = URL_PREFIX + BRAVO_API_URL_PREFIX)
    app.run(host = args.host, port = args.port, threaded = True, use_reloader = True)
