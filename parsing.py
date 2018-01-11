@@ -51,6 +51,36 @@ def get_base_coverage_from_file(base_coverage_file):
             d[k] = float(fields[i+2])
         yield d
 
+def get_variants_from_sites_vcf_without_annotation(sites_vcf):
+    for line in sites_vcf:
+        try:
+            line = line.strip('\n')
+            if line.startswith('#'):
+                continue
+            fields = line.split('\t')
+            info_field = dict(x.split('=', 1) if '=' in x else (x, x) for x in re.split(';(?=\w)', fields[7]))
+            for i, alt_allele in enumerate(fields[4].split(',')):
+                variant = {}
+                variant['chrom'] = fields[0][3:] if fields[0].startswith('chr') else fields[0]
+                variant['pos'], variant['ref'], variant['alt'] = get_minimal_representation(fields[1], fields[3], alt_allele)
+                variant['xpos'] = Xpos.from_chrom_pos(variant['chrom'], variant['pos'])
+                variant['xstop'] = variant['xpos'] + len(variant['alt']) - len(variant['ref'])
+                variant['variant_id'] = '{}-{}-{}-{}'.format(variant['chrom'], variant['pos'], variant['ref'], variant['alt'])
+                variant['site_quality'] = float(fields[5])
+                variant['filter'] = fields[6]
+                variant['allele_count'] = int(info_field['AC'].split(',')[i])
+                if variant['allele_count'] == 0: continue
+                variant['allele_num'] = int(info_field['AN'])
+                assert variant['allele_num'] != 0, variant
+                variant['allele_freq'] = float(info_field['AF'].split(',')[i])
+                assert variant['allele_freq'] != 0, variant
+                variant['hom_count'] = int(info_field['Hom'].split(',')[i])
+                yield variant
+        except:
+            print("Error parsing vcf line: " + line)
+            traceback.print_exc()
+            raise
+
 
 def get_variants_from_sites_vcf(sites_vcf):
     """
