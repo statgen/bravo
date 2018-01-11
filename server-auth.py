@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort, url_for, Blueprint
+from flask import Flask, request, jsonify, abort, url_for, Blueprint, render_template
 import requests
 from pymongo import MongoClient
 import functools
@@ -9,6 +9,7 @@ import hashlib
 import os
 import argparse
 
+
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')
 argparser.add_argument('--port', type = int, default = 5000, help = 'an integer for the accumulator')
@@ -17,16 +18,21 @@ argparser.add_argument('--port', type = int, default = 5000, help = 'an integer 
 bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 'static')
 
 app = Flask(__name__)
+app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
 
-api_version = 'dev'
+proxy = app.config['PROXY']
 
-mongo_host = 'localhost'
-mongo_port = 27017
-mongo_db_name = 'topmed_freeze5_hg38_testing'
+BRAVO_AUTH_URL_PREFIX = app.config['BRAVO_AUTH_URL_PREFIX']
+BRAVO_AUTH_SECRET = app.config['BRAVO_AUTH_SECRET']
+BRAVO_ACCESS_SECRET = app.config['BRAVO_ACCESS_SECRET']
 
+mongo_host = app.config['MONGO']['host']
+mongo_port = app.config['MONGO']['port']
+mongo_db_name = app.config['MONGO']['name']
 
-GOOGLE_CLIENT_ID = '27789452673-oi53pfnke1a6mk8shbg7uf5ooe24bdsq.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = '-2f288sVZVIuxNUTtNzglLzJ'
+GOOGLE_CLIENT_ID = app.config['GOOGLE_LOGIN_CLIENT_ID']
+GOOGLE_CLIENT_SECRET = app.config['GOOGLE_LOGIN_CLIENT_SECRET']
+
 GOOGLE_AUTH_API = 'https://accounts.google.com/o/oauth2/v2/auth'
 GOOGLE_TOKEN_API = 'https://www.googleapis.com/oauth2/v4/token'
 GOOGLE_TOKENINFO_API = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
@@ -34,11 +40,6 @@ GOOGLE_AUTH_SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 GOOGLE_ACCESS_TYPE = 'offline'
 GOOGLE_RESPONSE_TYPE = 'code'
 
-
-BRAVO_AUTH_SECRET = '8pSYh4AXudNuN7IIIc06'
-BRAVO_ACCESS_SECRET = '0y66U2gtPk1YGZrFoIBO'
-
-URL_PREFIX = '/api/' + api_version + '/auth'
 
 def setup_auth_tokens_collection(mongo, db_name):
     db = mongo[db_name]
@@ -50,8 +51,16 @@ def setup_auth_tokens_collection(mongo, db_name):
 mongo = MongoClient(mongo_host, mongo_port, connect = True)
 setup_auth_tokens_collection(mongo, mongo_db_name)
 
+
 def get_db():
    return mongo[mongo_db_name]
+
+
+def get_user_ip():
+   if proxy:
+      x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
+      return x_forwarded_for[-1].strip() if len(x_forwarded_for) > 0 else ''
+   return request.remote_addr
 
 
 def validate_google_access_token(access_token):
@@ -93,10 +102,19 @@ def handle_user_error(error):
     return response
 
 
+@bp.route('/ip', methods = ['GET'])
+def ip():
+    ip = get_user_ip()
+    response = jsonify({ 'ip': ip })
+    response.status_code = 200
+    return response
+
+
 @bp.route('/auth', methods = ['GET'])
 def auth():
     issued_at = datetime.utcnow()
-    auth_token = jwt.encode({'ip': request.remote_addr, 'iat': issued_at}, BRAVO_AUTH_SECRET, algorithm = 'HS256')
+    ip = get_user_ip()
+    auth_token = jwt.encode({'ip': ip, 'iat': issued_at}, BRAVO_AUTH_SECRET, algorithm = 'HS256')
     payload = {
         'client_id': GOOGLE_CLIENT_ID,
         'redirect_uri': url_for('.auth_callback', _external = True, _scheme = 'https'),
@@ -145,9 +163,9 @@ def auth_callback():
     if not authorize_user(email, client_id):
         get_db().auth_tokens.update_one({ 'auth_token': auth_token}, {'$set': {'error': 'You are not authorized for API access.'}})
         raise UserError('Not authorized')
-    access_token = jwt.encode({'email': email, 'iat': datetime.utcnow()}, BRAVO_ACCESS_SECRET, algorithm = 'HS256')
+    access_token = jwt.encode({'email': email, 'ip': decoded_auth_token['ip'], 'iat': datetime.utcnow()}, BRAVO_ACCESS_SECRET, algorithm = 'HS256')
     get_db().auth_tokens.update_one({ 'auth_token': auth_token}, {'$set': {'access_token': access_token}})
-    return jsonify({'status': 'OK'}), 200
+    return render_template('auth_ok.html')
 
 
 @bp.route('/token', methods = ['POST'])
@@ -159,7 +177,8 @@ def get_token():
         decoded_auth_token = jwt.decode(auth_token, BRAVO_AUTH_SECRET)
     except jwt.InvalidTokenError:
         raise UserError('Bad authorization token.')
-    if decoded_auth_token['ip'] != request.remote_addr:
+    ip = get_user_ip()
+    if decoded_auth_token['ip'] != ip:
         raise UserError('This authorization token was issued for different IP address.') 
     document = get_db().auth_tokens.find_one({ 'auth_token': auth_token }, projection = {'_id': False})
     if not document:
@@ -169,13 +188,20 @@ def get_token():
         raise UserError(document['error'])
     if document['access_token'] is not None:
         get_db().auth_tokens.remove({ 'auth_token': auth_token })
-        response = jsonify({'access_token': document['access_token'], 'token_type': 'Bearer'})
+        response = jsonify({
+            'access_token': document['access_token'],
+            'token_type': 'Bearer',
+            'ip': ip
+        })
     else:    
-        response = jsonify({'access_token': None})
+        response = jsonify({
+            'access_token': None
+        })
     response.status_code = 200
     return response
 
 
+# We don't check for IP here because we want to allow access token holder be able to revoke access when their IP changed permanently.
 @bp.route('/revoke', methods = ['GET'])
 def revoke_token():
     access_token = request.args.get('access_token', None)
@@ -193,13 +219,17 @@ def revoke_token():
     revoked_at = document.get('access_token_revoked_at', None)
     if revoked_at is not None and revoked_at > issued_at:
         raise UserError('Bad access token.')
-    get_db().users.update_one({ 'email': email }, {'$set': {'access_token_revoked_at': datetime.utcnow()}})
-    response = jsonify({'revoked': True})
+    revoked_at = datetime.utcnow()
+    get_db().users.update_one({ 'email': email }, {'$set': {'access_token_revoked_at': revoked_at}})
+    response = jsonify({
+        'revoked': True,
+        'revoked_at': revoked_at
+    })
     response.status_code = 200
     return response
 
 
-app.register_blueprint(bp, url_prefix = URL_PREFIX)
+app.register_blueprint(bp, url_prefix = BRAVO_AUTH_URL_PREFIX)
 
 if __name__ == '__main__':   
     args = argparser.parse_args()
