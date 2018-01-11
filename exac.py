@@ -92,31 +92,48 @@ def get_records_from_tabix_contig(tabix_filename, contig, record_parser):
                 print("Loaded {:11,} records in {:6,} seconds from contig {!r:6} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
     print("Loaded {:11,} records in {:6,} seconds from contig {!r:6} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
 
-def _load_variants_from_tabix_file_and_contig(args):
+
+def _load_variants_from_tabix_file_and_contig(args, collection_name, parser):
     tabix_file, contig = args
-    db = get_db(new_connection=True)
-    variants_generator = get_records_from_tabix_contig(tabix_file, contig, get_variants_from_sites_vcf)
+    db = get_db(new_connection = True)
+    collection = db[collection_name]
+    variants_generator = get_records_from_tabix_contig(tabix_file, contig, parser)
     try:
-        db.variants.insert(variants_generator, w=0)
+        collection.insert(variants_generator, w = 0)
     except pymongo.errors.InvalidOperation:
         pass  # handle error when variant_generator is empty
 
+
 def load_variants_file():
+    if len(app.config['SITES_VCFS']) == 0:
+        raise IOError("No vcf file found.")
+
     db = get_db()
     db.variants.drop()
     print("Dropped db.variants")
 
-    if len(app.config['SITES_VCFS']) == 0:
-        raise IOError("No vcf file found")
-
+    file_contig_pairs = get_tabix_file_contig_pairs(app.config['SITES_VCFS'])
     with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
         # workaround for Pool.map() from <http://stackoverflow.com/a/1408476/1166306>
-        pool.map_async(_load_variants_from_tabix_file_and_contig, get_tabix_file_contig_pairs(app.config['SITES_VCFS'])).get(9999999)
+        pool.map_async(functools.partial(_load_variants_from_tabix_file_and_contig, collection_name = 'variants', parser = get_variants_from_sites_vcf), file_contig_pairs).get(9999999)
 
     # TODO: use db.variants.create_indexes([pymongo.operations.IndexModel(key) for key in 'xpos xstop rsids filter'.split()])
-    for key in 'xpos xstop rsids filter'.split():
-        print 'creating index on', key
+    for key in ('xpos', 'xstop', 'rsids', 'filter'):
+        print 'creating index on {} in db.{}'.format(key, 'variants')
         db.variants.create_index(key)
+
+
+def load_custom_variants_file(collection_name, vcfs):
+    db = get_db()
+    if collection_name in db.collection_names():
+        raise Exception("{} collection already exists.".format(collection_name))
+    file_contig_pairs = get_tabix_file_contig_pairs(vcfs)
+    with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
+        pool.map_async(functools.partial(_load_variants_from_tabix_file_and_contig, collection_name = collection_name, parser = get_variants_from_sites_vcf_without_annotation), file_contig_pairs).get(9999999)
+    collection = db[collection_name]
+    for key in ('xpos', 'xstop', 'filter'):
+        print 'creating index on {} in db.{}'.format(key, collection_name)
+        collection.create_index(key)
 
 
 def load_gene_models():
