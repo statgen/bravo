@@ -32,11 +32,15 @@ from utils import *
 from base_coverage import CoverageHandler
 import auth
 
+import socket
+from ipaddress import ip_network, AddressValueError
+
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
 
 app = Flask(__name__)
 app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
 if 'GVS_URL_PREFIX' in os.environ: app.config['URL_PREFIX'] = os.environ['GVS_URL_PREFIX']
+if 'BRAVO_ADMIN_MODE' in os.environ: app.config['ADMIN'] = True if os.environ['BRAVO_ADMIN_MODE'].lower() == 'true' else False
 mail_on_500(app, app.config['ADMINS'])
 app.config['COMPRESS_LEVEL'] = 2 # Since we don't cache, faster=better
 Compress(app)
@@ -54,6 +58,7 @@ def get_db(new_connection=False):
     else:
         client = get_db._mongo_client
     return client[app.config['MONGO']['name']]
+
 get_db._mongo_client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'], connect=False)
 
 @boltons.cacheutils.cached({})
@@ -65,7 +70,6 @@ def get_autocomplete_strings():
 @boltons.cacheutils.cached({})
 def get_coverage_handler():
     return CoverageHandler(app.config['BASE_COVERAGE'])
-
 
 def get_tabix_file_contig_pairs(tabix_filenames):
     filename_contig_pairs = []
@@ -742,11 +746,11 @@ class User(UserMixin):
 
 
 def encode_user(user):
-    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms, 'picture': user.picture, 'enabled_api': user.enabled_api, 'google_client_id': user.google_client_id, 'no_newsletters': user.no_newsletters, 'admin': user.admin}
+    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms, 'picture': user.picture, 'enabled_api': user.enabled_api, 'google_client_id': user.google_client_id, 'no_newsletters': user.no_newsletters}
 
 def decode_user(document):
     assert document['_type'] == 'User'
-    return User(document['username'], document['email'], document['agreed_to_terms'], document.get('picture', None), document.get('enabled_api', False), document.get('google_client_id', None), document.get('no_newsletters', False), document.get('admin', False))
+    return User(document['username'], document['email'], document['agreed_to_terms'], document.get('picture', None), document.get('enabled_api', False), document.get('google_client_id', None), document.get('no_newsletters', False))
 
 @lm.user_loader
 def load_user(id):
@@ -754,6 +758,18 @@ def load_user(id):
     document = db.users.find_one({'user_id': id}, projection = {'_id': False})
     if document:
         u = decode_user(document)
+        if app.config['ADMIN'] is True and u.email in app.config['ADMINS']:
+            if app.config['PROXY'] is True:
+                x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
+                ip = x_forwarded_for[-1].strip() if len(x_forwarded_for) > 0 else ''
+            else:
+                ip = request.remote_addr
+            try:
+                network = ip_network(ip).supernet(new_prefix = 16)
+                if any(network == ip_network(x) for x in app.config['ADMIN_ALLOWED_IP']):
+                    u.admin = True
+            except AddressValueError:
+                u.admin = False
     else:
         # This method is supposed to support bad `id`s.
         print('user not found with id [{!r}]'.format(id))
