@@ -4,6 +4,10 @@
 <title>{{ config['BROWSER_NAME'] }} - {{ variant.variant_id }}</title>
 {% endblock %}
 
+{% block in_head %}
+<script type="text/javascript" src="{{ url_for('.static', filename='variant_igv.js') }}"></script>
+{% endblock %}
+
 {% block body %}
     <!-- Render context vars in JS here -->
     <script type="text/javascript">
@@ -124,6 +128,13 @@
                 {% else %}
                     <h3>This region is not covered in the {{ config['DATASET_NAME'] }} dataset.</h3>
                 {% endif %}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-xs-12">
+                <div class="section_header">Genome</div>
+                <div id="igvDiv"></div>
             </div>
         </div>
     </div>
