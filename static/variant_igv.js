@@ -2,28 +2,19 @@ $(function() {
     window.model = window.model || {};
 
     var options = {
-            locus: "7:55,085,725-55,276,031",
+            locus: "22:16,389,347-16,389,547",
+            showCommandBar: true,
+            showKaryo: false,
 
             reference: {
-                id: "hg19",
-                fastaURL: "//igv.broadinstitute.org/genomes/seq/1kg_v37/human_g1k_v37_decoy.fasta",
-                cytobandURL: "//igv.broadinstitute.org/genomes/seq/b37/b37_cytoband.txt"
-            },
-
-            trackDefaults: {
-                bam: {
-                    coverageThreshold: 0.2,
-                    coverageQualityWeight: true
-                }
+               id: "hg38"
             },
 
             tracks: [
-                {
-                    name: "Genes",
-                    url: "//igv.broadinstitute.org/annotations/hg19/genes/gencode.v18.collapsed.bed",
-                    index: "//igv.broadinstitute.org/annotations/hg19/genes/gencode.v18.collapsed.bed.idx",
-                    displayMode: "EXPANDED"
-                }
+               {
+                   name: "test_track",
+                   url: "22-16389447-A-G/test.bam"
+               }
             ]
         };
 

@@ -34,6 +34,7 @@ import auth
 
 import socket
 from ipaddress import ip_network, AddressValueError
+import re
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
 
@@ -717,6 +718,44 @@ def terms_page():
 def help_page():
     _log()
     return render_template('help.html')
+
+
+@bp.route('/variant/<variant_id>/test.bam')
+@require_agreement_to_terms_and_store_destination
+def test_bam(variant_id):
+    range_header = request.headers.get('Range', None)
+    m = re.search('(\d+)-(\d*)', range_header)
+    print range_header, m
+    size = os.path.getsize('test.bam')
+    offset = int(m.group(1))
+    length = int(m.group(2) or size) - offset
+    
+    print size, offset, length
+
+    data = None
+    with open('test.bam', 'rb') as f:
+        f.seek(offset)
+        data = f.read(length)
+    response = Response(data, 206, mimetype = "application/octet-stream", direct_passthrough = False)
+    response.headers['Content-Range'] = 'bytes {0}-{1}/{2}'.format(offset, offset + length-1, size)
+    #print request.headers
+    #print request.path
+    #print request.args 
+    print response.headers
+    return response
+    #return make_response(send_file('test.bam', as_attachment = False, mimetype = 'application/octet-stream .bam'))
+    #return
+
+@bp.route('/variant/<variant_id>/test.bam.bai')
+@require_agreement_to_terms_and_store_destination
+def test_bai(variant_id):
+    #print 'i am here 2!'
+    #print request.headers
+    #rint request.path
+    #print request.args
+    return make_response(send_file('test.bam.bai', as_attachment = False))
+    #return make_response(send_file('test.bam'), as_attachment = False, mimetype = 'application/octet-stream .bam')
+
 
 
 # OAuth2
