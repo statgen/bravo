@@ -40,9 +40,11 @@ add_library(Histogram Histogram.cpp)
 add_executable(CountAlleles CountAlleles.cpp ${AUX_SRCS})
 add_executable(GTHistograms GTHistograms.cpp ${AUX_SRCS})
 add_executable(INFOHistograms INFOHistograms.cpp ${AUX_SRCS})
+add_executable(RandomHetHom RandomHetHom.cpp ${AUX_SRCS})
 
 target_link_libraries(CountAlleles ${ZLIB_LIBRARIES} ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB})
 target_link_libraries(GTHistograms ${ZLIB_LIBRARIES} ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB})
 target_link_libraries(INFOHistograms ${ZLIB_LIBRARIES} ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB})
+target_link_libraries(RandomHetHom ${ZLIB_LIBRARIES} ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB})
 
-install(TARGETS CountAlleles GTHistograms INFOHistograms DESTINATION ${CMAKE_BINARY_DIR}/bin)
+install(TARGETS CountAlleles GTHistograms INFOHistograms RandomHetHom DESTINATION ${CMAKE_BINARY_DIR}/bin)
