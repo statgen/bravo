@@ -117,8 +117,9 @@ int main(int argc, char* argv[]) {
 
         int allele = 0;
         unsigned int n_chromosomes;
-        unsigned int ac_sample;
+        unsigned int ac_sample, ac_total;
         set<unsigned int> alleles_sample;
+        vector<unsigned int> ac;
         map<unsigned int, vector<int>> hom_samples;
         map<unsigned int, vector<int>> het_samples;
 
@@ -168,6 +169,10 @@ int main(int argc, char* argv[]) {
 
             gt_switcher.init(&rec->d.fmt[gt_index]);
 
+            fill(ac.begin(), ac.end(), 0u);
+            if (rec->n_allele > ac.size()) {
+                ac.resize(rec->n_allele, 0u);
+            }
             hom_samples.clear();
             het_samples.clear();
 
@@ -188,6 +193,7 @@ int main(int argc, char* argv[]) {
                     if (!bcf_gt_is_missing(v)) {
                         allele = bcf_gt_allele(v);
                         ++ac_sample;
+                        ac[allele] += 1u;
                         alleles_sample.insert(allele);
                     }
                 }
@@ -217,6 +223,14 @@ int main(int argc, char* argv[]) {
                         }
                     }
                 }
+            }
+
+            ac_total = ac[1];
+            for (int i = 2; i < rec->n_allele; ++i) {
+                ac_total += ac[i];
+            }
+            if (ac_total == 0) {
+                continue;
             }
 
             writer.write("{\"chr\":\"%s\",\"pos\":%lu,\"ref\":\"%s\",\"alt\":[\"%s\"", bcf_seqname(header, rec), rec->pos + 1, rec->d.allele[0], rec->d.allele[1]);
