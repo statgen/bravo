@@ -36,6 +36,10 @@ import socket
 from ipaddress import ip_network, AddressValueError
 import re
 
+import pysam
+import io
+import sequences
+
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
 
 app = Flask(__name__)
@@ -720,41 +724,56 @@ def help_page():
     return render_template('help.html')
 
 
-@bp.route('/variant/<variant_id>/test.bam')
-@require_agreement_to_terms_and_store_destination
-def test_bam(variant_id):
-    range_header = request.headers.get('Range', None)
-    m = re.search('(\d+)-(\d*)', range_header)
-    print range_header, m
-    size = os.path.getsize('test.bam')
-    offset = int(m.group(1))
-    length = int(m.group(2) or size) - offset
-    
-    print size, offset, length
 
-    data = None
-    with open('test.bam', 'rb') as f:
-        f.seek(offset)
-        data = f.read(length)
-    response = Response(data, 206, mimetype = "application/octet-stream", direct_passthrough = False)
-    response.headers['Content-Range'] = 'bytes {0}-{1}/{2}'.format(offset, offset + length-1, size)
-    #print request.headers
-    #print request.path
-    #print request.args 
-    print response.headers
-    return response
-    #return make_response(send_file('test.bam', as_attachment = False, mimetype = 'application/octet-stream .bam'))
-    #return
+CRAM = '/var/bravo_reads/chr22.all.cram'
+CRAM_FA = os.path.join(os.path.sep.join(app.instance_path.split(os.path.sep)[:-1]), 'static', 'hs38DH.fa')
 
-@bp.route('/variant/<variant_id>/test.bam.bai')
+start_time = time.time()
+sequencesClient = sequences.SequencesClient('/var/bravo_reads', CRAM_FA, 100)
+print 'Done opening CRAM client. Took %s seconds' % (time.time() - start_time)
+
+@bp.route('/variant/<variant_id>/reads')
 @require_agreement_to_terms_and_store_destination
-def test_bai(variant_id):
-    #print 'i am here 2!'
-    #print request.headers
-    #rint request.path
-    #print request.args
-    return make_response(send_file('test.bam.bai', as_attachment = False))
-    #return make_response(send_file('test.bam'), as_attachment = False, mimetype = 'application/octet-stream .bam')
+def variant_bams(variant_id):
+    db = get_db()
+    try:
+        _log()
+        response = sequencesClient.get_samples(db, variant_id)
+        if response is None: _err(); abort(404)
+        return jsonify(response)
+    except: _err(); abort(404)
+
+
+@bp.route('/variant/<variant_id>/<sample_id>.bam.bai')
+@require_agreement_to_terms_and_store_destination
+def test_bai(variant_id, sample_id):
+    db = get_db()
+    try:
+        _log()
+        start_time = time.time()
+        filename = sequencesClient.get_bai(db, variant_id, sample_id)
+        print 'Done writing BAM. Took %s seconds' % (time.time() - start_time)
+        start_time = time.time()
+        pysam.index(filename)
+        print 'Done writing BAM index. Took %s seconds' % (time.time() - start_time)
+        return make_response(send_file(filename + '.bai', as_attachment = False)) 
+    except: _err(); abort(404)
+
+
+@bp.route('/variant/<variant_id>/<sample_id>.bam')
+@require_agreement_to_terms_and_store_destination
+def test_bam(variant_id, sample_id):
+    db = get_db()
+    try:
+        start_time = time.time()
+        range_header = request.headers.get('Range', None)
+        m = re.search('(\d+)-(\d*)', range_header)
+        result = sequencesClient.get_bam(db, variant_id, sample_id, m.group(1), m.group(2))
+        response = Response(result['data'], 206, mimetype = "application/octet-stream .bam", direct_passthrough = True)
+        response.headers['Content-Range'] = 'bytes {0}-{1}/{2}'.format(result['start'], result['end'], result['size'])
+        print 'Prepared BAM for sending. Took %s seconds' % (time.time() - start_time)
+        return response
+    except: _err(); abort(404)
 
 
 
