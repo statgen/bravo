@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
             ("region,r", po::value<string>(&region), "Region to be processed. Must follow <CHR>:<START_BP>-<END_BP> format.")
             ("k,k", po::value<int>(&n_random)->default_value(1), "How many individuals to select at random.")
             ("seed,e", po::value<int>(&random_seed)->default_value(rd()), "Random seed.")
-            ("out,o", po::value<string>(&output_file)->required(), "Output file. Compressed using gzip.")
+            ("out,o", po::value<string>(&output_file)->required(), "Output VCF. Compressed using gzip.")
             ;
 
     po::variables_map vm;
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     try {
         po::store(po::parse_command_line(argc, argv, desc), vm);
         if (vm.count("help")) {
-            cout << "This program for every variant extracts K random heterozygous individuals and K random homozygous individuals."  << endl << endl;
+            cout << "This program for every variant extracts K random heterozygous individuals and K random homozygous individuals. Multi-allelic variants are split into bi-allelic variants."  << endl << endl;
             cout << desc << endl;
             return 0;
         }
@@ -74,6 +74,10 @@ int main(int argc, char* argv[]) {
         GzipWriter writer;
 
         writer.open(output_file.c_str());
+        writer.write("##fileformat=VCFv4.2\n");
+        writer.write("##INFO=<ID=HET,Number=.,Type=String,Description=\"Heterozygous individuals selected at random.\">\n");
+        writer.write("##INFO=<ID=HOM,Number=.,Type=String,Description=\"Homozygous individuals selected at random.\">\n");
+        writer.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
 
         bcf_srs_t *sr = bcf_sr_init();
 
@@ -233,46 +237,37 @@ int main(int argc, char* argv[]) {
                 continue;
             }
 
-            writer.write("{\"chr\":\"%s\",\"pos\":%lu,\"ref\":\"%s\",\"alt\":[\"%s\"", bcf_seqname(header, rec), rec->pos + 1, rec->d.allele[0], rec->d.allele[1]);
-            for (int i = 2; i < rec->n_allele; ++i) {
-                writer.write(",\"%s\"", rec->d.allele[i]);
-            }
-            writer.write("]");
-            if (hom_samples.size() > 0) {
-                writer.write(",\"hom\":{");
-                for (auto it = hom_samples.begin(); it != hom_samples.end(); ++it) {
-                    shuffle(it->second.begin(), it->second.end(), number_generator);
-                    writer.write("\"%s\":[\"%s\"", rec->d.allele[it->first], header->samples[it->second[0]]);
+            for (int i = 1; i < rec->n_allele; ++i) {
+                writer.write("%s\t%lu\t.\t%s\t%s\t.\t.\t", bcf_seqname(header, rec), rec->pos + 1, rec->d.allele[0], rec->d.allele[i]);
+                auto hom_it = hom_samples.find(i);
+                if (hom_it != hom_samples.end()) {
+                    shuffle(hom_it->second.begin(), hom_it->second.end(), number_generator);
+                    writer.write("HOM=%s", header->samples[hom_it->second[0]]);
                     ++total_random_samples;
-                    for (int i = 1; ((i < it->second.size()) && (i < n_random)); ++i) {
-                        writer.write(",\"%s\"", header->samples[it->second[i]]);
+                    for (int i = 1; ((i < hom_it->second.size()) && (i < n_random)); ++i) {
+                        writer.write(",%s", header->samples[hom_it->second[i]]);
                         ++total_random_samples;
                     }
-                    writer.write("]");
-                    if (distance(it, hom_samples.end()) > 1) {
-                        writer.write(",");
-                    }
                 }
-                writer.write("}");
-            }
-            if (het_samples.size() > 0) {
-                writer.write(",\"het\":{");
-                for (auto it = het_samples.begin(); it != het_samples.end(); ++it) {
-                    shuffle(it->second.begin(), it->second.end(), number_generator);
-                    writer.write("\"%s\":[\"%s\"", rec->d.allele[it->first], header->samples[it->second[0]]);
+                auto het_it = het_samples.find(i);
+                if (het_it != het_samples.end()) {
+                    if (hom_it != hom_samples.end()) {
+                        writer.write(";");
+                    }
+                    shuffle(het_it->second.begin(), het_it->second.end(), number_generator);
+                    writer.write("HET=%s", header->samples[het_it->second[0]]);
                     ++total_random_samples;
-                    for (int i = 1; ((i < it->second.size()) && (i < n_random)); ++i) {
-                        writer.write(",\"%s\"", header->samples[it->second[i]]);
+                    for (int i = 1; ((i < het_it->second.size()) && (i < n_random)); ++i) {
+                        writer.write(",%s", header->samples[het_it->second[i]]);
                         ++total_random_samples;
                     }
-                    writer.write("]");
-                    if (distance(it, het_samples.end()) > 1) {
-                        writer.write(",");
-                    }
                 }
-                writer.write("}");
+                if ((hom_it == hom_samples.end()) && (het_it == het_samples.end())) {
+                    writer.write(".\n");
+                } else {
+                    writer.write("\n");
+                }
             }
-            writer.write("}\n");
         }
 
         cout << "Random seed: " << random_seed << endl;
