@@ -725,11 +725,12 @@ def help_page():
 
 
 
-CRAM = '/var/bravo_reads/chr22.all.cram'
 CRAM_FA = os.path.join(os.path.sep.join(app.instance_path.split(os.path.sep)[:-1]), 'static', 'hs38DH.fa')
 
 start_time = time.time()
-sequencesClient = sequences.SequencesClient('/var/bravo_reads', CRAM_FA, 100)
+sequences.SequencesClient.create_cache_collection_and_index(get_db(), 'bam_cache')
+
+sequencesClient = sequences.SequencesClient('/var/bravo_reads', CRAM_FA, '/home/dtaliun', 'bam_cache', 100)
 print 'Done opening CRAM client. Took %s seconds' % (time.time() - start_time)
 
 @bp.route('/variant/<variant_id>/reads')
@@ -738,7 +739,9 @@ def variant_bams(variant_id):
     db = get_db()
     try:
         _log()
+        start_time = time.time()
         response = sequencesClient.get_samples(db, variant_id)
+        print 'Done preparing samples. Took %s seconds' % (time.time() - start_time)
         if response is None: _err(); abort(404)
         return jsonify(response)
     except: _err(); abort(404)
@@ -751,12 +754,10 @@ def test_bai(variant_id, sample_id):
     try:
         _log()
         start_time = time.time()
-        filename = sequencesClient.get_bai(db, variant_id, sample_id)
-        print 'Done writing BAM. Took %s seconds' % (time.time() - start_time)
-        start_time = time.time()
-        pysam.index(filename)
-        print 'Done writing BAM index. Took %s seconds' % (time.time() - start_time)
-        return make_response(send_file(filename + '.bai', as_attachment = False)) 
+        file_path = sequencesClient.get_bai(db, variant_id, sample_id)
+        if file_path is None: _err(); abort(404)
+        print 'Done preparing BAM and BAI. Took %s seconds' % (time.time() - start_time)
+        return make_response(send_file(file_path, as_attachment = False)) 
     except: _err(); abort(404)
 
 
@@ -769,6 +770,7 @@ def test_bam(variant_id, sample_id):
         range_header = request.headers.get('Range', None)
         m = re.search('(\d+)-(\d*)', range_header)
         result = sequencesClient.get_bam(db, variant_id, sample_id, m.group(1), m.group(2))
+        if result is None: _err(); abort(404)
         response = Response(result['data'], 206, mimetype = "application/octet-stream .bam", direct_passthrough = True)
         response.headers['Content-Range'] = 'bytes {0}-{1}/{2}'.format(result['start'], result['end'], result['size'])
         print 'Prepared BAM for sending. Took %s seconds' % (time.time() - start_time)
