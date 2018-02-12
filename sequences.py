@@ -44,9 +44,10 @@ class SequencesClient(object):
 
     @staticmethod
     def create_cache_collection_and_index(db, collection_name):
-        if collection_name not in db.collection_names():
-            db.create_collection(collection_name)
-            db[collection_name].create_index('name', unique = True)
+        if collection_name in db.collection_names():
+            db[collection_name].drop()
+        db.create_collection(collection_name)
+        db[collection_name].create_index('name', unique = True)
 
     def create_bam(self, db, variant_id, sample_id):
         chrom, pos, ref, alt = variant_id.split('-')

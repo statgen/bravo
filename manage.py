@@ -52,6 +52,15 @@ def load_custom_variants_file(collection, vcfs):
     exac.load_custom_variants_file(collection, vcfs)
 
 
+@manager.option('-c', '--collection', dest = 'collection', type = str, required = False, help = 'Mongo collection name to store paths to cached BAM/CRAM files.')
+def create_sequence_cache(collection):
+    "Creates Mongo collection with unique index to store paths to cached BAM\CRAM files for the IGV browser.\
+     Important: Mongo will not do any cleaning if cache becomes too large."
+    
+    if collection is not None and not collection.strip():
+        sys.exit("Collection name must be a non-empty string.")
+    exac.create_sequence_cache(collection)
+
 if __name__ == "__main__":
     manager.run()
 

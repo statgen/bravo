@@ -333,6 +333,13 @@ def create_users():
     print 'Created new users database.'
 
 
+def create_sequence_cache(collection = None):
+    db = get_db()
+    if collection is None:
+        collection = app.config['IGV_CACHE_COLLECTION']
+    sequences.SequencesClient.create_cache_collection_and_index(db, collection)
+
+
 def require_agreement_to_terms_and_store_destination(func):
     """
     This decorator for routes checks that the user is logged in and has agreed to the terms.
@@ -728,7 +735,7 @@ def help_page():
 CRAM_FA = os.path.join(os.path.sep.join(app.instance_path.split(os.path.sep)[:-1]), 'static', 'hs38DH.fa')
 
 start_time = time.time()
-sequences.SequencesClient.create_cache_collection_and_index(get_db(), 'bam_cache')
+#sequences.SequencesClient.create_cache_collection_and_index(get_db(), 'bam_cache')
 
 sequencesClient = sequences.SequencesClient('/var/bravo_reads', CRAM_FA, '/home/dtaliun', 'bam_cache', 100)
 print 'Done opening CRAM client. Took %s seconds' % (time.time() - start_time)
