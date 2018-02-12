@@ -65,6 +65,7 @@ def get_db(new_connection=False):
     return client[app.config['MONGO']['name']]
 
 get_db._mongo_client = pymongo.MongoClient(host=app.config['MONGO']['host'], port=app.config['MONGO']['port'], connect=False)
+sequencesClient = sequences.SequencesClient(app.config['IGV_CRAM_DIRECTORY'], app.config['IGV_REFERENCE_PATH'], app.config['IGV_CACHE_DIRECTORY'], app.config['IGV_CACHE_COLLECTION'], 100)
 
 @boltons.cacheutils.cached({})
 def get_autocomplete_strings():
@@ -730,15 +731,6 @@ def help_page():
     _log()
     return render_template('help.html')
 
-
-
-CRAM_FA = os.path.join(os.path.sep.join(app.instance_path.split(os.path.sep)[:-1]), 'static', 'hs38DH.fa')
-
-start_time = time.time()
-#sequences.SequencesClient.create_cache_collection_and_index(get_db(), 'bam_cache')
-
-sequencesClient = sequences.SequencesClient('/var/bravo_reads', CRAM_FA, '/home/dtaliun', 'bam_cache', 100)
-print 'Done opening CRAM client. Took %s seconds' % (time.time() - start_time)
 
 @bp.route('/variant/<variant_id>/reads')
 @require_agreement_to_terms_and_store_destination
