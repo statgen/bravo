@@ -65,7 +65,11 @@ class SequencesClient(object):
         cache_name = '{}.{}'.format(variant_id, sample_id)
         cache_entry = db[self._cache_collection].find_one({ 'name': cache_name }, projection = { '_id': False })
         if cache_entry is not None:
-            return { 'bam': cache_entry['bam'], 'bai': cache_entry['bai'] }
+            if os.path.exists(cache_entry['bam']) and os.path.exists(cache_entry['bai']):  # check if files still exist in cache directory
+                db[self._cache_collection].update_one({ 'name': cache_name }, { '$inc': { 'accessed' : 1 } })
+                return { 'bam': cache_entry['bam'], 'bai': cache_entry['bai'] }
+            else:
+                db[self._cache_collection].delete_one({'name': cache_name})
         start = pos - self._window_bp if pos > self._window_bp else 0
         stop = pos + self._window_bp
         sample_type, sample_no = sample_id.split('-')
@@ -81,7 +85,7 @@ class SequencesClient(object):
         pysam.index(bam_path)
         # save to cache if does not exist yet
         try:
-            result = db[self._cache_collection].update_one({'name': cache_name}, { '$setOnInsert': { 'bam': bam_path, 'bai': bai_path } }, upsert = True)
+            result = db[self._cache_collection].update_one({'name': cache_name}, { '$inc': { 'accessed': 1 }, '$setOnInsert': { 'bam': bam_path, 'bai': bai_path } }, upsert = True)
         except pymongo.errors.DuplicateKeyError:
             pass
         return { 'bam': bam_path, 'bai': bai_path }
