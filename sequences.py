@@ -112,7 +112,7 @@ class SequencesClient(object):
                 if read.query_name.startswith(qname):
                     sample = read.query_name.split(':')[3]
                     samples.add('{}-{}'.format('hom' if sample.startswith('0') else 'het', int(sample)))
-        samples = sorted(samples)
+        samples = sorted(samples, key = lambda x: int(x.split('-')[1]))
         # save to cache if does not exist yet
         try:
             result = db[self._cache_collection].update_one({'name': variant_id},  { '$setOnInsert': { 'sample': samples } }, upsert = True)
