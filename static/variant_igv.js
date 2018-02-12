@@ -10,8 +10,8 @@ $(function() {
         showKaryo: false,
         reference: {
            id: "hg38",
-           fastaURL: "https://s3.amazonaws.com/igv.broadinstitute.org/genomes/seq/hg38/hg38.fa",
-           indexURL: "https://s3.amazonaws.com/igv.broadinstitute.org/genomes/seq/hg38/hg38.fa.fai"
+           fastaURL: "https://bravo.sph.umich.edu/genomes/hs38DH.fa",
+           indexURL: "https://bravo.sph.umich.edu/genomes/hs38DH.fa.fai"
         }
     };
 
