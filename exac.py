@@ -741,7 +741,8 @@ def variant_bams(variant_id):
         start_time = time.time()
         response = sequencesClient.get_samples(db, variant_id)
         print 'Done preparing samples. Took %s seconds' % (time.time() - start_time)
-        if response is None: _err(); abort(404)
+        if response is None:
+            response = { 'names': [] }
         return jsonify(response)
     except: _err(); abort(404)
 
