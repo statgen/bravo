@@ -1,10 +1,17 @@
 import os
+import sys
 import imp
 import inspect
 import warnings
 import pymongo
 import re
 import time
+import psutil
+import argparse
+
+argparser = argparse.ArgumentParser(description = 'This script performs Bravo IGV cache cleaning.')
+argparser.add_argument('-p', '--pid-file', metavar = 'file', dest = 'pid_file', type = str, default = 'igv_cache.pid', required = False, help = 'PID file path. PID file is used to ensure that only one instance of this script is running at a time.')
+
 
 def load_config(name):
     f, path, desc = imp.find_module(name.strip().split('.')[0])
@@ -33,6 +40,20 @@ def delete_cache(db, collection, cursor, delay):
                 pass
 
 if __name__ == '__main__':
+    args = argparser.parse_args()
+    pid = os.getpid()
+    if os.path.exists(args.pid_file):
+    	with open(args.pid_file, 'r+') as f:
+            old_pid = int(f.read())
+            if psutil.pid_exists(old_pid):
+                sys.exit(0)
+            f.seek(0)
+            f.write('{}'.format(pid))
+            f.truncate()
+    else:
+        with open(args.pid_file, 'w') as f:
+            f.write('{}'.format(pid))
+   
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         config = load_config('flask_config.BravoFreeze5GRCh38Config')
@@ -50,7 +71,6 @@ if __name__ == '__main__':
     deleted_cached_files_filter = re.compile('delete-', re.IGNORECASE)
 
     n = db[cache_collection].count({ 'name': cached_files_filter })
-
     if n >= cache_limit:
         n_to_remove = int(0.5 * cache_limit) + (n - cache_limit)
         to_remove = db[cache_collection].find({ 'name': cached_files_filter }, sort = [('accessed', pymongo.ASCENDING)], limit = n_to_remove)
@@ -58,3 +78,5 @@ if __name__ == '__main__':
 
     to_remove = db[cache_collection].find({ 'name': deleted_cached_files_filter })
     delete_cache(db, cache_collection, to_remove, 0)
+
+    os.remove(args.pid_file)
