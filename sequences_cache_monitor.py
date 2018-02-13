@@ -44,8 +44,8 @@ if __name__ == '__main__':
     pid = os.getpid()
     if os.path.exists(args.pid_file):
     	with open(args.pid_file, 'r+') as f:
-            old_pid = int(f.read())
-            if psutil.pid_exists(old_pid):
+            old_pid = f.read().strip()
+            if old_pid.isdigit() and psutil.pid_exists(int(old_pid)):
                 sys.exit(0)
             f.seek(0)
             f.write('{}'.format(pid))

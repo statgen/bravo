@@ -1,0 +1,2 @@
+# This cron job every 5 minutes checks if Bravo IGV cache needs cleaning
+*/5 * * * * python [full path to sequences_cache_monitor.py] -p [full path to PID file] > /dev/null 2>&1
