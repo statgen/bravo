@@ -70,7 +70,8 @@ class SequencesClient(object):
                 db[self._cache_collection].update_one({ 'name': cache_name }, { '$inc': { 'accessed' : 1 } })
                 return { 'bam': cache_entry['bam'], 'bai': cache_entry['bai'] }
             else:
-                db[self._cache_collection].delete_one({'name': cache_name})
+                delete_cache_name = 'delete-{}'.format(SequencesClient.get_random_filename(10))
+                db[self._cache_collection].update_one({ 'name': cache_name }, { '$set': { 'name': delete_cache_name } })
         start = pos - self._window_bp if pos > self._window_bp else 0
         stop = pos + self._window_bp
         sample_type, sample_no = sample_id.split('-')
@@ -86,9 +87,10 @@ class SequencesClient(object):
         pysam.index(bam_path)
         # save to cache if does not exist yet
         try:
-            result = db[self._cache_collection].update_one({'name': cache_name}, { '$inc': { 'accessed': 1 }, '$setOnInsert': { 'bam': bam_path, 'bai': bai_path } }, upsert = True)
+            result = db[self._cache_collection].update_one({ 'name': cache_name}, { '$inc': { 'accessed': 1 }, '$setOnInsert': { 'bam': bam_path, 'bai': bai_path } }, upsert = True)
         except pymongo.errors.DuplicateKeyError:
-            pass
+            delete_cache_name = 'delete-{}'.format(SequencesClient.get_random_filename(10))
+            db[self._cache_collection].insert_one({'name': delete_cache_name, 'bam': bam_path, 'bai': bai_path })
         return { 'bam': bam_path, 'bai': bai_path }
 
     def get_samples(self, db, variant_id):
