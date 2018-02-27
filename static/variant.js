@@ -669,16 +669,22 @@ $(document).ready(function() {
         draw_percentiles_legend($("#site-metrics-legend"));
    
         window.metrics.forEach(function (metric) {
+            var value = 0;
             var percentiles = null;
-            var value = null;
-            if ((metric.name in window.variant.quality_metrics_percentiles) && (metric.name in window.variant.quality_metrics)) {
-                percentiles =  window.variant.quality_metrics_percentiles[metric.name];
+            dom_element = $("<tr></tr>").appendTo("#site-metrics-plots");
+            $("<td></td>").appendTo(dom_element).html(metric.description);
+            if (("quality_metrics" in window.variant) && (metric.name in window.variant.quality_metrics)) {
                 value = window.variant.quality_metrics[metric.name];
-                dom_element = $("<tr></tr>").appendTo("#site-metrics-plots");
-                $("<td></td>").appendTo(dom_element).html(metric.description);
                 $("<td></td>").appendTo(dom_element).html(value);
+            } else {
+                $("<td></td>").appendTo(dom_element).html("Not available");
+            }
+            if (("quality_metrics_percentiles" in window.variant) && (metric.name in window.variant.quality_metrics_percentiles)) {
+                percentiles =  window.variant.quality_metrics_percentiles[metric.name];
                 $("<td></td>").appendTo(dom_element).html((percentiles[1] * 100).toFixed(2));
                 draw_metric_percentiles($("<td></td>").appendTo(dom_element), metric.percentiles, value, percentiles[0], percentiles[1]);
+            } else {
+                $("<td></td>").appendTo(dom_element).attr("colspan", "2").html("Not available");
             }
         });
     } else {
