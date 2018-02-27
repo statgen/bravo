@@ -68,6 +68,7 @@ $(function() {
                             format: "bam",
                             type: "alignment",
                             colorBy: "strand",
+                            maxHeight: 500,
                             url: window.variant.variant_id + "/" + this.id + ".bam"
                         };
                         igv_browser_instance.loadTrack(track);
