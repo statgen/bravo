@@ -77,7 +77,37 @@ def get_variants_from_sites_vcf_without_annotation(sites_vcf):
                 variant['hom_count'] = int(info_field['Hom'].split(',')[i])
                 yield variant
         except:
-            print("Error parsing vcf line: " + line)
+            print("Error while parsing vcf line: " + line)
+            traceback.print_exc()
+            raise
+
+
+def get_variants_from_sites_vcf_only_percentiles(sites_vcf):
+    for line in sites_vcf:
+        try:
+            line = line.strip('\n')
+            if line.startswith('#'):
+                continue
+            fields = line.split('\t')
+            percentiles = {}
+            for info_entry in re.split(';(?=\w)', fields[7]):
+                info_entry = info_entry.split('=')
+                if len(info_entry) == 2 and info_entry[0].endswith('_PCTL'):
+                    value = map(float, info_entry[1].split(','))
+                    if len(value) == 2:
+                        key = info_entry[0][:-5]
+                        percentiles[key] = value
+            if not percentiles:
+                continue
+            for alt in fields[4].split(','):
+                variant = {}
+                variant['chrom'] = fields[0][3:] if fields[0].startswith('chr') else fields[0]
+                variant['pos'], variant['ref'], variant['alt'] = get_minimal_representation(fields[1], fields[3], alt)
+                variant['xpos'] = Xpos.from_chrom_pos(variant['chrom'], variant['pos'])
+                variant['percentiles'] = percentiles
+                yield variant
+        except:
+            print("Error while parsing vcf line: " + line)
             traceback.print_exc()
             raise
 

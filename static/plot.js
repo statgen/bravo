@@ -25,7 +25,7 @@ function bootstrap_plot() {
         range =  [].concat([range[0]-1], range, [range[range.length-1]+1]);
         // third, stretch the range to be the width of the screen where we're plotting
         range = range.map(function(x) { return x * window.model.plot.genome_coords_width / range[range.length-1]; });
-        window.model.plot.x = d3.scale.linear().domain(domain).range(range);
+        window.model.plot.x = d3.scaleLinear().domain(domain).range(range);
     }
 }
 
@@ -89,7 +89,7 @@ var coverage_plot = {
         if (metric === 'mean' || metric === 'median') {
             max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
         }
-        var y = d3.scale.linear()
+        var y = d3.scaleLinear()
             .domain([0, max_cov])
             .range([this.height, 0]);
         var yAxis = this.y_axis(y, metric);
@@ -122,10 +122,7 @@ var coverage_plot = {
         });
     },
     y_axis: function(y_scale, metric) {
-        var yAxis = d3.svg.axis()
-            .scale(y_scale)
-            .orient('left')
-            .ticks(3);
+        var yAxis = d3.axisLeft(y_scale).ticks(3);
         if (metric === 'mean' || metric === 'median')
             yAxis = yAxis.tickFormat(function(d) {return d.toString() + '\u00d7'});
         else
@@ -150,7 +147,7 @@ var coverage_plot = {
             max_cov = d3.max(window.model.coverage_stats, function(d) { return d[metric]; });
         }
 
-        var y = d3.scale.linear()
+        var y = d3.scaleLinear()
             .domain([0, max_cov])
             .range([this.height, 0]);
 
@@ -237,6 +234,7 @@ var transcripts_plot = {
 
         var exon_tip = d3.tip()
             .attr('class', 'd3-tip')
+            .offset([-8, 0])
             .style('z-index', 2)
             .html(function(d) {
             return transcript.transcript_id + '<br>' +
@@ -392,7 +390,7 @@ var variant_plot = {
 
         var data_g = genome_g.append('g').attr('class','data_g');
 
-        window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
+        window.model.plot.oval_tip = d3.tip().attr('class', 'd3-tip').offset([-8, 0]).html(function(d) {
             return group_thousands_html(d.pos) + '<br>' +
                 fmt_annotation(d, 20) + '<br>' +
                 (d.filter === 'PASS' ? '' : 'FAIL<br>') +

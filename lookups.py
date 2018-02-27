@@ -285,31 +285,11 @@ class TranscriptSet(object):
         return cls(genes)
 
 
-def get_metrics(db, variant):
-    if 'allele_count' not in variant or variant['allele_num'] == 0:
-        return None
-    metrics = {}
-    for metric_key, metric_metadata in METRICS.items():
-        metric_name = metric_metadata['name']
-        if metric_key in variant['quality_metrics']:
-            variant['quality_metrics'][metric_name] = variant['quality_metrics'].pop(metric_key)
-        x = db.metrics.find_one({'metric': metric_key}, projection={'_id': False})
-        if x is not None:
-            metrics[metric_name] = x
-            metrics[metric_name]['metric'] = metric_name
-
-    freq_metric = None
-    if variant['allele_count'] == 1:
-        freq_metric = 'singleton'
-    elif variant['allele_count'] == 2:
-        freq_metric = 'doubleton'
-    else:
-        for af in AF_BUCKETS:
-            if float(variant['allele_count'])/variant['allele_num'] < af:
-                freq_metric = af
-                break
-    if freq_metric is not None:
-        metrics['Site Quality'] = db.metrics.find_one({'metric': 'binned_%s' % freq_metric}, projection={'_id': False})
+def get_metrics(db):
+    metrics = []
+    cursor = db.metrics.find({'type': 'percentiles'}, projection = {'_id': False})
+    for document in cursor:
+        metrics.append(document)
     return metrics
 
 

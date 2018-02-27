@@ -2,12 +2,13 @@ $(function() {
     window.model = window.model || {};
 
     var variant_id = window.variant.variant_id;
-    var locus = window.variant.chrom + ":" + (window.variant.pos - 100) + "-" + (window.variant.pos + 100);
+    var locus = window.variant.chrom + ":" + (window.variant.pos - 100) + "-" + (window.variant.pos + 99);
 
     var options = {
         locus: locus,
         showCommandBar: true,
         showKaryo: false,
+        showCenterGuide: true,
         reference: {
            id: "hg38",
            fastaURL: "https://bravo.sph.umich.edu/genomes/hs38DH.fa",
