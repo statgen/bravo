@@ -234,7 +234,6 @@ function draw_metric_histograms(dom_element, histogram1_bins, histogram2_bins, b
     var height = svg_height - margin.top - margin.bottom;
 
     /* Transform counts to proportion */
-
     const total1 = d3.sum(histogram1_bins, function(d) { return d[1]; });
     const total2 = d3.sum(histogram2_bins, function(d) { return d[1]; });
     const y_extent1 = d3.extent(histogram1_bins, function(d) { return d[1] / total1; });
@@ -301,8 +300,8 @@ function draw_metric_histograms(dom_element, histogram1_bins, histogram2_bins, b
         .offset([-8, 0])
         .html(function(d) {
             var html = "";
-            html += "All Individuals: " + d[0][1];
-            html += "<br>Variant Carriars: " + d[1][1];
+            html += "All Individuals: " + d[0][1] + ' out of ' + total1;
+            html += "<br>Variant Carriers: " + d[1][1] + ' out of ' + total2;
             return html; 
         });
     svg.call(tooltip);
@@ -671,14 +670,13 @@ $(document).ready(function() {
         window.metrics.forEach(function (metric) {
             var value = 0;
             var percentiles = null;
-            dom_element = $("<tr></tr>").appendTo("#site-metrics-plots");
-            $("<td></td>").appendTo(dom_element).html(metric.description);
-            if (("quality_metrics" in window.variant) && (metric.name in window.variant.quality_metrics)) {
-                value = window.variant.quality_metrics[metric.name];
-                $("<td></td>").appendTo(dom_element).html(value);
-            } else {
-                $("<td></td>").appendTo(dom_element).html("Not available");
+            if (!("quality_metrics" in window.variant) || !(metric.name in window.variant.quality_metrics)) {
+                return;
             }
+            dom_element = $("<tr></tr>").appendTo("#site-metrics-plots");
+            value = window.variant.quality_metrics[metric.name];
+            $("<td></td>").appendTo(dom_element).html(metric.description);
+            $("<td></td>").appendTo(dom_element).html(value);
             if (("quality_metrics_percentiles" in window.variant) && (metric.name in window.variant.quality_metrics_percentiles)) {
                 percentiles =  window.variant.quality_metrics_percentiles[metric.name];
                 $("<td></td>").appendTo(dom_element).html((percentiles[1] * 100).toFixed(2));

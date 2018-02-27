@@ -466,7 +466,8 @@ def variant_page(variant_id):
             IntervalSet.from_xstart_xstop(variant['xpos'], variant['xpos']+len(variant['ref'])-1))
         
         metrics = lookups.get_metrics(db)
-        
+        variant['quality_metrics']['QUAL'] = variant['site_quality']
+
         lookups.remove_some_extraneous_information(variant)
 
         return render_template(
