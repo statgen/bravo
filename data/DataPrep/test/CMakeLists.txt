@@ -13,6 +13,13 @@ ExternalProject_Add(
 
 ExternalProject_Get_Property(gtest source_dir binary_dir)
 
+find_package(ZLIB REQUIRED)
+
+message(STATUS "ZLIB version: " ${ZLIB_VERSION_STRING})
+message(STATUS "ZLIB header directory: " ${ZLIB_INCLUDE_DIRS})
+message(STATUS "ZLIB library: " ${ZLIB_LIBRARIES})
+
+
 add_library(libgtest IMPORTED STATIC GLOBAL)
 add_dependencies(libgtest gtest)
 
@@ -21,8 +28,9 @@ set_target_properties(libgtest PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
 )
 
-include_directories(${source_dir}/googletest/include/)
+include_directories(${source_dir}/googletest/include/ ${ZLIB_INCLUDE_DIRS})
 
-add_executable(testAll HistogramTest.cpp Main_TestAll.cpp)
-target_link_libraries(testAll Histogram libgtest)
+
+add_executable(testAll HistogramTest.cpp PercentilesTest.cpp Main_TestAll.cpp)
+target_link_libraries(testAll Histogram Percentiles ${ZLIB_LIBRARIES} libgtest)
 install(TARGETS testAll DESTINATION ${CMAKE_BINARY_DIR}/bin)
