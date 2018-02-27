@@ -265,66 +265,47 @@ def load_dbsnp_file():
     else:
         raise Exception("dbsnp file %s(dbsnp_file)s not found." % locals())
 
-def precalculate_metrics():
-    import numpy
+
+def load_metrics(filename):
     db = get_db()
-    total_num_variants = db.variants.count()
-    # Mongo sorts the whole table if I request >5% of all documents, so I take only 4% for safety.
-    num_variants_to_sample = clamp(total_num_variants/25, min_value=int(10e3), max_value=min(int(1e6),total_num_variants))
-    print 'Sampling {:,} of {:,} variants...'.format(num_variants_to_sample, total_num_variants)
-    metrics = defaultdict(Counter)
-    qualities_by_af = defaultdict(Counter)
-    start_time = time.time()
-    variant_iterator = db.variants.aggregate([
-        {'$sample': {'size':num_variants_to_sample}},
-        {'$project': {'quality_metrics':1, 'site_quality':1, 'allele_num':1, 'allele_count':1, '_id':0}},
-    ])
-    for variant_i, variant in enumerate(variant_iterator):
-        if variant_i % int(100e3) == 0:
-            num_keys = sum(len(cntr.viewkeys()) for cntr in metrics.values())
-            print 'Read {:,} variants. Took {:.0f} seconds. Made {:,} distinct keys'.format(variant_i, time.time() - start_time, num_keys)
-            start_time = time.time()
-        if 'DP' in variant['quality_metrics'] and float(variant['quality_metrics']['DP']) == 0:
-            print('Warning: variant with id {} has depth of 0'.format(variant['_id']))
-        for metric, value in variant['quality_metrics'].iteritems():
-            metrics[metric][float(value)] += 1
-        qual = float(variant['site_quality'])
-        metrics['site_quality'][qual] += 1
-        if variant['allele_num'] == 0: continue
-        if variant['allele_count'] == 1:
-            qualities_by_af['singleton'][qual] += 1
-        elif variant['allele_count'] == 2:
-            qualities_by_af['doubleton'][qual] += 1
-        else:
-            variant_af = float(variant['allele_count'])/variant['allele_num']
-            for bucket_af in AF_BUCKETS:
-                if variant_af < bucket_af:
-                    qualities_by_af[bucket_af][qual] += 1
-                    break
-    num_keys = sum(len(cntr.viewkeys()) for cntr in metrics.values())
-    print 'Read {:,} variants. Took {:.0f} seconds. Made {:,} distinct keys'.format(variant_i, time.time() - start_time, num_keys)
-    print 'Done reading variants. Dropping metrics database... '
-    db.metrics.drop()
-    start_time = time.time()
-    print 'Dropped metrics database. Calculating metrics...'
-    for metric in metrics:
-        print '... for metric', metric
-        bin_range = None
-        data = metrics[metric]
-        if metric == 'DP': data = {numpy.log(key): count for key,count in data.iteritems()}
-        if metric == 'FS': bin_range = (0, 20)
-        elif metric == 'VQSLOD': bin_range = (-20, 20)
-        elif metric == 'InbreedingCoeff': bin_range = (0, 1)
-        hist = histogram_from_counter(data, num_bins=40, bin_range=bin_range)
-        db.metrics.insert({'metric': metric, 'mids': hist['left_edges'], 'hist': hist['counts']})
-    for af_bin in qualities_by_af:
-        print '... for site quality for af', af_bin
-        data = {numpy.log(key): count for key,count in qualities_by_af[af_bin].iteritems()}
-        hist = histogram_from_counter(data, num_bins=40)
-        db.metrics.insert({'metric': 'binned_%s' % af_bin, 'mids': hist['mids'], 'hist': hist['counts']})
+    with gzip.GzipFile(filename, 'r') as ifile:
+        for line in ifile:
+            metric = json.loads(line)
+            db.metrics.insert(metric)
     db.metrics.ensure_index('metric')
-    print '... (took {:.0f} seconds)'.format(time.time() - start_time)
-    print 'Done pre-calculating metrics!'
+
+
+def load_percentiles(vcfs):
+    with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
+        pool.map_async(_load_percentiles_from_vcf, vcfs).get(9999999)
+
+
+def _load_percentiles_from_vcf(vcf):
+    db = get_db()
+    n_variants = 0
+    n_matched = 0
+    n_modified = 0
+    with gzip.GzipFile(vcf, 'r') as ivcf:
+        start_time = time.time()
+        requests = []
+        for variant in get_variants_from_sites_vcf_only_percentiles(ivcf):
+            requests.append(pymongo.operations.UpdateOne(
+                {'xpos': variant['xpos'], 'ref': variant['ref'], 'alt': variant['alt']},
+                {'$set': {'quality_metrics_percentiles': variant['percentiles']}},
+                upsert = False))
+            n_variants += 1
+            if n_variants % 1000000 == 0:
+                res = db.variants.bulk_write(requests, ordered = False)
+                n_matched += res.matched_count
+                n_modified += res.modified_count
+                requests = []
+                print 'VCF {}. Processed {} variant(s) in {} second(s), {} matched, {} modified.'.format(vcf, n_variants, int(time.time() - start_time), n_matched, n_modified) 
+        if len(requests) > 0:
+            res = db.variants.bulk_write(requests, ordered = False)
+            n_matched += res.matched_count
+            n_modified += res.modified_count
+            print 'Finished. VCF {}. Processed {} variant(s) in {} second(s), {} matched, {} modified.'.format(vcf, n_variants, int(time.time() - start_time), n_matched, n_modified)
+
 
 def create_users():
     db = get_db()
@@ -469,10 +450,13 @@ def variant_page(variant_id):
         _log()
         variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant=True)
         if not variant: return error_page('Variant {!r} not found'.format(variant_id))
+     
+        pop_names = {k + '_AF': '1000G ' + v for k, v in {'AFR':'African', 'AMR':'American', 'EAS':'East Asian', 'EUR':'European', 'SAS':'South Asian'}.items()}
         if 'pop_afs' in variant:
-            pop_names = {k+'_AF': '1000G '+v for k,v in {'AFR':'African', 'AMR':'American', 'EAS':'East Asian', 'EUR':'European', 'SAS':'South Asian'}.items()}
-            variant['pop_afs'] = {pop_names.get(k, k):v for k,v in variant['pop_afs'].items()}
-            variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
+            variant['pop_afs'] = {pop_names.get(k, k): v for k, v in variant['pop_afs'].items()}
+        else:
+            variant['pop_afs'] = { x: None  for x in pop_names.itervalues() }
+        variant['pop_afs'][app.config['DATASET_NAME']] = variant['allele_freq']
 
         consequence_drilldown = ConsequenceDrilldown.from_variant(variant)
         gene_for_top_csq, top_HGVSs = ConsequenceDrilldown.get_top_gene_and_HGVSs(consequence_drilldown)
@@ -480,7 +464,9 @@ def variant_page(variant_id):
 
         base_coverage = get_coverage_handler().get_coverage_for_intervalset(
             IntervalSet.from_xstart_xstop(variant['xpos'], variant['xpos']+len(variant['ref'])-1))
-        metrics = lookups.get_metrics(db, variant)
+        
+        metrics = lookups.get_metrics(db)
+        
         lookups.remove_some_extraneous_information(variant)
 
         return render_template(
