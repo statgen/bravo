@@ -300,7 +300,7 @@ def remove_some_extraneous_information(variant):
 
 
 def get_summary_for_intervalset(db, intervalset):
-    # Note: querying for each extent in intervalset.to_list_of_mongos() is 100+X faster than using intervalset.to_mongo() and I have no idea why. Try query planner?
+    # Note: querying for each extent in intervalset.to_list_of_mongos() is >100X faster than using intervalset.to_mongo() and I have no idea why. Try query planner?
     st = time.time()
     mongo_match_cond = {
         'lof': {'$lt': ['$worst_csqidx', Consequence.as_obj['n_lof']]},

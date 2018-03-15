@@ -174,7 +174,13 @@ if (d3 && d3.selection) {
 /* PROJECT-SPECIFIC UTILITY FUNCTIONS */
 function fmt_annotation(csqidx, maxlen) {
     if (typeof csqidx === "object") { csqidx = csqidx.worst_csqidx; }
-    var csq_string = window.model.csq.order[csqidx].replace('_variant', '').replace(/_/g, ' ').replace('utr', 'UTR').replace('3 prime', "3'").replace('5 prime', "5'").replace('nc ', "non-coding ");
+    var csq_string = window.model.csq.order[csqidx]
+        .replace('_variant', '')
+        .replace(/_/g, ' ')
+        .replace('utr', 'UTR')
+        .replace('3 prime', "3'")
+        .replace('5 prime', "5'")
+        .replace('nc ', "non-coding ");
     if (typeof maxlen === "number" && csq_string.length > maxlen) { csq_string = csq_string.substr(0, maxlen-3) + '...'; }
     return fmt('<span style="color:{0}">{1}</span>', variant_color(csqidx), csq_string);
 }

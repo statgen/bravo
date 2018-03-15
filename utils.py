@@ -87,7 +87,7 @@ class Consequence(object):
     csqidxs = {csq:i for i,csq in enumerate(csqs)}
     as_obj = {
         'order':csqs,
-        'n_lof':len(_lof_csqs),
+        'n_lof':len(_lof_csqs), # todo: instead use `last_lof_csqidx`, likewise below
         'n_lof_mis':len(_lof_csqs)+len(_missense_csqs),
         'n_lof_mis_syn':len(_lof_csqs)+len(_missense_csqs)+len(_synonymous_csqs),
     }
