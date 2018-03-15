@@ -77,8 +77,10 @@
                 <li><a href="{{ url_for('.about_page') }}" style="color: #333; font-weight: bold;">About</a></li>
  		<li><a href="{{ url_for('.download_page') }}" style="color: #333; font-weight: bold;">dbSNP</a></li>
                 <li><a href="{{ url_for('.help_page') }}" style="color: #333; font-weight: bold;">API</a></li>
-           	<li><a href="{{ url_for('.terms_page') }}" style="color: #333; font-weight: bold;">Terms</a></li>
-     		{% if current_user.is_authenticated %}
+                {% if config['GOOGLE_AUTH'] and config['TERMS'] %}
+                <li><a href="{{ url_for('.terms_page') }}" style="color: #333; font-weight: bold;">Terms</a></li>
+     		{% endif %}
+                {% if current_user.is_authenticated %}
                 <li class="dropdown" style="margin: 0px 0px 0px 0px;">
                     <a href="#" class="dropdown-toggle" style="padding-top: 10px; padding-bottom: 10px;" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
                     {% if current_user.picture is none %}

@@ -39,6 +39,7 @@ import re
 import pysam
 import io
 import sequences
+from datetime import timedelta
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
 
@@ -326,24 +327,28 @@ def require_agreement_to_terms_and_store_destination(func):
     """
     This decorator for routes checks that the user is logged in and has agreed to the terms.
     If they haven't, their intended destination is stored and they're sent to get authorized.
+    If such check is not mandatory (i.e. not required), then set GOOGLE_AUTH and TERMS flags in configuration file to False.
     I think that it has to be placed AFTER @app.route() so that it can capture `request.path`.
     """
     # inspired by <https://flask-login.readthedocs.org/en/latest/_modules/flask_login.html#login_required>
     @functools.wraps(func)
     def decorated_view(*args, **kwargs):
-        if hasattr(current_user, 'agreed_to_terms') and current_user.agreed_to_terms:
-            return func(*args, **kwargs)
-        else:
-            print('unauthorized user {!r} visited the url [{!r}]'.format(current_user, request.path))
-            session['original_destination'] = request.path
-            return redirect(url_for('.get_authorized'))
+        if app.config['GOOGLE_AUTH']:
+            if current_user.is_anonymous:
+                session['original_destination'] = request.path
+                return redirect(url_for('.get_authorized'))
+            if app.config['TERMS'] and (not hasattr(current_user, 'agreed_to_terms') or not current_user.agreed_to_terms):
+                session['original_destination'] = request.path
+                return redirect(url_for('.terms_page'))
         return func(*args, **kwargs)
     return decorated_view
 
-def _log(message=''):
+
+def _log(message = ''):
     url = request.full_path.rstrip('?')
     if url.startswith(app.config['URL_PREFIX']): url = url[len(app.config['URL_PREFIX']):]
     print('{}  {}{}'.format(current_user, url, message))
+
 
 def _err():
     url = request.full_path.rstrip('?')
@@ -678,13 +683,13 @@ def not_found_page(query):
         query=query
     )
 
-@bp.route('/error/<message>')
-@bp.errorhandler(404)
-def error_page(message):
-    return render_template(
-        'error.html',
-        message=message
-    ), 404
+#@bp.route('/error/<message>')
+#@bp.errorhandler(404)
+#def error_page(message):
+#    return render_template(
+#        'error.html',
+#        message=message
+#    ), 404
 
 
 @bp.route('/download')
@@ -708,10 +713,14 @@ def about_page():
     _log()
     return render_template('about.html')
 
+
 @bp.route('/terms')
 def terms_page():
     _log()
-    return render_template('terms.html')
+    if app.config['GOOGLE_AUTH'] and app.config['TERMS']:
+        return render_template('terms.html')
+    abort(404)
+
 
 @bp.route('/help')
 def help_page():
@@ -772,9 +781,10 @@ google_sign_in = auth.GoogleSignIn(app)
 lm = LoginManager(app)
 lm.login_view = 'bp.homepage'
 
+
 class User(UserMixin):
     "A user's id is their email address."
-    def __init__(self, username=None, email=None, agreed_to_terms=False, picture=None, enabled_api=False, google_client_id=None, no_newsletters=False, admin=False):
+    def __init__(self, username = None, email = None, agreed_to_terms = False, picture = None, enabled_api = False, google_client_id = None, no_newsletters = False, admin = False):
         self.username = username
         self.email = email
         self.agreed_to_terms = agreed_to_terms
@@ -783,7 +793,6 @@ class User(UserMixin):
         self.google_client_id = google_client_id
         self.no_newsletters = no_newsletters
         self.admin = admin
-
     def get_id(self):
         return self.email
     def __str__(self):
@@ -793,112 +802,124 @@ class User(UserMixin):
 
 
 def encode_user(user):
-    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms, 'picture': user.picture, 'enabled_api': user.enabled_api, 'google_client_id': user.google_client_id, 'no_newsletters': user.no_newsletters}
+    return { '_type': 'User', 
+             'user_id': user.get_id(), 
+             'username': user.username, 
+             'email': user.email, 
+             'agreed_to_terms': user.agreed_to_terms, 
+             'picture': user.picture, 
+             'enabled_api': user.enabled_api, 
+             'google_client_id': user.google_client_id, 
+             'no_newsletters': user.no_newsletters }
+
 
 def decode_user(document):
-    assert document['_type'] == 'User'
-    return User(document['username'], document['email'], document['agreed_to_terms'], document.get('picture', None), document.get('enabled_api', False), document.get('google_client_id', None), document.get('no_newsletters', False))
+    return User(username = document['username'],
+                email = document['email'],
+                agreed_to_terms = document['agreed_to_terms'],
+                picture = document.get('picture', None),
+                enabled_api = document.get('enabled_api', False),
+                google_client_id = document.get('google_client_id', None),
+                no_newsletters = document.get('no_newsletters', False))
+
 
 @lm.user_loader
 def load_user(id):
     db = get_db()
-    document = db.users.find_one({'user_id': id}, projection = {'_id': False})
-    if document:
-        u = decode_user(document)
-        if app.config['ADMIN'] is True and u.email in app.config['ADMINS']:
-            if app.config['PROXY'] is True:
-                x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
-                ip = x_forwarded_for[-1].strip() if len(x_forwarded_for) > 0 else ''
-            else:
-                ip = request.remote_addr
-            try:
-                network = ip_network(ip).supernet(new_prefix = 16)
-                if any(network == ip_network(x) for x in app.config['ADMIN_ALLOWED_IP']):
-                    u.admin = True
-            except AddressValueError:
-                u.admin = False
-    else:
-        # This method is supposed to support bad `id`s.
-        print('user not found with id [{!r}]'.format(id))
-        u = None
-    return u
+    try:
+        document = db.users.find_one({'user_id': id, '_type': 'User'}, projection = {'_id': False})
+        if document:
+            user = decode_user(document)
+            # check if user is admin and admin mode is enabled
+            if app.config['ADMIN'] is True and user.email in app.config['ADMINS']:
+                if app.config['PROXY'] is True:
+                    x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
+                    ip = x_forwarded_for[-1].strip() if len(x_forwarded_for) > 0 else ''
+                else:
+                    ip = request.remote_addr
+                try:
+                    network = ip_network(ip).supernet(new_prefix = 16)
+                    if any(network == ip_network(x) for x in app.config['ADMIN_ALLOWED_IP']):
+                        user.admin = True
+                except AddressValueError:
+                    user.admin = False
+            return user
+    except:
+        pass
+    return None
+
 
 @bp.route('/agree_to_terms')
 def agree_to_terms():
     "this route is for when the user has clicked 'I agree to the terms'."
-    if not current_user.is_anonymous:
-        current_user.agreed_to_terms = True
-        db = get_db()
-        result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})
     _log()
-    return redirect(url_for('.get_authorized'))
+    if app.config['GOOGLE_AUTH'] and app.config['TERMS']: 
+        if not current_user.is_anonymous:
+            db = get_db()
+            current_user.agreed_to_terms = True
+            result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})     
+        return redirect(session.pop('original_destination', url_for('.homepage')))
+    abort(404)
 
-@bp.route('/logout')
-def logout():
-    _log()
-    logout_user()
-    return redirect(url_for('.homepage'))
 
 @bp.route('/login_with_google')
 def login_with_google():
     "this route is for the login button"
-    session['original_destination'] = url_for('.homepage')
-    return redirect(url_for('.get_authorized'))
+    _log()
+    if app.config['GOOGLE_AUTH']:
+        session['original_destination'] = url_for('.homepage')
+        return redirect(url_for('.get_authorized'))
+    abort(404)
+
+
+@bp.route('/logout')
+def logout():
+    _log()
+    if app.config['GOOGLE_AUTH']:
+        logout_user()
+        return redirect(url_for('.homepage'))
+    abort(404)
+
 
 @bp.route('/get_authorized')
 def get_authorized():
-    "This route tries to be clever and handle lots of situations."
-    if current_user.is_anonymous:
-        return google_sign_in.authorize()
-    elif not current_user.agreed_to_terms:
-        return redirect(url_for('.terms_page'))
-    else:
-        if 'original_destination' in session:
-            orig_dest = session['original_destination']
-            del session['original_destination'] # We don't want old destinations hanging around.  If this leads to problems with re-opening windows, disable this line.
-        else:
-            orig_dest = url_for('.homepage')
-        return redirect(orig_dest)
+    _log()
+    if app.config['GOOGLE_AUTH']:
+        if current_user.is_anonymous:
+            return google_sign_in.authorize()
+        return redirect(session.pop('original_destination', url_for('.homepage')))
+    abort(404)
+
 
 @bp.route('/callback/google')
 def oauth_callback_google():
-    if not current_user.is_anonymous:
-        return redirect(url_for('.homepage'))
-    try:
-        username, email, picture = google_sign_in.callback() # oauth.callback reads request.args.
-    except:
-        print('Error in google_sign_in.callback():')
-        print(traceback.format_exc())
-        flash('Something is wrong with authentication.  Please email pjvh@umich.edu')
-        return redirect(url_for('.homepage'))
+    _log()
+    if not app.config['GOOGLE_AUTH']:
+        abort(404)
+    username, email, picture = google_sign_in.callback() # oauth.callback reads request.args.
     if email is None:
-        # I need a valid email address for my user identification
-        flash('Authentication failed by failing to get an email address.  Please email pjvh@umich.edu')
+        flash('Authentication failed.')
         return redirect(url_for('.homepage'))
 
     if app.config['EMAIL_WHITELIST']:
         if email.lower() not in app.config['EMAIL_WHITELIST']:
-            flash('Your email, {}, is not in the list of allowed emails. If it should be, email pjvh@umich.edu to request permission.'.format(email.lower()))
+            flash('Authentication failed.')
             return redirect(url_for('.homepage'))
-
-    # Look if the user already exists
 
     db = get_db()
     document = db.users.find_one({'user_id': email}, projection = {'_id': False})
-
     if document:
         user = decode_user(document)
         if picture and picture != user.picture:
             result = db.users.update_one({"user_id": user.get_id()}, {"$set": {"picture": picture}})
             user.picture = picture
     else:
-        user = User(email=email, username=username or email.split('@')[0], picture=picture)
+        user = User(email = email, username = username or email.split('@')[0], picture = picture)
         db.users.insert(encode_user(user))
-    #session['picture'] = None
-    # Log in the user, by default remembering them for their next visit
-    # unless they log out.
-    login_user(user, remember=True)
-    return redirect(url_for('.get_authorized'))
+
+    login_user(user, remember = True, duration = timedelta(days = 1))
+    return redirect(session.pop('original_destination', url_for('.homepage')))
+
 
 @bp.after_request
 def apply_caching(response):
