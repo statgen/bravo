@@ -8,10 +8,12 @@ Installation
    3. [Prepare coverage](#prepare-coverage)
    4. [Prepare CRAM](#prepare-cram)
 3. [Data Import](#data-import)
-4. [Authentication](#authentication)
-5. [Email Whitelist](#email-whitelist)
-6. [Google Analytics](#google-analytics)
-7. [Start the server](#start-the-server)
+4. [Access Control](#access-control)
+   1. [Authentication](#authentication)
+   2. [Email Whitelist](#email-whitelist)
+   3. [Terms Of Use](#terms-of-use)
+7. [Google Analytics](#google-analytics)
+8. [Start the server](#start-the-server)
 
 ## System Dependencies
 
@@ -148,7 +150,10 @@ While the other operations here are all idempotent, this one will wipe your user
 
     ./manage.py create_users
     
-## Authentication
+    
+## Access Control
+    
+### Authentication
 
 Bravo supports user authentication using Google's OAuth 2.0 protocol, which is optional and is disabled by default. This section describes how to enable it.
 
@@ -163,16 +168,20 @@ Third, follow these steps to enable authentication in Bravo:
 2. Assign the `GOOGLE_LOGIN_CLIENT_ID` variable in Bravo configuration file to your `Client ID` from Google.
 3. Assign the `GOOGLE_LOGIN_CLIENT_SECRET` variable in Bravo configuration file to your `Client secret` from Google.
 
-
-## Email Whitelist
-
+### Email Whitelist
 Bravo allows whitelist specific users based on their email address. To enable whitelisting, follow these steps:
 1. Set up user authentication as described in [Authentication](#authentication) section.
 2. Set the `EMAIL_WHITELIST` variable in Bravo configuration file to `True`.
 3. Import list of emails from a text file (one email per line) to the Mongo database:
     
        ./manage.py load_whitelist -w emails.txt
-       
+      
+### Terms of Use
+If your Bravo users must to agree to any terms/conditions before browsing your data, you need to enable **Terms of Use** page as follows:
+1. Set up user authentication as described in [Authentication](#authentication) section.
+2. Set the `TERMS` variable in Bravo configuration file to `True`.
+3. Write your terms/conditions to the `templates/terms.html` file.
+
 
 ## Google Analytics
 This step is optional. Go [here](https://analytics.google.com/analytics/web) and do whatever you have to to get your own `UA-xxxxxx-xx` tracking id.  Put that in `flask_config.py`.  Or just leave the default `UA-01234567-89`, and you won't receive any of the tracking data.
