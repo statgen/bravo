@@ -8,7 +8,7 @@ Installation
    3. [Prepare coverage](#prepare-coverage)
    4. [Prepare CRAM](#prepare-cram)
 3. [Data Import](#data-import)
-4. [OAuth](#oauth)
+4. [Authentication](#authentication)
 5. [Email Whitelist](#email-whitelist)
 6. [Google Analytics](#google-analytics)
 7. [Start the server](#start-the-server)
@@ -148,9 +148,22 @@ While the other operations here are all idempotent, this one will wipe your user
 
     ./manage.py create_users
     
-## OAuth
+## Authentication
 
-You need to set up a OAuth with Google.  Go [here](https://console.developers.google.com/apis/credentials) and create a project.  In the list "Authorized redirect URIs" add your OAuth callback URL, which should look like `https://example.com/callback/google` or `https://example.com:5000/callback/google`.  Then copy the client ID and secret from the top of that page into `flask_config.py` for the variables `GOOGLE_LOGIN_CLIENT_ID` and `GOOGLE_LOGIN_CLIENT_SECRET`.
+Bravo supports user authentication using Google's OAuth 2.0 protocol, which is optional and is disabled by default. This section descibes how to enable it.
+
+First, make sure that your Bravo instance is served using HTTPS protocol.
+
+Second, you need to set up a OAuth with Google. Go [here](https://console.developers.google.com/apis/credentials) and create a project. Your project will get a `Client ID` and a `Client secret`. In the list "Authorized redirect URIs" add your OAuth callback URL, which should look like `https://[bravo base URL]/callback/google` (e.g. `https://mybravo.myinstitution.org/callback/google`).
+
+**Attention!** Don't expose to anyone your `Client ID` and `Client secret`, and make sure you are using HTTPS for your callback URL.
+
+Third, follow these steps to enable authentication in Bravo:
+1. Set the `GOOGLE_AUTH` variable in Bravo configuration file to `True`.
+2. Assign the `GOOGLE_LOGIN_CLIENT_ID` variable in Bravo configuration file to your `Client ID` from Google.
+3. Assign the `GOOGLE_LOGIN_CLIENT_SECRET` variable in Bravo configuration file to your `Client secret` from Google.
+
+
 
 ## Email Whitelist
 
