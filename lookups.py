@@ -35,7 +35,7 @@ def get_variant(db, xpos, ref, alt):
     variant['genes'] = [gene for gene in variant['genes'] if gene != '']
     return variant
 
-def get_variant_by_variant_id(db, variant_id, default_to_boring_variant=False):
+def get_variant_by_variant_id(db, variant_id, default_to_boring_variant = False):
     try:
         chrom, pos, ref, alt = variant_id.split('-')
         pos = int(pos)
@@ -149,7 +149,7 @@ def get_awesomebar_result(db, query):
         num_groups = len([g for g in match.groups() if g is not None])
         chrom = match.groups()[0]
         if num_groups == 1:
-            return 'not_found', {'query': query}
+            return 'not_found', {'message': 'The search for {} returned no results.'.format(query)}
         pos = int(match.groups()[1].replace(',',''))
         if num_groups == 2:
             return 'region', {'chrom': chrom, 'start':pos, 'stop':pos}
@@ -158,7 +158,7 @@ def get_awesomebar_result(db, query):
             return 'region', {'chrom': chrom, 'start':pos, 'stop':end}
         return 'variant', {'variant_id': '{}-{}-{}-{}'.format(chrom, pos, match.groups()[2], match.groups()[3])}
 
-    return 'not_found', {'query': query}
+    return 'not_found', {'message': 'The search for {} returned no results.'.format(query)}
 
 
 class IntervalSet(object):
