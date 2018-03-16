@@ -323,6 +323,17 @@ def create_sequence_cache(collection = None):
     sequences.SequencesClient.create_cache_collection_and_index(db, collection)
 
 
+def load_whitelist(whitelist_file):
+    db = get_db()
+    db.whitelist.drop()
+    with open(whitelist_file, 'r') as ifile:
+        for line in ifile:
+            email = line.strip()
+            if email:
+                db.whitelist.insert({'user_id': email})
+    db.whitelist.ensure_index('user_id')
+
+
 def require_agreement_to_terms_and_store_destination(func):
     """
     This decorator for routes checks that the user is logged in and has agreed to the terms.
@@ -901,12 +912,14 @@ def oauth_callback_google():
         flash('Authentication failed.')
         return redirect(url_for('.homepage'))
 
+    db = get_db()
+
     if app.config['EMAIL_WHITELIST']:
-        if email.lower() not in app.config['EMAIL_WHITELIST']:
+        document = db.whitelist.find_one({'user_id': email}, projection = {'_id': False})
+        if not document:
             flash('Authentication failed.')
             return redirect(url_for('.homepage'))
 
-    db = get_db()
     document = db.users.find_one({'user_id': email}, projection = {'_id': False})
     if document:
         user = decode_user(document)
