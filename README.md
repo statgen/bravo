@@ -150,7 +150,7 @@ While the other operations here are all idempotent, this one will wipe your user
     
 ## Authentication
 
-Bravo supports user authentication using Google's OAuth 2.0 protocol, which is optional and is disabled by default. This section descibes how to enable it.
+Bravo supports user authentication using Google's OAuth 2.0 protocol, which is optional and is disabled by default. This section describes how to enable it.
 
 First, make sure that your Bravo instance is served using HTTPS protocol.
 
@@ -164,10 +164,15 @@ Third, follow these steps to enable authentication in Bravo:
 3. Assign the `GOOGLE_LOGIN_CLIENT_SECRET` variable in Bravo configuration file to your `Client secret` from Google.
 
 
-
 ## Email Whitelist
 
-In your section of `flask_config.py`, the variable `EMAIL_WHITELIST` should be a list of allowed email addresses.  Currently that list is made in a separate file like `whitelist_topmed.py` and imported into `flask_config.py`, but you could just use a list instead.  If the list is empty or false (ie, `EMAIL_WHITELIST = False`), any email will be allowed.
+Bravo allows whitelist specific users based on their email address. To enable whitelisting, follow these steps:
+1. Set up user authentication as described in [Authentication](#authentication) section.
+2. Set the `EMAIL_WHITELIST` variable in Bravo configuration file to `True`.
+3. Import list of emails from a text file (one email per line) to the Mongo database:
+    
+       ./manage.py load_whitelist -w emails.txt
+       
 
 ## Google Analytics
 This step is optional. Go [here](https://analytics.google.com/analytics/web) and do whatever you have to to get your own `UA-xxxxxx-xx` tracking id.  Put that in `flask_config.py`.  Or just leave the default `UA-01234567-89`, and you won't receive any of the tracking data.
