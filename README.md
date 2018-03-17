@@ -8,10 +8,12 @@ Installation
    3. [Prepare coverage](#prepare-coverage)
    4. [Prepare CRAM](#prepare-cram)
 3. [Data Import](#data-import)
-4. [OAuth](#oauth)
-5. [Email Whitelist](#email-whitelist)
-6. [Google Analytics](#google-analytics)
-7. [Start the server](#start-the-server)
+4. [Access Control](#access-control)
+   1. [Authentication](#authentication)
+   2. [Email Whitelist](#email-whitelist)
+   3. [Terms Of Use](#terms-of-use)
+7. [Google Analytics](#google-analytics)
+8. [Start the server](#start-the-server)
 
 ## System Dependencies
 
@@ -148,13 +150,38 @@ While the other operations here are all idempotent, this one will wipe your user
 
     ./manage.py create_users
     
-## OAuth
+    
+## Access Control
+    
+### Authentication
 
-You need to set up a OAuth with Google.  Go [here](https://console.developers.google.com/apis/credentials) and create a project.  In the list "Authorized redirect URIs" add your OAuth callback URL, which should look like `https://example.com/callback/google` or `https://example.com:5000/callback/google`.  Then copy the client ID and secret from the top of that page into `flask_config.py` for the variables `GOOGLE_LOGIN_CLIENT_ID` and `GOOGLE_LOGIN_CLIENT_SECRET`.
+Bravo supports user authentication using Google's OAuth 2.0 protocol, which is optional and is disabled by default. This section describes how to enable it.
 
-## Email Whitelist
+First, make sure that your Bravo instance is served using HTTPS protocol.
 
-In your section of `flask_config.py`, the variable `EMAIL_WHITELIST` should be a list of allowed email addresses.  Currently that list is made in a separate file like `whitelist_topmed.py` and imported into `flask_config.py`, but you could just use a list instead.  If the list is empty or false (ie, `EMAIL_WHITELIST = False`), any email will be allowed.
+Second, you need to set up a OAuth with Google. Go [here](https://console.developers.google.com/apis/credentials) and create a project. Your project will get a `Client ID` and a `Client secret`. In the list "Authorized redirect URIs" add your OAuth callback URL, which should look like `https://[bravo base URL]/callback/google` (e.g. `https://mybravo.myinstitution.org/callback/google`).
+
+**Attention!** Don't expose to anyone your `Client ID` and `Client secret`, and make sure you are using HTTPS for your callback URL.
+
+Third, follow these steps to enable authentication in Bravo:
+1. Set the `GOOGLE_AUTH` variable in Bravo configuration file to `True`.
+2. Assign the `GOOGLE_LOGIN_CLIENT_ID` variable in Bravo configuration file to your `Client ID` from Google.
+3. Assign the `GOOGLE_LOGIN_CLIENT_SECRET` variable in Bravo configuration file to your `Client secret` from Google.
+
+### Email Whitelist
+Bravo allows whitelist specific users based on their email address. To enable whitelisting, follow these steps:
+1. Set up user authentication as described in [Authentication](#authentication) section.
+2. Set the `EMAIL_WHITELIST` variable in Bravo configuration file to `True`.
+3. Import list of emails from a text file (one email per line) to the Mongo database:
+    
+       ./manage.py load_whitelist -w emails.txt
+      
+### Terms of Use
+If your Bravo users must to agree to any terms/conditions before browsing your data, you need to enable **Terms of Use** page as follows:
+1. Set up user authentication as described in [Authentication](#authentication) section.
+2. Set the `TERMS` variable in Bravo configuration file to `True`.
+3. Write your terms/conditions to the `templates/terms.html` file.
+
 
 ## Google Analytics
 This step is optional. Go [here](https://analytics.google.com/analytics/web) and do whatever you have to to get your own `UA-xxxxxx-xx` tracking id.  Put that in `flask_config.py`.  Or just leave the default `UA-01234567-89`, and you won't receive any of the tracking data.

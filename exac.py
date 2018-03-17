@@ -39,6 +39,7 @@ import re
 import pysam
 import io
 import sequences
+from datetime import timedelta
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
 
@@ -322,28 +323,43 @@ def create_sequence_cache(collection = None):
     sequences.SequencesClient.create_cache_collection_and_index(db, collection)
 
 
+def load_whitelist(whitelist_file):
+    db = get_db()
+    db.whitelist.drop()
+    with open(whitelist_file, 'r') as ifile:
+        for line in ifile:
+            email = line.strip()
+            if email:
+                db.whitelist.insert({'user_id': email})
+    db.whitelist.ensure_index('user_id')
+
+
 def require_agreement_to_terms_and_store_destination(func):
     """
     This decorator for routes checks that the user is logged in and has agreed to the terms.
     If they haven't, their intended destination is stored and they're sent to get authorized.
+    If such check is not mandatory (i.e. not required), then set GOOGLE_AUTH and TERMS flags in configuration file to False.
     I think that it has to be placed AFTER @app.route() so that it can capture `request.path`.
     """
     # inspired by <https://flask-login.readthedocs.org/en/latest/_modules/flask_login.html#login_required>
     @functools.wraps(func)
     def decorated_view(*args, **kwargs):
-        if hasattr(current_user, 'agreed_to_terms') and current_user.agreed_to_terms:
-            return func(*args, **kwargs)
-        else:
-            print('unauthorized user {!r} visited the url [{!r}]'.format(current_user, request.path))
-            session['original_destination'] = request.path
-            return redirect(url_for('.get_authorized'))
+        if app.config['GOOGLE_AUTH']:
+            if current_user.is_anonymous:
+                session['original_destination'] = request.path
+                return redirect(url_for('.get_authorized'))
+            if app.config['TERMS'] and (not hasattr(current_user, 'agreed_to_terms') or not current_user.agreed_to_terms):
+                session['original_destination'] = request.path
+                return redirect(url_for('.terms_page'))
         return func(*args, **kwargs)
     return decorated_view
 
-def _log(message=''):
+
+def _log(message = ''):
     url = request.full_path.rstrip('?')
     if url.startswith(app.config['URL_PREFIX']): url = url[len(app.config['URL_PREFIX']):]
     print('{}  {}{}'.format(current_user, url, message))
+
 
 def _err():
     url = request.full_path.rstrip('?')
@@ -391,7 +407,7 @@ def user_profile_page():
                 current_user.enabled_api = enabled_api
                 current_user.no_newsletters = no_newsletters
         return render_template('user_profile.html', error = error, success = success)
-    except: _err(); abort(404)
+    except: _err(); abort(500)
 
 @bp.route('/administration', methods = ['GET', 'POST'])
 @require_agreement_to_terms_and_store_destination
@@ -403,7 +419,7 @@ def administration_page():
         error = None
         success = None
         return render_template('administration.html', error = error, success = success)
-    except: _err(); abort(404)
+    except: _err(); abort(500)
 
 @bp.route('/administration/users', methods = ['POST'])
 @require_agreement_to_terms_and_store_destination
@@ -439,7 +455,7 @@ def administration_users_api():
         users = list(db.users.aggregate([ {'$match': mongo_filter}, {'$sort': mongo_sort}, {'$skip': args['start']}, {'$limit': args['length']}, {'$project': mongo_projection} ]))
         response = { 'recordsFiltered': n_filtered_users, 'recordsTotal': n_total_users, 'data': users , 'draw': args['draw'] }
         return jsonify(response)
-    except: _err(); abort(404)
+    except: _err(); abort(500)
 
 
 @bp.route('/variant/<variant_id>')
@@ -448,8 +464,8 @@ def variant_page(variant_id):
     db = get_db()
     try:
         _log()
-        variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant=True)
-        if not variant: return error_page('Variant {!r} not found'.format(variant_id))
+        variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant = False)
+        if not variant: return not_found_page('The requested variant {!s} could not be found.'.format(variant_id))
      
         pop_names = {k + '_AF': '1000G ' + v for k, v in {'AFR':'African', 'AMR':'American', 'EAS':'East Asian', 'EUR':'European', 'SAS':'South Asian'}.items()}
         if 'pop_afs' in variant:
@@ -481,7 +497,7 @@ def variant_page(variant_id):
             top_HGVSs=top_HGVSs,
             gene_for_top_csq=gene_for_top_csq,
         )
-    except: _err(); abort(404)
+    except: _err(); abort(500)
 
 
 @bp.route('/gene/<gene_id>')
@@ -490,7 +506,7 @@ def gene_page(gene_id):
     db = get_db()
     try:
         gene = lookups.get_gene(db, gene_id)
-        if not gene: return error_page('Gene {!r} not found'.format(gene_id))
+        if not gene: return not_found_page('The requested gene {!s} could not be found.'.format(gene_id))
         _log('   ({})'.format(gene.get('gene_name')))
         intervalset = IntervalSet.from_gene(db, gene_id)
         genes = TranscriptSet.from_gene(db, gene_id).genes
@@ -499,7 +515,7 @@ def gene_page(gene_id):
             intervalset=intervalset, genes=genes, csq=Consequence.as_obj,
             gene=gene,
         )
-    except:_err(); abort(404)
+    except:_err(); abort(500)
 
 @bp.route('/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
@@ -508,7 +524,7 @@ def transcript_page(transcript_id):
     try:
         _log()
         transcript = lookups.get_transcript(db, transcript_id)
-        if not transcript: return error_page('Transcript {!r} not found'.format(transcript_id))
+        if not transcript: return not_found_page('The requested transcript {!s} could not be found.'.format(transcript_id))
         gene = lookups.get_gene(db, transcript['gene_id'])
         intervalset = IntervalSet.from_transcript(db, transcript_id)
         genes = TranscriptSet.from_transcript(db, transcript_id).genes
@@ -518,7 +534,7 @@ def transcript_page(transcript_id):
             gene=gene,
             transcript=transcript,
         )
-    except:_err(); abort(404)
+    except:_err(); abort(500)
 
 @bp.route('/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
@@ -526,20 +542,28 @@ def region_page(chrom, start, stop):
     db = get_db()
     try:
         _log()
-        try: start,stop = int(start),int(stop)
-        except: return error_page('Positions not integers: {!r}, {!r}'.format(start, stop))
-        if start > stop: return error_page("The region '{chrom}-{start}-{stop}' stops before it starts. Did you mean '{chrom}-{stop}-{start}'?".format(chrom=chrom, start=start, stop=stop))
-        if stop-start > MAX_REGION_LENGTH: return error_page("The region '{chrom}-{start}-{stop}' is {:,} bases. We only accept regions shorter than {:,} bases.".format(stop-start, MAX_REGION_LENGTH, chrom=chrom, start=start, stop=stop))
-        if start == stop: start -= 20; stop += 20
-
+        try:
+            start = int(start)
+        except:
+            return bad_request_page('The start position {!s} is not integer.'.format(start))
+        try: 
+            stop = int(stop)
+        except:
+            return bad_request_page('The stop position {!s} is not integer.'.format(stop))
+        if start > stop:
+            return bad_request_page("The region '{chrom}-{start}-{stop}' stops before it starts. Did you mean '{chrom}-{stop}-{start}'?".format(chrom = chrom, start = start, stop = stop))
+        if stop-start > MAX_REGION_LENGTH:
+            return bad_request_page("The region '{chrom}-{start}-{stop}' is {:,} bases. We only accept regions shorter than {:,} bases.".format(stop - start, MAX_REGION_LENGTH, chrom = chrom, start = start, stop = stop))
+        if start == stop:
+            start -= 20
+            stop += 20
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         genes = TranscriptSet.from_chrom_start_stop(db, chrom, start, stop).genes
         return render_template(
             'region.html',
-            intervalset=intervalset, genes=genes, csq=Consequence.as_obj,
+            intervalset = intervalset, genes = genes, csq = Consequence.as_obj,
         )
-    except: _err(); abort(404)
-
+    except: _err(); abort(500)
 
 @bp.route('/download/gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
@@ -548,7 +572,8 @@ def download_gene_variants(gene_id):
     try:
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
         return _get_variants_csv_for_intervalset(intervalset, '{}.csv'.format(gene_id))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 @bp.route('/download/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def download_transcript_variants(transcript_id):
@@ -556,7 +581,8 @@ def download_transcript_variants(transcript_id):
     try:
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
         return _get_variants_csv_for_intervalset(intervalset, '{}.csv'.format(transcript_id))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 @bp.route('/download/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def download_region_variants(chrom, start, stop):
@@ -564,7 +590,8 @@ def download_region_variants(chrom, start, stop):
         start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return _get_variants_csv_for_intervalset(intervalset, 'chr{}-{}-{}.csv'.format(chrom, start, stop))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 def _get_variants_csv_for_intervalset(intervalset, filename):
     _log()
     resp = make_response(lookups.get_variants_csv_str_for_intervalset(get_db(), intervalset))
@@ -579,14 +606,16 @@ def gene_summary_api(gene_id):
     try:
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
         return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 @bp.route('/api/summary/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def transcript_summary_api(transcript_id):
     try:
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
         return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 @bp.route('/api/summary/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def region_summary_api(chrom, start, stop):
@@ -594,8 +623,7 @@ def region_summary_api(chrom, start, stop):
         start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return jsonify(lookups.get_summary_for_intervalset(get_db(), intervalset))
-    except:_err(); abort(404)
-
+    except:_err(); abort(500)
 
 @bp.route('/api/variants/gene/<gene_id>', methods=['POST'])
 @require_agreement_to_terms_and_store_destination
@@ -603,14 +631,16 @@ def gene_variants_subset_api(gene_id):
     try:
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
         return _get_variants_subset_response_for_intervalset(intervalset)
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 @bp.route('/api/variants/transcript/<transcript_id>', methods=['POST'])
 @require_agreement_to_terms_and_store_destination
 def transcript_variants_subset_api(transcript_id):
     try:
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
         return _get_variants_subset_response_for_intervalset(intervalset)
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 @bp.route('/api/variants/region/<chrom>-<start>-<stop>', methods=['POST'])
 @require_agreement_to_terms_and_store_destination
 def region_variants_subset_api(chrom, start, stop):
@@ -618,7 +648,8 @@ def region_variants_subset_api(chrom, start, stop):
         start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return _get_variants_subset_response_for_intervalset(intervalset)
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 def _get_variants_subset_response_for_intervalset(intervalset):
     db = get_db()
     args = json.loads(request.form['args'])
@@ -631,21 +662,22 @@ def _get_variants_subset_response_for_intervalset(intervalset):
     ret['draw'] = args['draw']
     return jsonify(ret)
 
-
 @bp.route('/api/coverage/gene/<gene_id>')
 @require_agreement_to_terms_and_store_destination
 def gene_coverage_api(gene_id):
     try:
         intervalset = IntervalSet.from_gene(get_db(), gene_id)
         return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 @bp.route('/api/coverage/transcript/<transcript_id>')
 @require_agreement_to_terms_and_store_destination
 def transcript_coverage_api(transcript_id):
     try:
         intervalset = IntervalSet.from_transcript(get_db(), transcript_id)
         return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
+
 @bp.route('/api/coverage/region/<chrom>-<start>-<stop>')
 @require_agreement_to_terms_and_store_destination
 def region_coverage_api(chrom, start, stop):
@@ -653,8 +685,7 @@ def region_coverage_api(chrom, start, stop):
         start,stop = int(start),int(stop); assert stop-start <= MAX_REGION_LENGTH
         intervalset = IntervalSet.from_chrom_start_stop(chrom, start, stop)
         return jsonify(get_coverage_handler().get_coverage_for_intervalset(intervalset))
-    except:_err(); abort(404)
-
+    except:_err(); abort(500)
 
 @bp.route('/multi_variant_rsid/<rsid>')
 @require_agreement_to_terms_and_store_destination
@@ -664,27 +695,19 @@ def multi_variant_rsid_page(rsid):
         _log()
         variants = lookups.get_variants_by_rsid(db, rsid)
         if variants is None or len(variants) == 0:
-            return error_page("There are no variants with the rsid '{}'".format(rsid))
-        return error_page('There are multiple variants at the location of rsid {}: {}'.format(
+            return not_found_page("There are no variants with the rsid '{}'".format(rsid))
+        return not_found_page('There are multiple variants at the location of rsid {}: {}'.format(
             rsid,
             ', '.join('{chrom}-{pos}-{ref}-{alt}'.format(**variant) for variant in variants)))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
 
+@bp.route('/not_found/<message>')
+def not_found_page(message):
+    return render_template('not_found.html', message = message), 404
 
-@bp.route('/not_found/<query>')
-def not_found_page(query):
-    return render_template(
-        'not_found.html',
-        query=query
-    )
-
-@bp.route('/error/<message>')
-@bp.errorhandler(404)
-def error_page(message):
-    return render_template(
-        'error.html',
-        message=message
-    ), 404
+@bp.route('/bad_request/<message>')
+def bad_request_page(message):
+    return render_template('bad_request.html', message = message), 400
 
 
 @bp.route('/download')
@@ -700,7 +723,7 @@ def download_full_vcf():
     _log()
     try:
         return make_response(send_file(app.config['DOWNLOAD_ALL_FILEPATH'], as_attachment=True, mimetype='application/gzip'))
-    except:_err(); abort(404)
+    except:_err(); abort(500)
 
 
 @bp.route('/about')
@@ -708,10 +731,14 @@ def about_page():
     _log()
     return render_template('about.html')
 
+
 @bp.route('/terms')
 def terms_page():
     _log()
-    return render_template('terms.html')
+    if app.config['GOOGLE_AUTH'] and app.config['TERMS']:
+        return render_template('terms.html')
+    abort(404)
+
 
 @bp.route('/help')
 def help_page():
@@ -731,7 +758,7 @@ def variant_bams(variant_id):
         if response is None:
             response = { 'names': [] }
         return jsonify(response)
-    except: _err(); abort(404)
+    except: _err(); abort(500)
 
 
 @bp.route('/variant/<variant_id>/<sample_id>.bam.bai')
@@ -742,10 +769,10 @@ def test_bai(variant_id, sample_id):
         _log()
         start_time = time.time()
         file_path = sequencesClient.get_bai(db, variant_id, sample_id)
-        if file_path is None: _err(); abort(404)
+        if file_path is None: _err(); abort(500)
         print 'Done preparing BAM and BAI. Took %s seconds' % (time.time() - start_time)
         return make_response(send_file(file_path, as_attachment = False)) 
-    except: _err(); abort(404)
+    except: _err(); abort(500)
 
 
 @bp.route('/variant/<variant_id>/<sample_id>.bam')
@@ -757,12 +784,12 @@ def test_bam(variant_id, sample_id):
         range_header = request.headers.get('Range', None)
         m = re.search('(\d+)-(\d*)', range_header)
         result = sequencesClient.get_bam(db, variant_id, sample_id, m.group(1), m.group(2))
-        if result is None: _err(); abort(404)
+        if result is None: _err(); abort(500)
         response = Response(result['data'], 206, mimetype = "application/octet-stream .bam", direct_passthrough = True)
         response.headers['Content-Range'] = 'bytes {0}-{1}/{2}'.format(result['start'], result['end'], result['size'])
         print 'Prepared BAM for sending. Took %s seconds' % (time.time() - start_time)
         return response
-    except: _err(); abort(404)
+    except: _err(); abort(500)
 
 
 
@@ -772,9 +799,10 @@ google_sign_in = auth.GoogleSignIn(app)
 lm = LoginManager(app)
 lm.login_view = 'bp.homepage'
 
+
 class User(UserMixin):
     "A user's id is their email address."
-    def __init__(self, username=None, email=None, agreed_to_terms=False, picture=None, enabled_api=False, google_client_id=None, no_newsletters=False, admin=False):
+    def __init__(self, username = None, email = None, agreed_to_terms = False, picture = None, enabled_api = False, google_client_id = None, no_newsletters = False, admin = False):
         self.username = username
         self.email = email
         self.agreed_to_terms = agreed_to_terms
@@ -783,7 +811,6 @@ class User(UserMixin):
         self.google_client_id = google_client_id
         self.no_newsletters = no_newsletters
         self.admin = admin
-
     def get_id(self):
         return self.email
     def __str__(self):
@@ -793,112 +820,126 @@ class User(UserMixin):
 
 
 def encode_user(user):
-    return {'_type': 'User', 'user_id': user.get_id(), 'username': user.username, 'email': user.email, 'agreed_to_terms': user.agreed_to_terms, 'picture': user.picture, 'enabled_api': user.enabled_api, 'google_client_id': user.google_client_id, 'no_newsletters': user.no_newsletters}
+    return { '_type': 'User', 
+             'user_id': user.get_id(), 
+             'username': user.username, 
+             'email': user.email, 
+             'agreed_to_terms': user.agreed_to_terms, 
+             'picture': user.picture, 
+             'enabled_api': user.enabled_api, 
+             'google_client_id': user.google_client_id, 
+             'no_newsletters': user.no_newsletters }
+
 
 def decode_user(document):
-    assert document['_type'] == 'User'
-    return User(document['username'], document['email'], document['agreed_to_terms'], document.get('picture', None), document.get('enabled_api', False), document.get('google_client_id', None), document.get('no_newsletters', False))
+    return User(username = document['username'],
+                email = document['email'],
+                agreed_to_terms = document['agreed_to_terms'],
+                picture = document.get('picture', None),
+                enabled_api = document.get('enabled_api', False),
+                google_client_id = document.get('google_client_id', None),
+                no_newsletters = document.get('no_newsletters', False))
+
 
 @lm.user_loader
 def load_user(id):
     db = get_db()
-    document = db.users.find_one({'user_id': id}, projection = {'_id': False})
-    if document:
-        u = decode_user(document)
-        if app.config['ADMIN'] is True and u.email in app.config['ADMINS']:
-            if app.config['PROXY'] is True:
-                x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
-                ip = x_forwarded_for[-1].strip() if len(x_forwarded_for) > 0 else ''
-            else:
-                ip = request.remote_addr
-            try:
-                network = ip_network(ip).supernet(new_prefix = 16)
-                if any(network == ip_network(x) for x in app.config['ADMIN_ALLOWED_IP']):
-                    u.admin = True
-            except AddressValueError:
-                u.admin = False
-    else:
-        # This method is supposed to support bad `id`s.
-        print('user not found with id [{!r}]'.format(id))
-        u = None
-    return u
+    try:
+        document = db.users.find_one({'user_id': id, '_type': 'User'}, projection = {'_id': False})
+        if document:
+            user = decode_user(document)
+            # check if user is admin and admin mode is enabled
+            if app.config['ADMIN'] is True and user.email in app.config['ADMINS']:
+                if app.config['PROXY'] is True:
+                    x_forwarded_for = request.headers.get('X-Forwarded-For', '').split(',')
+                    ip = x_forwarded_for[-1].strip() if len(x_forwarded_for) > 0 else ''
+                else:
+                    ip = request.remote_addr
+                try:
+                    network = ip_network(ip).supernet(new_prefix = 16)
+                    if any(network == ip_network(x) for x in app.config['ADMIN_ALLOWED_IP']):
+                        user.admin = True
+                except AddressValueError:
+                    user.admin = False
+            return user
+    except:
+        pass
+    return None
+
 
 @bp.route('/agree_to_terms')
 def agree_to_terms():
     "this route is for when the user has clicked 'I agree to the terms'."
-    if not current_user.is_anonymous:
-        current_user.agreed_to_terms = True
-        db = get_db()
-        result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})
     _log()
-    return redirect(url_for('.get_authorized'))
+    if app.config['GOOGLE_AUTH'] and app.config['TERMS']: 
+        if not current_user.is_anonymous:
+            db = get_db()
+            current_user.agreed_to_terms = True
+            result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})     
+        return redirect(session.pop('original_destination', url_for('.homepage')))
+    abort(404)
 
-@bp.route('/logout')
-def logout():
-    _log()
-    logout_user()
-    return redirect(url_for('.homepage'))
 
 @bp.route('/login_with_google')
 def login_with_google():
     "this route is for the login button"
-    session['original_destination'] = url_for('.homepage')
-    return redirect(url_for('.get_authorized'))
+    _log()
+    if app.config['GOOGLE_AUTH']:
+        session['original_destination'] = url_for('.homepage')
+        return redirect(url_for('.get_authorized'))
+    abort(404)
+
+
+@bp.route('/logout')
+def logout():
+    _log()
+    if app.config['GOOGLE_AUTH']:
+        logout_user()
+        return redirect(url_for('.homepage'))
+    abort(404)
+
 
 @bp.route('/get_authorized')
 def get_authorized():
-    "This route tries to be clever and handle lots of situations."
-    if current_user.is_anonymous:
-        return google_sign_in.authorize()
-    elif not current_user.agreed_to_terms:
-        return redirect(url_for('.terms_page'))
-    else:
-        if 'original_destination' in session:
-            orig_dest = session['original_destination']
-            del session['original_destination'] # We don't want old destinations hanging around.  If this leads to problems with re-opening windows, disable this line.
-        else:
-            orig_dest = url_for('.homepage')
-        return redirect(orig_dest)
+    _log()
+    if app.config['GOOGLE_AUTH']:
+        if current_user.is_anonymous:
+            return google_sign_in.authorize()
+        return redirect(session.pop('original_destination', url_for('.homepage')))
+    abort(404)
+
 
 @bp.route('/callback/google')
 def oauth_callback_google():
-    if not current_user.is_anonymous:
-        return redirect(url_for('.homepage'))
-    try:
-        username, email, picture = google_sign_in.callback() # oauth.callback reads request.args.
-    except:
-        print('Error in google_sign_in.callback():')
-        print(traceback.format_exc())
-        flash('Something is wrong with authentication.  Please email pjvh@umich.edu')
-        return redirect(url_for('.homepage'))
+    _log()
+    if not app.config['GOOGLE_AUTH']:
+        abort(404)
+    username, email, picture = google_sign_in.callback() # oauth.callback reads request.args.
     if email is None:
-        # I need a valid email address for my user identification
-        flash('Authentication failed by failing to get an email address.  Please email pjvh@umich.edu')
+        flash('Authentication failed.')
         return redirect(url_for('.homepage'))
-
-    if app.config['EMAIL_WHITELIST']:
-        if email.lower() not in app.config['EMAIL_WHITELIST']:
-            flash('Your email, {}, is not in the list of allowed emails. If it should be, email pjvh@umich.edu to request permission.'.format(email.lower()))
-            return redirect(url_for('.homepage'))
-
-    # Look if the user already exists
 
     db = get_db()
-    document = db.users.find_one({'user_id': email}, projection = {'_id': False})
 
+    if app.config['EMAIL_WHITELIST']:
+        document = db.whitelist.find_one({'user_id': email}, projection = {'_id': False})
+        if not document:
+            flash('Authentication failed.')
+            return redirect(url_for('.homepage'))
+
+    document = db.users.find_one({'user_id': email}, projection = {'_id': False})
     if document:
         user = decode_user(document)
         if picture and picture != user.picture:
             result = db.users.update_one({"user_id": user.get_id()}, {"$set": {"picture": picture}})
             user.picture = picture
     else:
-        user = User(email=email, username=username or email.split('@')[0], picture=picture)
+        user = User(email = email, username = username or email.split('@')[0], picture = picture)
         db.users.insert(encode_user(user))
-    #session['picture'] = None
-    # Log in the user, by default remembering them for their next visit
-    # unless they log out.
-    login_user(user, remember=True)
-    return redirect(url_for('.get_authorized'))
+
+    login_user(user, remember = True, duration = timedelta(days = 1))
+    return redirect(session.pop('original_destination', url_for('.homepage')))
+
 
 @bp.after_request
 def apply_caching(response):

@@ -77,6 +77,13 @@ def create_sequence_cache(collection):
         sys.exit("Collection name must be a non-empty string.")
     exac.create_sequence_cache(collection)
 
+@manager.option('-w', '--whitelist', dest = 'whitelist_file', type = str, required = True, help = 'Emails whitelist file. One email per line.')
+def load_whitelist(whitelist_file):
+    "Creates whitelist Monogo collection and populates it with provided emails."
+    if not whitelist_file.strip():
+        sys.exit("Whitelist file name must be a non-empty string.")
+    exac.load_whitelist(whitelist_file)
+
 if __name__ == "__main__":
     manager.run()
 
