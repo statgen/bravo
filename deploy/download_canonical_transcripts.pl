@@ -26,11 +26,12 @@ foreach my $db_adaptor (@db_adaptors) {
 
 =cut
 
+my $dbname = $ARGV[0];
 
 $registry->load_registry_from_db(
    -host => 'ensembldb.ensembl.org',
    -user => 'anonymous',
-   -dbname => 'homo_sapiens_core_89_38'
+   -dbname => $dbname
 ); 
 
 my $genes_adaptor = $registry->get_adaptor('human', 'core', 'gene');
