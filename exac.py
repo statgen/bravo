@@ -227,12 +227,6 @@ def _load_percentiles_from_vcf(vcf):
             print 'Finished. VCF {}. Processed {} variant(s) in {} second(s), {} matched, {} modified.'.format(vcf, n_variants, int(time.time() - start_time), n_matched, n_modified)
 
 
-def create_users():
-    db = get_db()
-    db.users.drop()
-    print 'Dropped users database.'
-    db.users.ensure_index('user_id')
-    print 'Created new users database.'
 
 
 def create_sequence_cache(collection = None):
@@ -240,17 +234,6 @@ def create_sequence_cache(collection = None):
     if collection is None:
         collection = app.config['IGV_CACHE_COLLECTION']
     sequences.SequencesClient.create_cache_collection_and_index(db, collection)
-
-
-def load_whitelist(whitelist_file):
-    db = get_db()
-    db.whitelist.drop()
-    with open(whitelist_file, 'r') as ifile:
-        for line in ifile:
-            email = line.strip()
-            if email:
-                db.whitelist.insert({'user_id': email})
-    db.whitelist.ensure_index('user_id')
 
 
 def require_agreement_to_terms_and_store_destination(func):

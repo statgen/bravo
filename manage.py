@@ -19,6 +19,12 @@ argparser_gene_models.add_argument('-m', '--omim', metavar = 'file', required = 
 argparser_gene_models.add_argument('-f', '--dbnsfp', metavar = 'file', required = True, type = str, dest = 'genenames_file', help = 'File (compressed using Gzip) with gene names from HGNC. Required columns separated by tab: symbol, name, alias_symbol, prev_name, ensembl_gene_id.')
 argparser_gene_models.add_argument('-g', '--gencode', metavar = 'file', required = True, type = str, dest = 'gencode_file', help = 'File from GENCODE in compressed GTF format.')
 
+argparser_users = argparser_subparsers.add_parser('users', help = 'Creates MongoDB collection for user data.')
+argparser_users.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
+
+argparser_whitelist = argparser_subparsers.add_parser('whitelist', help = 'Creates and populates MongoDB collection for whitelist\'ed users.')
+argparser_whitelist.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
+argparser_whitelist.add_argument('-w', '--whitelist', metavar = 'file', required = True, type = str, dest = 'whitelist_file', help = 'Emails whitelist file. One email per line.')
 
 def load_config(name):
     """Loads Bravo configuration class.
@@ -96,6 +102,33 @@ def load_gene_models(db, canonical_transcripts_file, omim_file, genenames_file, 
     sys.stdout.write('Inserted {} exon(s).\n'.format(db.exons.count()))
 
 
+def create_users(db):
+    """Creates users collection in MongoDB.
+
+    Arguments:
+    db -- connections to MongoDB database.
+    """
+    db.users.drop()
+    db.users.ensure_index('user_id')
+
+
+def create_whitelist(db, whitelist_file):
+    """Creates and populates MongoDB collections for whitelist'ed users.
+
+    Arguments:
+    db -- connections to MongoDB database.
+    whitelist_file -- file with emails of whitelist'ed users. One email per line.
+    """
+    db.whitelist.drop()
+    with open(whitelist_file, 'r') as ifile:
+        for line in ifile:
+            email = line.strip()
+            if email:
+                db.whitelist.insert({'user_id': email})
+    db.whitelist.ensure_index('user_id')
+    sys.stdout.write('Inserted {} email(s).\n'.format(db.whitelist.count()))
+
+
 if __name__ == '__main__':
     args = argparser.parse_args()
    
@@ -114,19 +147,19 @@ if __name__ == '__main__':
         sys.stdout.write('Start loading genes to {} database.\n'.format(mongo_db_name))
         load_gene_models(db, args.canonical_transcripts_file, args.omim_file, args.genenames_file, args.gencode_file)
         sys.stdout.write('Done loading genes to {} database.\n'.format(mongo_db_name))
+    elif args.command == 'users':
+        sys.stdout.write('Creating users collection in {} database.\n'.format(mongo_db_name))
+        create_users(db)
+        sys.stdout.write('Done creating users collection in {} database.\n'.format(mongo_db_name))
+    elif args.command == 'whitelist':
+        sys.stdout.write('Creating whitelist collection in {} database.\n'.format(mongo_db_name))
+        create_whitelist(db, args.whitelist_file)
+        sys.stdout.write('Done creating whitelist collection in {} database.\n'.format(mongo_db_name))
     else:
         raise Exception('Command {} is not supported.'.format(args.command))
 
 
 '''
-import sys
-from flask_script import Manager
-import exac
-
-
-manager = Manager(exac.app)
-
-
 @manager.command
 def load_variants_file():
     exac.load_variants_file()
@@ -134,14 +167,6 @@ def load_variants_file():
 @manager.command
 def load_dbsnp_file():
     exac.load_dbsnp_file()
-
-
-
-@manager.command
-def create_users():
-    exac.create_users()
-
-
 
 @manager.option('-i', '--input', dest = 'metrics_filename', type = str, required = True, help = 'File with the pre-calculated metrics. Every metric must be stored on a separate line in JSON format.')
 def load_metrics(metrics_filename):
@@ -181,14 +206,4 @@ def create_sequence_cache(collection):
     if collection is not None and not collection.strip():
         sys.exit("Collection name must be a non-empty string.")
     exac.create_sequence_cache(collection)
-
-@manager.option('-w', '--whitelist', dest = 'whitelist_file', type = str, required = True, help = 'Emails whitelist file. One email per line.')
-def load_whitelist(whitelist_file):
-    "Creates whitelist Monogo collection and populates it with provided emails."
-    if not whitelist_file.strip():
-        sys.exit("Whitelist file name must be a non-empty string.")
-    exac.load_whitelist(whitelist_file)
-
-if __name__ == "__main__":
-    manager.run()
 '''
