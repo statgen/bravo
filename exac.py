@@ -147,54 +147,6 @@ def load_custom_variants_file(collection_name, vcfs):
         collection.create_index(key)
 
 
-def _load_dbsnp_from_tabix_file_and_contig(args):
-    dbsnp_file, contig = args
-    db = get_db(new_connection=True)
-    dbsnp_record_generator = get_records_from_tabix_contig(dbsnp_file, contig, get_snp_from_dbsnp_file)
-    try:
-        db.dbsnp.insert(dbsnp_record_generator, w=0)
-    except pymongo.errors.InvalidOperation:
-        pass  # handle error when generator is empty
-
-def load_dbsnp_file():
-    db = get_db()
-
-    db.dbsnp.drop()
-    db.dbsnp.ensure_index('rsid') # It seems faster to build these indexes before inserts.  Strange.
-    db.dbsnp.ensure_index('xpos')
-    start_time = time.time()
-    dbsnp_file = app.config['DBSNP_FILE']
-
-    print "Loading dbsnp from %s" % dbsnp_file
-    if os.path.isfile(dbsnp_file + ".tbi"):
-        with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
-            # workaround for Pool.map() from <http://stackoverflow.com/a/1408476/1166306>
-            pool.map_async(_load_dbsnp_from_tabix_file_and_contig, get_tabix_file_contig_pairs([dbsnp_file])).get(9999999)
-        print('Done loading dbSNP in {:,} seconds'.format(int(time.time() - start_time)))
-
-    elif os.path.isfile(dbsnp_file):
-        # see if non-tabixed .gz version exists
-        print(("WARNING: %(dbsnp_file)s.tbi index file not found. Will use single thread to load dbsnp."
-               "To create a tabix-indexed dbsnp file based on UCSC dbsnp, do: \n"
-               "   wget http://hgdownload.soe.ucsc.edu/goldenPath/hg19/database/snp141.txt.gz \n"
-               "   gzcat snp141.txt.gz | cut -f 1-5 | bgzip -c > snp141.txt.bgz \n"
-               "   tabix -0 -s 2 -b 3 -e 4 snp141.txt.bgz") % locals())
-        with gzip.open(dbsnp_file) as f:
-            db.dbsnp.insert((snp for snp in get_snp_from_dbsnp_file(f)), w=0)
-
-    else:
-        raise Exception("dbsnp file %s(dbsnp_file)s not found." % locals())
-
-
-def load_metrics(filename):
-    db = get_db()
-    with gzip.GzipFile(filename, 'r') as ifile:
-        for line in ifile:
-            metric = json.loads(line)
-            db.metrics.insert(metric)
-    db.metrics.ensure_index('metric')
-
-
 def load_percentiles(vcfs):
     with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
         pool.map_async(_load_percentiles_from_vcf, vcfs).get(9999999)

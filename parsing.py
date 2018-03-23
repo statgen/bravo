@@ -1,6 +1,8 @@
 """
 Utils for reading flat files that are loaded into database
 """
+import pysam
+from contextlib import closing
 import re
 import traceback
 import itertools
@@ -407,16 +409,10 @@ def get_genenames(genenames_file):
         yield gene
 
 
-def get_snp_from_dbsnp_file(dbsnp_file):
-    for line in dbsnp_file:
-        fields = line.split('\t')
-        if len(fields) < 3: continue
-        rsid = int(fields[0])
-        chrom = fields[1].rstrip('T')
-        if chrom == 'PAR': continue
-        start = int(fields[2]) + 1
-        snp = {
-            'xpos': Xpos.from_chrom_pos(chrom, start),
-            'rsid': rsid
-        }
-        yield snp
+def get_snp_from_dbsnp_file(dbsnp_file, chrom, start_bp = None, end_bp = None):
+    with closing(pysam.Tabixfile(dbsnp_file, 'r')) as tabix:
+        chrom_out = chrom[:-1] if chrom == 'MT' or chrom == 'chrMT' else chrom
+        for row in tabix.fetch(chrom, start_bp, end_bp):
+            fields = row.split('\t')
+            if len(fields) == 3:
+                yield { 'xpos': Xpos.from_chrom_pos(chrom_out, int(fields[2]) + 1), 'rsid': int(fields[0]) }

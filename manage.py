@@ -8,6 +8,10 @@ import warnings
 import pymongo
 import gzip
 import parsing
+import pysam
+import contextlib
+import multiprocessing
+import functools
 
 argparser = argparse.ArgumentParser(description = 'Tool for creating and populating Bravo database.')
 argparser_subparsers = argparser.add_subparsers(help = '', dest = 'command')
@@ -26,6 +30,16 @@ argparser_whitelist = argparser_subparsers.add_parser('whitelist', help = 'Creat
 argparser_whitelist.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_whitelist.add_argument('-w', '--whitelist', metavar = 'file', required = True, type = str, dest = 'whitelist_file', help = 'Emails whitelist file. One email per line.')
 
+argparser_dbsnp = argparser_subparsers.add_parser('dbsnp', help = 'Creates and populates MongoDB collection with dbSNP variants.')
+argparser_dbsnp.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
+argparser_dbsnp.add_argument('-d', '--dbsnp', metavar = 'file', required = True, type = str, nargs = '+', dest = 'dbsnp_files', help = 'File (or multiple files split by chromosome) with variants from dbSNP, compressed using bgzip and indexed using tabix. File must have three tab-delimited columns without header: integer part of rsId, chromosome, position (0-based).')
+argparser_dbsnp.add_argument('-t', '--threads', metavar = 'number', required = False, type = int, default = 1, dest = 'threads', help = 'Number of threads to use.')
+
+argparser_metrics = argparser_subparsers.add_parser('metrics', help = 'Creates and populates MongoDB collection with pre-calculated metrics across all variants.')
+argparser_metrics.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
+argparser_metrics.add_argument('-m', '--metrics', metavar = 'file', required = True, type = str, dest = 'metrics_file', help = 'File with the pre-calculated metrics across all variants. Every metric must be stored on a separate line in JSON format.')
+
+
 def load_config(name):
     """Loads Bravo configuration class.
     
@@ -40,16 +54,21 @@ def load_config(name):
     return config
 
 
-def load_gene_models(db, canonical_transcripts_file, omim_file, genenames_file, gencode_file):
+def get_db_connection():
+    mongo = pymongo.MongoClient(host = mongo_host, port = mongo_port, connect = False)
+    return mongo[mongo_db_name]
+
+
+def load_gene_models(canonical_transcripts_file, omim_file, genenames_file, gencode_file):
     """Creates and populates the following MongoDB collections: genes, transcripts, exons.
     
     Arguments:
-    db -- connections to MongoDB database.
     canonical_transcripts_file -- file with a list of canonical transcripts. No header. Two columns: Ensebl gene ID, Ensembl transcript ID.
     omim_file -- file with genes descriptions from OMIM. Required columns separated by tab: Gene stable ID, Transcript stable ID, MIM gene accession, MIM gene description.
     genenames_file -- file with gene names from HGNC. Required columns separated by tab: symbol, name, alias_symbol, prev_name, ensembl_gene_id.
     gencode_file -- file from GENCODE in compressed GTF format. 
     """
+    db = get_db_connection()
     db.genes.drop()
     db.transcripts.drop()
     db.exons.drop()
@@ -102,23 +121,22 @@ def load_gene_models(db, canonical_transcripts_file, omim_file, genenames_file, 
     sys.stdout.write('Inserted {} exon(s).\n'.format(db.exons.count()))
 
 
-def create_users(db):
+def create_users():
     """Creates users collection in MongoDB.
 
-    Arguments:
-    db -- connections to MongoDB database.
     """
+    db = get_db_connection()
     db.users.drop()
     db.users.ensure_index('user_id')
 
 
-def create_whitelist(db, whitelist_file):
+def load_whitelist(whitelist_file):
     """Creates and populates MongoDB collections for whitelist'ed users.
 
     Arguments:
-    db -- connections to MongoDB database.
     whitelist_file -- file with emails of whitelist'ed users. One email per line.
     """
+    db = get_db_connection()
     db.whitelist.drop()
     with open(whitelist_file, 'r') as ifile:
         for line in ifile:
@@ -129,7 +147,64 @@ def create_whitelist(db, whitelist_file):
     sys.stdout.write('Inserted {} email(s).\n'.format(db.whitelist.count()))
 
 
+def get_file_contig_pairs(files):
+    """Creates [(file, chrom), (file, chrom), ...] list.
+
+    Arguments:
+    filenames -- list of one or more tabix'ed files.
+    """
+    file_contig_pairs = []
+    for file in files:
+        with pysam.Tabixfile(file) as tabix:
+            for contig in tabix.contigs:
+                file_contig_pairs.append((file, contig))
+    return sorted(file_contig_pairs, key = lambda x: x[1]) # stable sort to make same chromsome entries adjacent
+
+
+def _write_to_collection(args, collection, reader):
+    file, chrom = args
+    if chrom != 'PAR':
+        db = get_db_connection()
+        db[collection].insert_many(reader(file, chrom, None, None))
+ 
+
+def load_dbsnp(dbsnp_files, threads):
+    """Creates and populates MongoDB collection for dbSNP variants.
+
+    Arguments:
+    dbsnp_files -- list of one or more files with variants compressed using bgzip and indexed using tabix. File(s) must have 3 tab-delimited columns without header: integer part of rsId, chromosome, position (0-based).
+    threads -- number of threads to use.
+    """
+    db = get_db_connection()
+    db.dbsnp.drop()
+    with contextlib.closing(multiprocessing.Pool(threads)) as threads_pool:
+        threads_pool.map(functools.partial(_write_to_collection, collection = 'dbsnp', reader = parsing.get_snp_from_dbsnp_file), get_file_contig_pairs(dbsnp_files))
+    db.dbsnp.ensure_index('rsid')
+    db.dbsnp.ensure_index('xpos')
+    sys.stdout.write('Inserted {} variant(s).\n'.format(db.dbsnp.count()))
+
+
+def load_metrics(metrics_file):
+    """Creates and populates MongoDB collection for metrics calculated across all variants.
+    
+    Arguments:
+    metrics_file -- file with metrics. One metric per line in JSON format.
+    """
+    db = get_db_connection()
+    db.metrics.drop()
+    with open(metrics_file, 'r') as ifile:
+        for line in ifile:
+            metric = json.loads(line)
+            db.metrics.insert(metric)
+    db.metrics.ensure_index('metric')
+    sys.stdout.write('Inserted {} metric(s).\n'.format(db.metrics.count()))
+
+
 if __name__ == '__main__':
+    global mongo_host
+    global mongo_port
+    global mongo_db_name
+
     args = argparser.parse_args()
    
     with warnings.catch_warnings():
@@ -140,21 +215,27 @@ if __name__ == '__main__':
     mongo_port = config['MONGO']['port']
     mongo_db_name = config['MONGO']['name']
 
-    mongo = pymongo.MongoClient(host = mongo_host, port = mongo_port, connect = False)
-    db = mongo[mongo_db_name]
-
     if args.command == 'genes':
         sys.stdout.write('Start loading genes to {} database.\n'.format(mongo_db_name))
-        load_gene_models(db, args.canonical_transcripts_file, args.omim_file, args.genenames_file, args.gencode_file)
+        load_gene_models(args.canonical_transcripts_file, args.omim_file, args.genenames_file, args.gencode_file)
         sys.stdout.write('Done loading genes to {} database.\n'.format(mongo_db_name))
     elif args.command == 'users':
         sys.stdout.write('Creating users collection in {} database.\n'.format(mongo_db_name))
-        create_users(db)
+        create_users()
         sys.stdout.write('Done creating users collection in {} database.\n'.format(mongo_db_name))
     elif args.command == 'whitelist':
         sys.stdout.write('Creating whitelist collection in {} database.\n'.format(mongo_db_name))
-        create_whitelist(db, args.whitelist_file)
+        load_whitelist(args.whitelist_file)
         sys.stdout.write('Done creating whitelist collection in {} database.\n'.format(mongo_db_name))
+    elif args.command == 'dbsnp':
+        sys.stdout.write('Creating dbSNP collection in {} database.\n'.format(mongo_db_name))
+        sys.stdout.write('Using {} thread(s).\n'.format(args.threads))
+        load_dbsnp(args.dbsnp_files, args.threads)
+        sys.stdout.write('Done creating dbSNP collection in {} database.\n'.format(mongo_db_name))      
+    elif args.command == 'metrics':
+        sys.stdout.write('Creating metrics collection in {} database.\n'.format(mongo_db_name))
+        load_metrics(args.metrics_file)
+        sys.stdout.write('Done creating metrics collection in {} databases.\n'.format(mongo_db_name))
     else:
         raise Exception('Command {} is not supported.'.format(args.command))
 
@@ -163,17 +244,6 @@ if __name__ == '__main__':
 @manager.command
 def load_variants_file():
     exac.load_variants_file()
-
-@manager.command
-def load_dbsnp_file():
-    exac.load_dbsnp_file()
-
-@manager.option('-i', '--input', dest = 'metrics_filename', type = str, required = True, help = 'File with the pre-calculated metrics. Every metric must be stored on a separate line in JSON format.')
-def load_metrics(metrics_filename):
-    "Loads pre-calculated metrics across all variants into 'metrics' Mongo DB collection."
-    if not metrics_filename.strip():
-        sys.exit("Metrics file name must be a non-empty string.")
-    exac.load_metrics(metrics_filename)
 
 
 @manager.option('-v', '--vcf', dest = 'vcfs', type = str, nargs = '+', required = True, help = 'Input VCF name(s).')
