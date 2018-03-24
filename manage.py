@@ -12,6 +12,7 @@ import pysam
 import contextlib
 import multiprocessing
 import functools
+import json
 
 argparser = argparse.ArgumentParser(description = 'Tool for creating and populating Bravo database.')
 argparser_subparsers = argparser.add_subparsers(help = '', dest = 'command')
