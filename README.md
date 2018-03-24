@@ -2,12 +2,12 @@ Installation
 ============
 
 1. [System Dependencies](#system-dependencies)
-2. [Data Preparation](#data-preparation)
+2. [Installation](#installation)
+3. [Data Preparation](#data-preparation)
    1. [Prepare VCF](#prepare-vcf)
    2. [Prepare percentiles](#prepare-percentiles)
    3. [Prepare coverage](#prepare-coverage)
    4. [Prepare CRAM](#prepare-cram)
-3. [Data Import](#data-import)
 4. [Access Control](#access-control)
    1. [Authentication](#authentication)
    2. [Email Whitelist](#email-whitelist)
@@ -28,6 +28,24 @@ Install python packages in a virtualenv.
 Some packages will require Python headers (python-dev on some systems).
 
 You probably want to run Flask behind something else, like Apache2.
+
+## Installation
+
+1. Modify the `MONGO` variable in `flask_config.py`, e.g.:
+```python
+MONGO = {
+    'host': 'localhost', # MongoDB hostname
+    'port': 27017,       # MongoDB port
+    'name': 'bravo'      # Bravo database name
+}
+```
+
+2. Run `INSTALL.pl` script in `deploy` directory. Specify a human genome build version after `-b`, and a number of threads after `-t`:
+```
+cd deploy
+./INSTALL.pl -b hg38 -t 12
+```
+Installation may take several hours or longer.
 
 ## Data Preparation
 
@@ -82,74 +100,7 @@ Make a couple directories with different levels of binning (and again, one `.jso
 
 ### Prepare CRAM
 
-Bravo uses IGV.js to visualize raw sequenced from up to 10 random alternate allele carriers.
-
-## Data Import
-
-### Make some config for your new dataset
-In `flask_config.py`, there's one section (actually a python class) for each dataset.  Make (or repurpose) a section for your dataset.
-
-Then make sure that `exac.py` uses the name of your dataset on the line `app.config.from_object('flask_config.<name_of_dataset>')`.
-
-### Import data into Mongo
-
-You'll need the following files:
-
-- `ALL.vcf.gz` and `ALL.vcf.gz.tbi`
-    - this is the VCF from the section "Prepare a VCF"
-    - stored in the variable `SITES_VCFS`.  If you want to use a different name or multiple files, just make sure that pattern for `SITES_VCFS` in `flask_config.py` matches all of your files.
-    - used by `load_variants_file()`
-
-- `canonical_transcripts.txt.gz`
-    - stored in the variable `CANONICAL_TRANSCRIPT_FILE`
-    - used by `load_gene_models()`
-    - this can be obtained with `perl download_canonical_transcripts.pl | gzip -c > canonical_transcripts.txt.gz`. Note that to run `download_canonical_transcripts.pl` you will need to install Ensembl API perl modules.
-
-- `dbsnp149.txt.bgz` and `dbsnp149.txt.bgz.tbi`
-    - stored in `DBSNP_FILE`
-    - used by `load_dbsnp_file()`
-    - as dbSNP updates, they drop older versions, so you might have to update from 149 to something higher. Everything should probably work fine with newer versions of dbSNP
-    - you should be able to make this by running (possibly after updating version numbers):
-
-            wget -O dbsnp149.bcp.gz ftp://ftp.ncbi.nlm.nih.gov/snp/organisms/human_9606_b149_GRCh37p13/database/organism_data/b149_SNPChrPosOnRef_105.bcp.gz
-            zcat dbsnp149.bcp.gz | awk '$3 != ""' | perl -pe 's/ +/\t/g' | sort -k2,2 -k3,3n | bgzip -c > dbsnp149.txt.bgz
-            tabix -s 2 -b 3 -e 3 dbsnp149.txt.bgz
-
-    - you will have to update the pattern for this file in your section of `flask_config.py`.
-
-- `gencode.gtf.gz`
-    - stored in `GENCODE_GTF`
-    - used by `load_gene_models()`
-    - this can be downloaded from [here](https://www.gencodegenes.org/releases/current.html)
-
-- `omim_info.txt.gz`
-    - stored in `OMIM_FILE`
-    - used by `load_gene_models()`
-    - this can be downloaded from Ensembl BioMart:
-        - "Ensembl Genes" database 
-        - "Human genes" dataset 
-        - "Gene stable ID", "Transcript stable ID", "MIM gene accession", "MIM gene description" attributes
-
-- `dbNSFP2.6_gene.gz`
-    - stored in `DBNSFP_FILE`
-    - used by `load_gene_models()`
-    - this can be downloaded from [this site](https://sites.google.com/site/jpopgen/dbNSFP).  Our version is out-of-date and should be replaced by <http://genenames.org>.
-
-Put these in a directory, and store that directory in `_FILES_DIRECTORY` in your section of `flask_config.py`.  If you use exactly these names, everything should work.  If you change names, modify the file-matching patterns in your section of `flask_config.py`.
-
-Then run:
-
-    ./manage.py load_variants_file
-    ./manage.py load_dbsnp_file
-    ./manage.py load_gene_models
-
-
-### Create the user table:
-
-While the other operations here are all idempotent, this one will wipe your user data, so only run it when you don't yet have user data.
-
-    ./manage.py create_users
-    
+Bravo uses IGV.js to visualize raw sequenced from up to 10 random alternate allele carriers.    
     
 ## Access Control
     
@@ -174,7 +125,7 @@ Bravo allows whitelist specific users based on their email address. To enable wh
 2. Set the `EMAIL_WHITELIST` variable in Bravo configuration file to `True`.
 3. Import list of emails from a text file (one email per line) to the Mongo database:
     
-       ./manage.py load_whitelist -w emails.txt
+       ./manage.py whitelist -w emails.txt
       
 ### Terms of Use
 If your Bravo users must to agree to any terms/conditions before browsing your data, you need to enable **Terms of Use** page as follows:
