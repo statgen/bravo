@@ -128,7 +128,7 @@ download_canonical_transcripts() {
     echo -e "${GREEN}=> Downloading canonical transcripts from Ensembl 91${NOCOLOR}"
     start_dir=${PWD}
     { cd ${deploy_dir} \
-        && perl download_canonical_transcripts.pl homo_sapiens_core_91_38 | gzip -c > canonical_transcripts.txt.gz; } >> ${log_file} 2>&1
+        && perl ${start_dir}/download_canonical_transcripts.pl homo_sapiens_core_91_38 | gzip -c > canonical_transcripts.txt.gz; } >> ${log_file} 2>&1
     if [ ! $? == 0 ]; then
         echo "Error occured! See ${log_file} for more details."
         exit 1
