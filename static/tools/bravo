@@ -1,13 +1,18 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import argparse
 import os
 import sys
 import json
-import urllib
-import requests
 import time
 import re
+import traceback
+from urllib import urlencode
+from urllib2 import Request, urlopen, HTTPError
+
+if sys.version_info.major != 2:
+    raise Exception('This tool supports only python2')
+
 
 argparser = argparse.ArgumentParser(description = 'Manage Google Oauth 2.0 authentication for Bravo API and do querying from command line.')
 commands = argparser.add_subparsers(dest = 'command', title = 'Commands')
@@ -54,6 +59,28 @@ class BravoException(Exception):
         self.message = message
     def __str__(self):
         return self.message
+
+
+class requests(object): # this implements the parts we need of the real `requests` module
+    @staticmethod
+    def get(url, headers={}, params=None):
+        if params: url += '?' + urlencode(params)
+        r = Request(url, headers=headers)
+        return _requests_response(urlopen(r))
+    @staticmethod
+    def post(url, headers={}, data=None):
+        if data is not None and isinstance(data, dict): data = urlencode(data)
+        r = Request(url, headers=headers, data=data)
+        return _requests_response(urlopen(r))
+class _requests_response(object):
+    def __init__(self, response):
+        self.status_code = response.getcode()
+        self._json = json.load(response.fp)
+    def json(self):
+        return self._json
+class _requests_exceptions(object): pass
+requests.exceptions = _requests_exceptions
+requests.exceptions.RequestException = HTTPError
 
 
 def credstore_exists():
