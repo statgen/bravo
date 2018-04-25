@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import sys
 import json
 import urllib
 import requests
@@ -18,6 +19,8 @@ query_gene_command = commands.add_parser('query-gene', help = 'Query by gene nam
 query_variant_command = commands.add_parser('query-variant', help = 'Query variant by variant identifier or by chromosome name and chromosomal position.',
         description = 'Query variant by identifier CHROM-POS-REF-ALT, or by chromosome name and chromosomal position.')
 query_meta_command = commands.add_parser('query-meta', help = 'Query version and data description.')
+annotate_command = commands.add_parser('annotate', help = 'Annotate input VCF.',
+        description = 'Uncompressed input VCF must be streamed to standard input. Uncompressed output VCF is streamed to standard output.')
 
 query_region_command.add_argument('-c', '--chromosome', metavar = 'name', type = str, required = True, dest = 'chromosome', help = 'Chromosome name.')
 query_region_command.add_argument('-s', '--start', metavar = 'base-pair', type = int, required = True, dest = 'start', help = 'Start position.')
@@ -34,6 +37,7 @@ query_variant_command.add_argument('-c', '--chromosome', metavar = 'name', type 
 query_variant_command.add_argument('-p', '--position', metavar = 'base-pair', type = int, dest = 'position', help = 'Position.')
 query_variant_command.add_argument('-o', '--output', required = False, choices = ['json', 'vcf'], default = 'json', dest = 'format', help = 'Output format.')
 
+annotate_command.add_argument('-f', '--filter', metavar = 'expression', required = False, type = str, dest = 'filter', help = 'Filtering expression.') 
 
 USER_HOME = os.path.expanduser("~")
 BRAVO_DIR = '.bravo'
@@ -219,10 +223,10 @@ def _query_paged(headers, url):
         bravo_response_data = bravo_response.json()
         if bravo_response_data['format'] == 'vcf' and page_no == 1:
             for line in bravo_response_data['meta']:
-                print line
-            print bravo_response_data['header']
+                yield line
+            yield bravo_response_data['header']
         for item in bravo_response_data['data']:
-            print item
+            yield item
         url = bravo_response_data['next']
         page_no += 1
 
@@ -233,7 +237,8 @@ def query_region(chromosome, start, end, format, filter):
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/region?chrom={}&start={}&end={}&vcf={}'.format(BRAVO_API_VERSION, chromosome, start, end, 0 if format != 'vcf' else 1)
     if filter:
         query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter))
-    _query_paged(headers, query_url)
+    for line in _query_paged(headers, query_url):
+        print line
 
 
 def query_gene(name, format, filter):
@@ -242,7 +247,8 @@ def query_gene(name, format, filter):
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/gene?name={}&vcf={}'.format(BRAVO_API_VERSION, name, 0 if format != 'vcf' else 1)
     if filter:
         query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter))
-    _query_paged(headers, query_url)
+    for line in _query_paged(headers, query_url):
+        print line
 
 
 def query_variant(variant_id, chromosome, position, format):
@@ -256,7 +262,52 @@ def query_variant(variant_id, chromosome, position, format):
         if chromosome is not None or position is not None:
             raise BravoException('"-v,--variant" is not allowed together with "-c,--chromosome" and "-p,--position".')
         query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/variant?variant_id={}&vcf={}'.format(BRAVO_API_VERSION, variant_id, 0 if format != 'vcf' else 1)
-    _query_paged(headers, query_url)
+    for line in _query_paged(headers, query_url):
+        print line
+
+
+def load_region(chromosome, position, filter):
+    credstore = read_credstore()
+    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
+    start = position
+    end = start + 8000 # approx. 1,000 variants
+    region = { 'chromosome': chromosome, 'start': start, 'end': end, 'variants': dict() }
+    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/region?chrom={}&start={}&end={}&vcf=0'.format(BRAVO_API_VERSION, chromosome, start, end)
+    if filter:
+        query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter))
+    for line in _query_paged(headers, query_url):
+        region['variants'][line['variant_id']] = line
+    return region
+
+
+def annotate(filter):
+    region = None
+    fileformat_line = sys.stdin.readline()
+    if not fileformat_line or not fileformat_line.startswith('##fileformat=VCF'):
+        return
+    sys.stdout.write('{}\n'.format(fileformat_line.rstrip()))
+    for in_line in sys.stdin:
+        if in_line.startswith('#'):
+            if in_line.startswith('##'):
+                sys.stdout.write('{}\n'.format(in_line.rstrip()))
+            elif in_line.startswith('#CHROM'):
+                # write meta from Bravo
+                sys.stdout.write('{}\n'.format(in_line.rstrip()))
+            continue
+        in_fields = in_line.rstrip().split('\t', 8)
+        chromosome = in_fields[0]
+        position = int(in_fields[1])
+        variant_id = '{}-{}-{}-{}'.format(chromosome, position, in_fields[3], in_fields[4])
+        print chromosome, position, variant_id
+        if region is None or region['chromosome'] != chromosome or position < region['start'] or position > region['end']:
+            region = load_region(chromosome, position, filter)
+        bravo_variant = region['variants'].get(variant_id, None)
+        if bravo_variant is not None:
+            print bravo_variant
+        #break
+#        print in_line.rstrip()
+    #for line in sys.stdin:
+    #    print line.rstrip()
 
 
 if __name__ == '__main__':
@@ -276,6 +327,8 @@ if __name__ == '__main__':
             query_gene(args.gene, args.format, args.filter)
         elif args.command == 'query-variant':
             query_variant(args.variant_id, args.chromosome, args.position, format)
+        elif args.command == 'annotate':
+            annotate(args.filter)
     except BravoException as e:
         print e
 
