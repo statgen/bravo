@@ -20,7 +20,7 @@ query_variant_command = commands.add_parser('query-variant', help = 'Query varia
         description = 'Query variant by identifier CHROM-POS-REF-ALT, or by chromosome name and chromosomal position.')
 query_meta_command = commands.add_parser('query-meta', help = 'Query version and data description.')
 annotate_command = commands.add_parser('annotate', help = 'Annotate input VCF.',
-        description = 'Uncompressed input VCF must be streamed to standard input. Uncompressed output VCF is streamed to standard output.')
+        description = 'Uncompressed input VCF must be streamed to standard input. Uncompressed output VCF is streamed to standard output. Multi-allelic variant records in input VCF must be split into multiple bi-allelic variant records.')
 
 query_region_command.add_argument('-c', '--chromosome', metavar = 'name', type = str, required = True, dest = 'chromosome', help = 'Chromosome name.')
 query_region_command.add_argument('-s', '--start', metavar = 'base-pair', type = int, required = True, dest = 'start', help = 'Start position.')
@@ -186,18 +186,21 @@ def revoke():
         raise BravoException('Error while accessing Bravo API authentication server.')
 
 
-def query_meta():
-    credstore = read_credstore()
-    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
-    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
-    bravo_response = requests.get(query_url, headers = headers)
+def _query_nonpaged(url, headers):
+    bravo_response = requests.get(url, headers = headers)
     if bravo_response.status_code != 200:
         if bravo_response.status_code == 400:
             raise BravoException(bravo_response.json().get('error', 'Failed to query data.'))
         else: 
             bravo_response.raise_for_status()
-    bravo_response_data = bravo_response.json()
-    print bravo_response_data
+    return bravo_response.json()
+
+
+def query_meta():
+    credstore = read_credstore()
+    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
+    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
+    print _query_nonpaged(query_url, headers)
 
 
 def parse_filter_expressions(filter):
@@ -280,8 +283,16 @@ def load_region(chromosome, position, filter):
     return region
 
 
+def load_version():
+    credstore = read_credstore()
+    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
+    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
+    return _query_nonpaged(query_url, headers)['dataset']
+
+
 def annotate(filter):
     region = None
+    data_version = load_version()
     fileformat_line = sys.stdin.readline()
     if not fileformat_line or not fileformat_line.startswith('##fileformat=VCF'):
         return
@@ -291,23 +302,31 @@ def annotate(filter):
             if in_line.startswith('##'):
                 sys.stdout.write('{}\n'.format(in_line.rstrip()))
             elif in_line.startswith('#CHROM'):
-                # write meta from Bravo
+                sys.stdout.write('##INFO=<ID=BRAVO_AN,Number=1,Type=Integer,Description=\"Number of Alleles in Samples with Coverage from {}\">\n'.format(data_version))
+                sys.stdout.write('##INFO=<ID=BRAVO_AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts in Samples with Coverage from {}\">\n'.format(data_version))
+                sys.stdout.write('##INFO=<ID=BRAVO_AF,Number=A,Type=Float,Description=\"Alternate Allele Frequencies from {}\">\n'.format(data_version))
+                sys.stdout.write('##INFO=<ID=BRAVO_FILTER,Number=A,Type=Float,Description=\"Filter from {}\">\n'.format(data_version))
                 sys.stdout.write('{}\n'.format(in_line.rstrip()))
             continue
         in_fields = in_line.rstrip().split('\t', 8)
         chromosome = in_fields[0]
         position = int(in_fields[1])
-        variant_id = '{}-{}-{}-{}'.format(chromosome, position, in_fields[3], in_fields[4])
-        print chromosome, position, variant_id
+        ref = in_fields[3]
+        alt = in_fields[4] # assume bi-allelic
+        info = in_fields[7]
         if region is None or region['chromosome'] != chromosome or position < region['start'] or position > region['end']:
             region = load_region(chromosome, position, filter)
+        variant_id = '{}-{}-{}-{}'.format(chromosome, position, ref, alt)
         bravo_variant = region['variants'].get(variant_id, None)
-        if bravo_variant is not None:
-            print bravo_variant
-        #break
-#        print in_line.rstrip()
-    #for line in sys.stdin:
-    #    print line.rstrip()
+        if bravo_variant is None:
+            sys.stdout.write('{}\n'.format(in_line.rstrip()))
+        else:
+            new_info = 'BRAVO_AN={};BRAVO_AC={};BRAVO_AF={};BRAVO_FILTER={}'.format(bravo_variant['allele_num'], bravo_variant['allele_count'], bravo_variant['allele_freq'], bravo_variant['filter'])
+            if info == '.':
+                info = new_info
+            else:
+                info = '{};{}'.format(info, new_info)
+            sys.stdout.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(chromosome, position, in_fields[2], ref, alt, in_fields[5], in_fields[6], info, in_fields[8]))
 
 
 if __name__ == '__main__':
@@ -326,7 +345,7 @@ if __name__ == '__main__':
         elif args.command == 'query-gene':
             query_gene(args.gene, args.format, args.filter)
         elif args.command == 'query-variant':
-            query_variant(args.variant_id, args.chromosome, args.position, format)
+            query_variant(args.variant_id, args.chromosome, args.position, args.format)
         elif args.command == 'annotate':
             annotate(args.filter)
     except BravoException as e:
