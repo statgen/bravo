@@ -111,9 +111,9 @@ def read_credstore():
             raise BravoException('Invalid or outdated credentials store. You may need to run login.')
         for ip, credentials in all_credentials.iteritems():
             if not isinstance(credentials, dict):
-               raise BravoException('Invalid or outdated credentials store. You may need to run login.')
+                raise BravoException('Invalid or outdated credentials store. You may need to run login.')
             if not all(k in credentials for k in required):
-               raise BravoException('Invalid access token entry in credentials store. You may need to run login.')
+                raise BravoException('Invalid access token entry in credentials store. You may need to run login.')
         return credstore
 
 
@@ -143,7 +143,7 @@ def login():
                     write_credstore(credstore)
                     print 'You are signed in.'
                     return
-            except:
+            except Exception:
                 credstore = { 'active': None, 'all': {} }
         bravo_response = requests.get(BRAVO_AUTH_API)
         if bravo_response.status_code != 200:
@@ -377,4 +377,3 @@ if __name__ == '__main__':
             annotate(args.filter)
     except BravoException as e:
         print e
-
