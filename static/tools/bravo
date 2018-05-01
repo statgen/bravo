@@ -37,7 +37,7 @@ query_gene_command.add_argument('-n', '--name', metavar = 'name', type = str, re
 query_gene_command.add_argument('-o', '--output', required = False, choices = ['json', 'vcf'], default = 'json', dest = 'format', help = 'Output format.')
 query_gene_command.add_argument('-f', '--filter', metavar = 'expression', required = False, type = str, dest = 'filter', help = 'Filtering expression.')
 
-query_variant_command.add_argument('-v', '--variant', metavar = 'chrom-pos-ref-alt', type = str, dest = 'variant_id', help = 'Variant identifier CHROM-POS-REF-ALT.')
+query_variant_command.add_argument('-v', '--variant', metavar = 'chrom-pos-ref-alt/rs#', type = str, dest = 'variant_id', help = 'Variant identifier CHROM-POS-REF-ALT or rs#.')
 query_variant_command.add_argument('-c', '--chromosome', metavar = 'name', type = str, dest = 'chromosome', help = 'Chromosome name.')
 query_variant_command.add_argument('-p', '--position', metavar = 'base-pair', type = int, dest = 'position', help = 'Position.')
 query_variant_command.add_argument('-o', '--output', required = False, choices = ['json', 'vcf'], default = 'json', dest = 'format', help = 'Output format.')
@@ -225,6 +225,9 @@ def _query_nonpaged(url, headers):
 
 
 def query_meta():
+    if not credstore_exists():
+        print 'No access tokens found. Please login first.'
+        return
     credstore = read_credstore()
     headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
@@ -263,6 +266,9 @@ def _query_paged(headers, url):
 
 
 def query_region(chromosome, start, end, format, filter):
+    if not credstore_exists():
+        print 'No access tokens found. Please login first.'
+        return
     credstore = read_credstore()
     headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/region?chrom={}&start={}&end={}&vcf={}'.format(BRAVO_API_VERSION, chromosome, start, end, 0 if format != 'vcf' else 1)
@@ -273,6 +279,9 @@ def query_region(chromosome, start, end, format, filter):
 
 
 def query_gene(name, format, filter):
+    if not credstore_exists():
+        print 'No access tokens found. Please login first.'
+        return
     credstore = read_credstore()
     headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/gene?name={}&vcf={}'.format(BRAVO_API_VERSION, name, 0 if format != 'vcf' else 1)
@@ -283,6 +292,9 @@ def query_gene(name, format, filter):
 
 
 def query_variant(variant_id, chromosome, position, format):
+    if not credstore_exists():
+        print 'No access tokens found. Please login first.'
+        return
     credstore = read_credstore()
     headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
     if variant_id is None:
@@ -298,6 +310,9 @@ def query_variant(variant_id, chromosome, position, format):
 
 
 def load_region(chromosome, position, filter):
+    if not credstore_exists():
+        print 'No access tokens found. Please login first.'
+        return
     credstore = read_credstore()
     headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
     start = position
@@ -312,6 +327,9 @@ def load_region(chromosome, position, filter):
 
 
 def load_version():
+    if not credstore_exists():
+        print 'No access tokens found. Please login first.'
+        return
     credstore = read_credstore()
     headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
@@ -319,6 +337,9 @@ def load_version():
 
 
 def annotate(filter):
+    if not credstore_exists():
+        print 'No access tokens found. Please login first.'
+        return
     region = None
     data_version = load_version()
     fileformat_line = sys.stdin.readline()
