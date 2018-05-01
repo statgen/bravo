@@ -79,11 +79,30 @@ def get_variants_from_dbsnp(db, rsid):
     return []
 
 
-def get_awesomebar_suggestions(autocomplete_strings, query):
+def get_awesomebar_suggestions(autocomplete_strings, query, db):
+    cap = 10
+    rs_max_length = 9999999999
+
+    # first look for genes, genes have priority over rsIds (e.g. there is a gene RS1) 
     regex = re.compile('^' + re.escape(query), re.IGNORECASE)
     results = (r for r in autocomplete_strings if regex.match(r))
-    results = itertools.islice(results, 0, 20)
-    return list(results)
+    results = list(itertools.islice(results, 0, cap))
+
+    try:
+        if len(results) < cap and query.startswith('rs'): # if query starts with "rs" and there is still place for autocomplete dropdown, look for rsIds.    
+            rs_numeric = int(query[2:]) if len(query) > 2 else 0
+            results.extend('rs{}'.format(x['rsid']) for x  in db.dbsnp.find({ 'rsid': { '$eq': rs_numeric }}, projection = { '_id': False, 'rsid': True }).limit(cap - len(results)))
+            step = 10
+            while len(results) < cap:
+                rs_numeric_lo = rs_numeric * step
+                rs_numeric_up = rs_numeric_lo + step - 1
+                if rs_numeric_up > rs_max_length:
+                    break
+                results.extend('rs{}'.format(x['rsid']) for x  in db.dbsnp.find({ 'rsid': { '$gte': rs_numeric_lo, '$lte': rs_numeric_up }}, projection = { '_id': False, 'rsid': True }).limit(cap - len(results)))
+                step *= 10
+    except ValueError:
+        pass
+    return results
 
 
 # 1:1-1000
@@ -99,7 +118,7 @@ _regex_chr_pos_ref_alt = re.compile(_regex_pattern_chr_pos_ref_alt+'$')
 
 
 def get_awesomebar_result(db, query):
-    query = query.strip()
+    query = query.strip() # TODO:check if query is not None
 
     # rsid
     variants = get_variants_by_rsid(db, query.lower())
