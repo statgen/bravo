@@ -78,6 +78,7 @@ def get_variants_from_dbsnp(db, rsid):
             return variants
     return []
 
+#@boltons.cacheutils.cached({})
 
 def get_awesomebar_suggestions(autocomplete_strings, query, db):
     cap = 10
@@ -119,7 +120,7 @@ _regex_chr_pos_ref_alt = re.compile(_regex_pattern_chr_pos_ref_alt+'$')
 
 def get_awesomebar_result(db, query):
     query = query.strip() # TODO:check if query is not None
-
+    
     # rsid
     variants = get_variants_by_rsid(db, query.lower())
     if variants:
@@ -143,6 +144,7 @@ def get_awesomebar_result(db, query):
         return 'gene', {'gene_id': gene['gene_id']}
 
     # From here out, all should be uppercase (gene, tx, region, variant_id)
+    query_orig = query
     query = query.upper()
 
     # uppercase gene symbol
@@ -177,7 +179,7 @@ def get_awesomebar_result(db, query):
             return 'region', {'chrom': chrom, 'start':pos, 'stop':end}
         return 'variant', {'variant_id': '{}-{}-{}-{}'.format(chrom, pos, match.groups()[2], match.groups()[3])}
 
-    return 'not_found', {'query': query}
+    return 'not_found', {'query': query_orig}
 
 
 class IntervalSet(object):

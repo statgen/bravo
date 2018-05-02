@@ -41,7 +41,7 @@
                 <div id="home-searchbox">
                     <form action="{{ url_for('.awesome') }}">
                           <div class="input-group">
-                            <input name="query" class="form-control typeahead" type="text" placeholder="Search for a gene or variant or region" autofocus />
+                            <input name="query" autocomplete="off" class="form-control typeahead" type="text" placeholder="Search for a gene or variant or region" autofocus />
                             <span class="input-group-btn">
                               <button class="btn btn-primary" type="submit">Search</button>
                             </span>
