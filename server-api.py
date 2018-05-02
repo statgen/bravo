@@ -43,7 +43,7 @@ if 'BRAVO_API_URL_PREFIX' in os.environ:
 pageSize = 1000
 maxRegion = 250000
 
-projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True}
+projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True, 'rsids': True}
 allowed_sort_keys = {'pos': long, 'allele_count': int, 'allele_freq': float, 'allele_num': int, 'site_quality': float, 'filter': str, 'variant-id': str}
 allowed_filter_keys = {'allele_count', 'allele_freq', 'allele_num', 'site_quality', 'filter'}
 
@@ -171,15 +171,18 @@ def get_variant():
       }, request)
 
    if 'variant_id' in args:
-      try:
-         chrom, pos, ref, alt = args['variant_id'].split('-')
-         pos = int(pos)
-      except ValueError as e:
-         raise UserError('Invalid variant name format.')
-      if not Xpos.check_chrom(chrom):
-         raise UserError('Invalid chromosome name.')
-      xpos = Xpos.from_chrom_pos(chrom, pos)
-      mongo_filter = { 'xpos': xpos, 'ref': ref, 'alt': alt }
+      if args['variant_id'].startswith('rs'):
+          mongo_filter = { 'rsids' : args['variant_id'] }
+      else:
+          try:
+              chrom, pos, ref, alt = args['variant_id'].split('-')
+              pos = int(pos)
+          except ValueError as e:
+              raise UserError('Invalid variant name format.')
+          if not Xpos.check_chrom(chrom):
+              raise UserError('Invalid chromosome name.')
+          xpos = Xpos.from_chrom_pos(chrom, pos)
+          mongo_filter = { 'xpos': xpos, 'ref': ref, 'alt': alt }
    elif all(x in args for x in ['chrom', 'pos']):
       if not Xpos.check_chrom(args['chrom']):
          raise UserError('Invalid chromosome name.')
@@ -208,7 +211,7 @@ def get_variant():
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
          data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={}'.format(
-            r['chrom'], r['pos'], r['variant_id'], r['ref'], r['alt'], r['site_quality'], r['filter'],
+            r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
             r['allele_num'], r['allele_count'], r['allele_freq']))
          last_variant = r
    response['data'] = data
@@ -432,7 +435,7 @@ def get_region():
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
          data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={}'.format(
-            r['chrom'], r['pos'], r['variant_id'], r['ref'], r['alt'], r['site_quality'], r['filter'],
+            r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
             r['allele_num'], r['allele_count'], r['allele_freq']))
          last_variant = r
 
@@ -502,7 +505,7 @@ def get_gene():
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
          data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={}'.format(
-            r['chrom'], r['pos'], r['variant_id'], r['ref'], r['alt'], r['site_quality'], r['filter'],
+            r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
             r['allele_num'], r['allele_count'], r['allele_freq']))
          last_variant = r
 
