@@ -375,8 +375,11 @@ def annotate(filter):
                 info = new_info
             else:
                 info = '{};{}'.format(info, new_info)
-            sys.stdout.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(chromosome, position, in_fields[2], ref, alt, in_fields[5], in_fields[6], info, in_fields[8]))
-
+            if len(in_fields) > 8:
+                sys.stdout.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(chromosome, position, in_fields[2], ref, alt, in_fields[5], in_fields[6], info, in_fields[8]))
+            else:
+                sys.stdout.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(chromosome, position, in_fields[2], ref, alt, in_fields[5], in_fields[6], info))
+ 
 
 if __name__ == '__main__':
     args = argparser.parse_args()
