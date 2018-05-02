@@ -359,8 +359,9 @@ def homepage():
 
 @bp.route('/api/autocomplete')
 def autocomplete():
+    db = get_db()
     query = request.args.get('query', '')
-    suggestions = lookups.get_awesomebar_suggestions(get_autocomplete_strings(), query)
+    suggestions = lookups.get_awesomebar_suggestions(get_autocomplete_strings(), query, db)
     _log('  =>  {} results'.format(len(suggestions)))
     return jsonify([{'value': s} for s in sorted(suggestions)])
 
