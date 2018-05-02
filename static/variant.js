@@ -663,7 +663,7 @@ $(document).ready(function() {
 
         dom_element = $("<div></div>").appendTo("#genotype-quality-plots");
         dom_element.addClass("col-lg-3 col-md-4 col-sm-6 col-xs-12");
-        draw_metric_histograms(dom_element, window.variant.genotype_qualities[0], window.variant.genotype_qualities[1], 5, "All Individuals", "Variant Carriers", "Genotype Quality", "Number of Individuals", "");
+        draw_metric_histograms(dom_element, window.variant.genotype_qualities[0], window.variant.genotype_qualities[1], 5, "All Individuals", "Variant Carriers", "Genotype Quality", "Proportion of Individuals", "");
 
         draw_percentiles_legend($("#site-metrics-legend"));
    
