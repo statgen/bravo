@@ -1,48 +1,74 @@
 #!/usr/bin/env python
 
+from __future__ import print_function, unicode_literals
+
 import argparse
-import os
-import sys
 import json
-import time
+import os
 import re
-import traceback
-from urllib import urlencode
-from urllib2 import Request, urlopen, HTTPError
-
-if sys.version_info.major != 2:
-    raise Exception('This tool supports only python2')
+import sys
+import time
 
 
-argparser = argparse.ArgumentParser(description = 'Manage Google Oauth 2.0 authentication for Bravo API and do querying from command line.')
-commands = argparser.add_subparsers(dest = 'command', title = 'Commands')
-login_command = commands.add_parser('login', help = 'Authorize access to Bravo API.')
-token_command = commands.add_parser('print-access-token', help = 'Display access token for Bravo API.')
-revoke_command = commands.add_parser('revoke', help = 'Revoke all access tokens for Bravo API.')
-query_region_command = commands.add_parser('query-region', help = 'Query chromosomal region.')
-query_gene_command = commands.add_parser('query-gene', help = 'Query by gene name or gene identifier.')
-query_variant_command = commands.add_parser('query-variant', help = 'Query variant by variant identifier or by chromosome name and chromosomal position.',
-        description = 'Query variant by identifier CHROM-POS-REF-ALT, or by chromosome name and chromosomal position.')
-query_meta_command = commands.add_parser('query-meta', help = 'Query version and data description.')
-annotate_command = commands.add_parser('annotate', help = 'Annotate input VCF.',
-        description = 'Uncompressed input VCF must be streamed to standard input. Uncompressed output VCF is streamed to standard output. Multi-allelic variant records in input VCF must be split into multiple bi-allelic variant records.')
+# Specialized imports for python 2/3 cross-compatibility
+try:
+    from urllib import urlencode
+except ImportError:
+    from urllib.parse import urlencode
 
-query_region_command.add_argument('-c', '--chromosome', metavar = 'name', type = str, required = True, dest = 'chromosome', help = 'Chromosome name.')
-query_region_command.add_argument('-s', '--start', metavar = 'base-pair', type = int, required = True, dest = 'start', help = 'Start position.')
-query_region_command.add_argument('-e', '--end', metavar = 'base-pair', type = int, required = True, dest = 'end', help = 'End position.')
-query_region_command.add_argument('-o', '--output', required = False, choices = ['json', 'vcf'], default = 'json', dest = 'format', help = 'Output format.')
-query_region_command.add_argument('-f', '--filter', metavar = 'expression', required = False, type = str, dest = 'filter', help = 'Filtering expression.')
+try:
+    from urllib2 import Request, urlopen, HTTPError
+except ImportError:
+    from urllib.request import Request, urlopen, HTTPError
 
-query_gene_command.add_argument('-n', '--name', metavar = 'name', type = str, required = True, dest = 'gene', help = 'Gene name or gene identifier.')
-query_gene_command.add_argument('-o', '--output', required = False, choices = ['json', 'vcf'], default = 'json', dest = 'format', help = 'Output format.')
-query_gene_command.add_argument('-f', '--filter', metavar = 'expression', required = False, type = str, dest = 'filter', help = 'Filtering expression.')
+try:
+    basestring
+except NameError:
+    basestring = str
 
-query_variant_command.add_argument('-v', '--variant', metavar = 'chrom-pos-ref-alt/rs#', type = str, dest = 'variant_id', help = 'Variant identifier CHROM-POS-REF-ALT or rs#.')
-query_variant_command.add_argument('-c', '--chromosome', metavar = 'name', type = str, dest = 'chromosome', help = 'Chromosome name.')
-query_variant_command.add_argument('-p', '--position', metavar = 'base-pair', type = int, dest = 'position', help = 'Position.')
-query_variant_command.add_argument('-o', '--output', required = False, choices = ['json', 'vcf'], default = 'json', dest = 'format', help = 'Output format.')
 
-annotate_command.add_argument('-f', '--filter', metavar = 'expression', required = False, type = str, dest = 'filter', help = 'Filtering expression.') 
+argparser = argparse.ArgumentParser(description='Manage Google Oauth 2.0 authentication for Bravo API and do querying from command line.')
+commands = argparser.add_subparsers(dest='command', title='Commands')
+login_command = commands.add_parser('login', help='Authorize access to Bravo API.')
+token_command = commands.add_parser('print-access-token', help='Display access token for Bravo API.')
+revoke_command = commands.add_parser('revoke', help='Revoke all access tokens for Bravo API.')
+query_region_command = commands.add_parser('query-region', help='Query chromosomal region.')
+query_gene_command = commands.add_parser('query-gene', help='Query by gene name or gene identifier.')
+query_variant_command = commands.add_parser('query-variant', help='Query variant by variant identifier or by chromosome name and chromosomal position.',
+        description='Query variant by identifier CHROM-POS-REF-ALT, or by chromosome name and chromosomal position.')
+query_meta_command = commands.add_parser('query-meta', help='Query version and data description.')
+annotate_command = commands.add_parser('annotate', help='Annotate input VCF.',
+        description='Uncompressed input VCF must be streamed to standard input. Uncompressed output VCF is streamed to standard output. Multi-allelic variant records in input VCF must be split into multiple bi-allelic variant records.')
+
+query_region_command.add_argument('-c', '--chromosome', metavar='name', type=str, required=True, dest='chromosome',
+                                  help='Chromosome name.')
+query_region_command.add_argument('-s', '--start', metavar= 'base-pair', type=int, required=True, dest='start',
+                                  help='Start position.')
+query_region_command.add_argument('-e', '--end', metavar='base-pair', type=int, required=True, dest='end',
+                                  help='End position.')
+query_region_command.add_argument('-o', '--output', required=False, choices=['json', 'vcf'], default='json', dest='format',
+                                  help='Output format.')
+query_region_command.add_argument('-f', '--filter', metavar='expression', required=False, type=str, dest='filter',
+                                  help='Filtering expression.')
+
+query_gene_command.add_argument('-n', '--name', metavar='name', type=str, required=True, dest='gene',
+                                help='Gene name or gene identifier.')
+query_gene_command.add_argument('-o', '--output', required=False, choices=['json', 'vcf'], default='json', dest='format',
+                                help='Output format.')
+query_gene_command.add_argument('-f', '--filter', metavar='expression', required=False, type=str, dest='filter',
+                                help='Filtering expression.')
+
+query_variant_command.add_argument('-v', '--variant', metavar='chrom-pos-ref-alt/rs#', type=str, dest='variant_id',
+                                   help='Variant identifier CHROM-POS-REF-ALT or rs#.')
+query_variant_command.add_argument('-c', '--chromosome', metavar='name', type=str, dest='chromosome',
+                                   help='Chromosome name.')
+query_variant_command.add_argument('-p', '--position', metavar='base-pair', type=int, dest='position',
+                                   help='Position.')
+query_variant_command.add_argument('-o', '--output', required=False, choices=['json', 'vcf'], default='json', dest='format',
+                                   help='Output format.')
+
+annotate_command.add_argument('-f', '--filter', metavar='expression', required=False, type=str, dest='filter',
+                              help='Filtering expression.')
 
 USER_HOME = os.path.expanduser("~")
 BRAVO_DIR = '.bravo'
@@ -57,28 +83,41 @@ BRAVO_IP_API = 'https://bravo.sph.umich.edu/api/{}/auth/ip'.format(BRAVO_API_VER
 class BravoException(Exception):
     def __init__(self, message):
         self.message = message
+
     def __str__(self):
         return self.message
 
 
-class requests(object): # this implements the parts we need of the real `requests` module
+class requests(object):
+    """Implements the parts we need of the real `requests` module"""
     @staticmethod
-    def get(url, headers={}, params=None):
+    def get(url, headers=None, params=None):
+        headers = headers or {}
         if params: url += '?' + urlencode(params)
         r = Request(url, headers=headers)
         return _requests_response(urlopen(r))
+
     @staticmethod
-    def post(url, headers={}, data=None):
-        if data is not None and isinstance(data, dict): data = urlencode(data)
+    def post(url, headers=None, data=None):
+        headers = headers or {}
+        if data is not None and isinstance(data, dict):
+            data = urlencode(data)
         r = Request(url, headers=headers, data=data)
         return _requests_response(urlopen(r))
+
+
 class _requests_response(object):
     def __init__(self, response):
         self.status_code = response.getcode()
         self._json = json.load(response.fp)
+
     def json(self):
         return self._json
+
+
 class _requests_exceptions(object): pass
+
+
 requests.exceptions = _requests_exceptions
 requests.exceptions.RequestException = HTTPError
 
@@ -90,11 +129,11 @@ def credstore_exists():
 def create_credstore():
     p = os.path.join(USER_HOME, BRAVO_DIR)
     if not os.path.isdir(p):
-        os.mkdir(p, 0700)
+        os.mkdir(p, 0o700)
     p = os.path.join(p, BRAVO_CREDSTORE)
     if not os.path.isfile(p):
         open(p, 'a').close()
-        os.chmod(p, 0600)
+        os.chmod(p, 0o600)
 
 
 def read_credstore():
@@ -109,7 +148,7 @@ def read_credstore():
             raise BravoException('Invalid or outdated credentials store. You may need to run login.')
         if active_credentials not in all_credentials:
             raise BravoException('Invalid or outdated credentials store. You may need to run login.')
-        for ip, credentials in all_credentials.iteritems():
+        for ip, credentials in all_credentials.items():
             if not isinstance(credentials, dict):
                 raise BravoException('Invalid or outdated credentials store. You may need to run login.')
             if not all(k in credentials for k in required):
@@ -120,8 +159,8 @@ def read_credstore():
 def write_credstore(data):
     path = os.path.join(USER_HOME, BRAVO_DIR, BRAVO_CREDSTORE)
     with open(path, 'w') as credstore:
-        json.dump(data, credstore, indent = 4)
-    os.chmod(path, 0600)
+        json.dump(data, credstore, indent=4)
+    os.chmod(path, 0o600)
 
 
 def login():
@@ -133,7 +172,7 @@ def login():
         ip = bravo_response_data['ip']
         if not credstore_exists():
             create_credstore()
-            credstore = { 'active': None, 'all': {} }
+            credstore = {'active': None, 'all': {}}
         else:
             try:
                 credstore = read_credstore()
@@ -141,10 +180,10 @@ def login():
                 if credentials is not None and not credentials['revoked']:
                     credstore['active'] = ip
                     write_credstore(credstore)
-                    print 'You are signed in.'
+                    print('You are signed in.')
                     return
             except Exception:
-                credstore = { 'active': None, 'all': {} }
+                credstore = {'active': None, 'all': {}}
         bravo_response = requests.get(BRAVO_AUTH_API)
         if bravo_response.status_code != 200:
             if bravo_response.status_code == 400:   
@@ -154,12 +193,12 @@ def login():
         bravo_response_data = bravo_response.json()
         auth_url = bravo_response_data['auth_url']
         auth_token = bravo_response_data['auth_token']
-        print 'Go to the following link in your browser:\n\n{}\n'.format(bravo_response_data['auth_url'])
-        print '\nContacting Bravo API for access tokens...'
+        print('Go to the following link in your browser:\n\n{}\n'.format(bravo_response_data['auth_url']))
+        print('\nContacting Bravo API for access tokens...')
         sys.stdout.flush()
         while True:
             time.sleep(5)
-            bravo_response = requests.post(BRAVO_TOKEN_API, data = {'auth_token': auth_token})
+            bravo_response = requests.post(BRAVO_TOKEN_API, data={'auth_token': auth_token})
             if bravo_response.status_code != 200:
                 if bravo_response.status_code == 400:
                     raise BravoException(bravo_response.json().get('error', 'Failed to obtain authentication link.'))
@@ -176,28 +215,28 @@ def login():
             'revoked': False
         }
         write_credstore(credstore)
-        print 'Done.'
-        print 'You are signed in.'
+        print('Done.')
+        print('You are signed in.')
     except requests.exceptions.RequestException:
         raise BravoException('Error while accessing Bravo API authentication server.')
 
 
 def print_access_token():
     credstore = read_credstore()
-    print credstore['all'][credstore['active']]['access_token']
+    print(credstore['all'][credstore['active']]['access_token'])
 
 
 def revoke():
     if not credstore_exists():
-        print 'No access tokens to revoke.'
+        print('No access tokens to revoke.')
         return
     try:
         credstore = read_credstore()
         ip_revoked = list()
-        for ip, credentials in credstore['all'].iteritems():
+        for ip, credentials in credstore['all'].items():
             if not credentials['revoked']:
                 if not ip_revoked:
-                    bravo_response = requests.get(BRAVO_REVOKE_API, params = {'access_token': credentials['access_token']})
+                    bravo_response = requests.get(BRAVO_REVOKE_API, params={'access_token': credentials['access_token']})
                     if bravo_response.status_code != 200:
                         if bravo_response.status_code == 400:
                             raise BravoException(bravo_response.json().get('error', 'Failed to revoke access.'))
@@ -207,15 +246,15 @@ def revoke():
                 credentials['revoked'] = True
         if ip_revoked:
             write_credstore(credstore)
-            print 'Access tokens have been successfully revoked.'
+            print('Access tokens have been successfully revoked.')
         else:
-            print 'No access tokens to revoke.'
+            print('No access tokens to revoke.')
     except requests.exceptions.RequestException:
         raise BravoException('Error while accessing Bravo API authentication server.')
 
 
 def _query_nonpaged(url, headers):
-    bravo_response = requests.get(url, headers = headers)
+    bravo_response = requests.get(url, headers=headers)
     if bravo_response.status_code != 200:
         if bravo_response.status_code == 400:
             raise BravoException(bravo_response.json().get('error', 'Failed to query data.'))
@@ -226,18 +265,18 @@ def _query_nonpaged(url, headers):
 
 def query_meta():
     if not credstore_exists():
-        print 'No access tokens found. Please login first.'
+        print('No access tokens found. Please login first.')
         return
     credstore = read_credstore()
-    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
+    headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
-    print _query_nonpaged(query_url, headers)
+    print(_query_nonpaged(query_url, headers))
 
 
-def parse_filter_expressions(filter):
-    op_map = { '==': 'eq',  '!=': 'ne', '>': 'gt', '<': 'lt', '>=': 'gte', '<=': 'lte'}
-    parsed_filter = list()
-    for expression in filter.split('&'):
+def parse_filter_expressions(filter_str):
+    op_map = {'==': 'eq',  '!=': 'ne', '>': 'gt', '<': 'lt', '>=': 'gte', '<=': 'lte'}
+    parsed_filter = []
+    for expression in filter_str.split('&'):
         tokens = re.split(r'(==|\!=|>|<|>=|<=)', expression)
         if len(tokens) != 3:
             raise BravoException('Bad filter expression.')
@@ -248,12 +287,12 @@ def parse_filter_expressions(filter):
 def _query_paged(headers, url):
     page_no = 1
     while url:
-        bravo_response = requests.get(url, headers = headers)
+        bravo_response = requests.get(url, headers=headers)
         if bravo_response.status_code != 200:
             if bravo_response.status_code == 400:
                 raise BravoException(bravo_response.json().get('error', 'Failed to query data.'))
             else: 
-                bravo_response.raise_for_status()
+                bravo_response.raise_for_status()  # TODO: Method does not exist
         bravo_response_data = bravo_response.json()
         if bravo_response_data['format'] == 'vcf' and page_no == 1:
             for line in bravo_response_data['meta']:
@@ -265,62 +304,68 @@ def _query_paged(headers, url):
         page_no += 1
 
 
-def query_region(chromosome, start, end, format, filter):
+def query_region(chromosome, start, end, format_name, filter_expr):
     if not credstore_exists():
-        print 'No access tokens found. Please login first.'
+        print('No access tokens found. Please login first.')
         return
     credstore = read_credstore()
-    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
-    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/region?chrom={}&start={}&end={}&vcf={}'.format(BRAVO_API_VERSION, chromosome, start, end, 0 if format != 'vcf' else 1)
-    if filter:
-        query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter))
+    headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
+    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/region?chrom={}&start={}&end={}&vcf={}'.format(
+        BRAVO_API_VERSION, chromosome, start, end, 0 if format_name != 'vcf' else 1)
+    if filter_expr:
+        query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter_expr))
     for line in _query_paged(headers, query_url):
-        print line
+        print(line)
 
 
-def query_gene(name, format, filter):
+def query_gene(name, format_name, filter_expr):
     if not credstore_exists():
-        print 'No access tokens found. Please login first.'
+        print('No access tokens found. Please login first.')
         return
     credstore = read_credstore()
-    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
-    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/gene?name={}&vcf={}'.format(BRAVO_API_VERSION, name, 0 if format != 'vcf' else 1)
-    if filter:
-        query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter))
+    headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
+    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/gene?name={}&vcf={}'.format(
+        BRAVO_API_VERSION, name, 0 if format_name != 'vcf' else 1)
+    if filter_expr:
+        query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter_expr))
+
     for line in _query_paged(headers, query_url):
-        print line
+        print(line)
 
 
-def query_variant(variant_id, chromosome, position, format):
+def query_variant(variant_id, chromosome, position, format_name):
     if not credstore_exists():
-        print 'No access tokens found. Please login first.'
+        print('No access tokens found. Please login first.')
         return
     credstore = read_credstore()
-    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
+    headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     if variant_id is None:
         if chromosome is None or position is None:
             raise BravoException('Provide both "-c,--chromosome" and "-p,--position".')
-        query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/variant?chrom={}&pos={}&vcf={}'.format(BRAVO_API_VERSION, chromosome, position, 0 if format != 'vcf' else 1)
+        query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/variant?chrom={}&pos={}&vcf={}'.format(
+            BRAVO_API_VERSION, chromosome, position, 0 if format_name != 'vcf' else 1)
     else:
         if chromosome is not None or position is not None:
             raise BravoException('"-v,--variant" is not allowed together with "-c,--chromosome" and "-p,--position".')
-        query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/variant?variant_id={}&vcf={}'.format(BRAVO_API_VERSION, variant_id, 0 if format != 'vcf' else 1)
+        query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/variant?variant_id={}&vcf={}'.format(
+            BRAVO_API_VERSION, variant_id, 0 if format_name != 'vcf' else 1)
     for line in _query_paged(headers, query_url):
-        print line
+        print(line)
 
 
-def load_region(chromosome, position, filter):
+def load_region(chromosome, position, filter_expr):
     if not credstore_exists():
-        print 'No access tokens found. Please login first.'
+        print('No access tokens found. Please login first.')
         return
     credstore = read_credstore()
-    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
+    headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     start = position
-    end = start + 8000 # approx. 1,000 variants
-    region = { 'chromosome': chromosome, 'start': start, 'end': end, 'variants': dict() }
-    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/region?chrom={}&start={}&end={}&vcf=0'.format(BRAVO_API_VERSION, chromosome, start, end)
-    if filter:
-        query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter))
+    end = start + 8000  # approx. 1,000 variants
+    region = {'chromosome': chromosome, 'start': start, 'end': end, 'variants': {}}
+    query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/region?chrom={}&start={}&end={}&vcf=0'.format(
+        BRAVO_API_VERSION, chromosome, start, end)
+    if filter_expr:
+        query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter_expr))
     for line in _query_paged(headers, query_url):
         region['variants'][line['variant_id']] = line
     return region
@@ -328,17 +373,17 @@ def load_region(chromosome, position, filter):
 
 def load_version():
     if not credstore_exists():
-        print 'No access tokens found. Please login first.'
+        print('No access tokens found. Please login first.')
         return
     credstore = read_credstore()
-    headers = { 'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token']) }
+    headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
     return _query_nonpaged(query_url, headers)['dataset']
 
 
-def annotate(filter):
+def annotate(filter_expr):
     if not credstore_exists():
-        print 'No access tokens found. Please login first.'
+        print('No access tokens found. Please login first.')
         return
     region = None
     data_version = load_version()
@@ -361,10 +406,10 @@ def annotate(filter):
         chromosome = in_fields[0]
         position = int(in_fields[1])
         ref = in_fields[3]
-        alt = in_fields[4] # assume bi-allelic
+        alt = in_fields[4]  # assume bi-allelic
         info = in_fields[7]
         if region is None or region['chromosome'] != chromosome or position < region['start'] or position > region['end']:
-            region = load_region(chromosome, position, filter)
+            region = load_region(chromosome, position, filter_expr)
         variant_id = '{}-{}-{}-{}'.format(chromosome, position, ref, alt)
         bravo_variant = region['variants'].get(variant_id, None)
         if bravo_variant is None:
@@ -401,4 +446,4 @@ if __name__ == '__main__':
         elif args.command == 'annotate':
             annotate(args.filter)
     except BravoException as e:
-        print e
+        print(e)
