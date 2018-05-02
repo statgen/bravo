@@ -369,6 +369,8 @@ def autocomplete():
 def awesome():
     db = get_db()
     query = request.args.get('query')
+    if query is None:
+        return redirect(url_for('.homepage'))
     datatype, redirect_args = lookups.get_awesomebar_result(db, query)
     _log('  =>  {}_page({})'.format(datatype, redirect_args))
     return redirect(url_for('.{}_page'.format(datatype), **redirect_args))
