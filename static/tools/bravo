@@ -1,30 +1,44 @@
 #!/usr/bin/env python
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function, absolute_import, division, unicode_literals
+
+import sys
+
+if sys.version_info[0:2] <= (2,6):
+    # Note: to support python2.6, we would need to handle missing `argparse` and convert '{}'.format() -> '{0}'.format()
+    print("bravo requires python2.7 or newer.  Please re-run it as `python2.7 bravo ...` or `python3 bravo ...`.", file=sys.stderr)
+    sys.exit(1)
 
 import argparse
 import json
 import os
 import re
-import sys
 import time
-
+import signal
 
 # Specialized imports for python 2/3 cross-compatibility
 try:
-    from urllib import urlencode
+    from urllib.parse import urlencode # py3
 except ImportError:
-    from urllib.parse import urlencode
+    from urllib import urlencode # py2
 
 try:
-    from urllib2 import Request, urlopen, HTTPError
+    from urllib.request import Request, urlopen, HTTPError, URLError # py3
 except ImportError:
-    from urllib.request import Request, urlopen, HTTPError
+    from urllib2 import Request, urlopen, HTTPError, URLError # py2
 
 try:
-    basestring
+    JSONDecodeError = json.JSONDecodeError # py3
+except AttributeError:
+    JSONDecodeError = ValueError # py2
+
+try:
+    basestring # py3
 except NameError:
-    basestring = str
+    basestring = str # py2
+
+
+signal.signal(signal.SIGPIPE, signal.SIG_DFL) # prevent a messy exception when running `bravo ... | head`
 
 
 argparser = argparse.ArgumentParser(description='Manage Google Oauth 2.0 authentication for Bravo API and do querying from command line.')
@@ -94,32 +108,48 @@ class requests(object):
     def get(url, headers=None, params=None):
         headers = headers or {}
         if params: url += '?' + urlencode(params)
-        r = Request(url, headers=headers)
-        return _requests_response(urlopen(r))
-
+        req = Request(url, headers=headers)
+        return _requests_response(req)
     @staticmethod
     def post(url, headers=None, data=None):
         headers = headers or {}
-        if data is not None and isinstance(data, dict):
-            data = urlencode(data)
-        r = Request(url, headers=headers, data=data)
-        return _requests_response(urlopen(r))
-
-
+        if isinstance(data, dict): data = urlencode(data)
+        if data is not None: data = bytes(data)
+        req = Request(url, headers=headers, data=data)
+        return _requests_response(req)
 class _requests_response(object):
-    def __init__(self, response):
-        self.status_code = response.getcode()
-        self._json = json.load(response.fp)
-
+    # urlopen error-handling:
+    # - if it can't connect (or the connection drops), it raises URLError
+    # - 0-100 => BadStatusLine
+    # - 101-199 => HTTPError
+    # - 2xx => ok
+    # - 3xx => HTTPError, except that 301/302/303/307 with valid "Location:" header behave according to the new location
+    # - 4xx/5xx => HTTPError
+    # For comparison, with <https://github.com/requests/requests>:
+    # - if it can't connect (or the connection drops), it raises requests.exceptions.ConnectionError
+    # - 0-100 => requests.exceptions.ConnectionError
+    # - 101-199 => ok
+    # - 2xx => ok
+    # - 3xx => ok, except that 301/302/303/307 with valid "Location:" header behave according to the new location
+    # - 4xx/5xx => ok, but requests.get(url).raise_for_status() raises requests.exceptions.HTTPError
+    # So, when receiving only 2xx/4xx/5xx and valid 301/302/303/307 and using .raise_for_status(), they behave the same.
+    def __init__(self, request):
+        try:
+            response = urlopen(request)
+        except HTTPError as exc:
+            self.status_code = exc.getcode()
+            try:
+                self._json = json.load(exc.fp)
+            except JSONDecodeError as exc:
+                self._json = str(exc)
+            self._exception = exc
+        except URLError as exc:
+            raise BravoException("Failed to connect ")
+        else:
+            self.status_code = response.getcode()
+            self._json = json.load(response.fp)
     def json(self):
         return self._json
-
-
-class _requests_exceptions(object): pass
-
-
-requests.exceptions = _requests_exceptions
-requests.exceptions.RequestException = HTTPError
 
 
 def credstore_exists():
@@ -138,6 +168,9 @@ def create_credstore():
 
 def read_credstore():
     required = ['access_token', 'created', 'token_type', 'revoked']
+    fpath = os.path.join(USER_HOME, BRAVO_DIR, BRAVO_CREDSTORE)
+    if not os.path.exists(fpath):
+        raise BravoException("Please use `./bravo login` to login.  Currently {} does not exist.".format(fpath))
     with open(os.path.join(USER_HOME, BRAVO_DIR, BRAVO_CREDSTORE), 'r') as credstore_file:
         credstore = json.load(credstore_file)
         active_credentials = credstore.get('active', None)
@@ -164,65 +197,62 @@ def write_credstore(data):
 
 
 def login():
-    try:
-        bravo_response = requests.get(BRAVO_IP_API)
-        if bravo_response.status_code != 200:
-            raise BravoException('Error while obtaining your public IP with Bravo API authentication server.')
-        bravo_response_data = bravo_response.json()
-        ip = bravo_response_data['ip']
-        if not credstore_exists():
-            create_credstore()
+    bravo_response = requests.get(BRAVO_IP_API)
+    if bravo_response.status_code != 200:
+        raise BravoException('Error while obtaining your public IP with Bravo API authentication server.')
+    bravo_response_data = bravo_response.json()
+    ip = bravo_response_data['ip']
+    if not credstore_exists():
+        create_credstore()
+        credstore = {'active': None, 'all': {}}
+    else:
+        try:
+            credstore = read_credstore()
+            credentials = credstore['all'].get(ip, None)
+            if credentials is not None and not credentials['revoked']:
+                credstore['active'] = ip
+                write_credstore(credstore)
+                print('You are signed in.')
+                return
+        except Exception:
             credstore = {'active': None, 'all': {}}
-        else:
-            try:
-                credstore = read_credstore()
-                credentials = credstore['all'].get(ip, None)
-                if credentials is not None and not credentials['revoked']:
-                    credstore['active'] = ip
-                    write_credstore(credstore)
-                    print('You are signed in.')
-                    return
-            except Exception:
-                credstore = {'active': None, 'all': {}}
-        bravo_response = requests.get(BRAVO_AUTH_API)
-        if bravo_response.status_code != 200:
-            if bravo_response.status_code == 400:   
-                raise BravoException(bravo_response.json().get('error', 'Failed to obtain authentication link.'))
-            else:
-                raise BravoException('Error while obtaining authentication link from Bravo API authentication server.')  
+    bravo_response = requests.get(BRAVO_AUTH_API)
+    if bravo_response.status_code == 400:   
+        raise BravoException(bravo_response.json().get('error', 'Failed to obtain authentication link.'))
+    elif bravo_response.status_code != 200:
+        raise BravoException('Error while obtaining authentication link from Bravo API authentication server.')  
+    bravo_response_data = bravo_response.json()
+    auth_url = bravo_response_data['auth_url']
+    auth_token = bravo_response_data['auth_token']
+    print('Go to the following link in your browser:\n\n{}\n'.format(auth_url))
+    print('\nContacting Bravo API for access tokens...')
+    sys.stdout.flush()
+    while True:
+        time.sleep(5)
+        bravo_response = requests.post(BRAVO_TOKEN_API, data={'auth_token': auth_token})
+        if bravo_response.status_code == 400:
+            raise BravoException(bravo_response.json().get('error', 'Failed to obtain authentication link.'))
+        elif bravo_response.status_code != 200:
+            raise BravoException('Error while obtaining authentication token from Bravo API authentication server.')
         bravo_response_data = bravo_response.json()
-        auth_url = bravo_response_data['auth_url']
-        auth_token = bravo_response_data['auth_token']
-        print('Go to the following link in your browser:\n\n{}\n'.format(bravo_response_data['auth_url']))
-        print('\nContacting Bravo API for access tokens...')
-        sys.stdout.flush()
-        while True:
-            time.sleep(5)
-            bravo_response = requests.post(BRAVO_TOKEN_API, data={'auth_token': auth_token})
-            if bravo_response.status_code != 200:
-                if bravo_response.status_code == 400:
-                    raise BravoException(bravo_response.json().get('error', 'Failed to obtain authentication link.'))
-                else:
-                    raise BravoException('Error while obtaining authentication token from Bravo API authentication server.')
-            bravo_response_data = bravo_response.json()
-            if bravo_response_data['access_token'] is not None:
-                break
-        credstore['active'] = bravo_response_data['ip']
-        credstore['all'][bravo_response_data['ip']] = {
-            'access_token': bravo_response_data['access_token'],
-            'token_type': bravo_response_data['token_type'],
-            'created': int(time.time()),
-            'revoked': False
-        }
-        write_credstore(credstore)
-        print('Done.')
-        print('You are signed in.')
-    except requests.exceptions.RequestException:
-        raise BravoException('Error while accessing Bravo API authentication server.')
+        if bravo_response_data['access_token'] is not None:
+            break
+    credstore['active'] = bravo_response_data['ip']
+    credstore['all'][bravo_response_data['ip']] = {
+        'access_token': bravo_response_data['access_token'],
+        'token_type': bravo_response_data['token_type'],
+        'created': int(time.time()),
+        'revoked': False
+    }
+    write_credstore(credstore)
+    print('Done.')
+    print('You are signed in.')
 
 
 def print_access_token():
     credstore = read_credstore()
+    if credstore['all'][credstore['active']]['revoked']:
+        raise BravoException("The current token has been revoked.  Please login with `bravo login`.")
     print(credstore['all'][credstore['active']]['access_token'])
 
 
@@ -230,47 +260,41 @@ def revoke():
     if not credstore_exists():
         print('No access tokens to revoke.')
         return
-    try:
-        credstore = read_credstore()
-        ip_revoked = list()
-        for ip, credentials in credstore['all'].items():
-            if not credentials['revoked']:
-                if not ip_revoked:
-                    bravo_response = requests.get(BRAVO_REVOKE_API, params={'access_token': credentials['access_token']})
-                    if bravo_response.status_code != 200:
-                        if bravo_response.status_code == 400:
-                            raise BravoException(bravo_response.json().get('error', 'Failed to revoke access.'))
-                        else:
-                            raise BravoException('Bravo API authentication server is not accessible.')
-                ip_revoked.append(ip)
-                credentials['revoked'] = True
-        if ip_revoked:
-            write_credstore(credstore)
-            print('Access tokens have been successfully revoked.')
-        else:
-            print('No access tokens to revoke.')
-    except requests.exceptions.RequestException:
-        raise BravoException('Error while accessing Bravo API authentication server.')
+    credstore = read_credstore()
+    ip_revoked = list()
+    for ip, credentials in credstore['all'].items():
+        if not credentials['revoked']:
+            if not ip_revoked:
+                bravo_response = requests.get(BRAVO_REVOKE_API, params={'access_token': credentials['access_token']})
+                if bravo_response.status_code == 400:
+                    raise BravoException(bravo_response.json().get('error', 'Failed to revoke access.'))
+                elif bravo_response.status_code != 200:
+                    raise BravoException('Bravo API authentication server is not accessible.')
+            ip_revoked.append(ip)
+            credentials['revoked'] = True
+    if ip_revoked:
+        write_credstore(credstore)
+        print('Access tokens have been successfully revoked.')
+    else:
+        print('No access tokens to revoke.')
 
 
 def _query_nonpaged(url, headers):
     bravo_response = requests.get(url, headers=headers)
-    if bravo_response.status_code != 200:
-        if bravo_response.status_code == 400:
-            raise BravoException(bravo_response.json().get('error', 'Failed to query data.'))
-        else: 
-            bravo_response.raise_for_status()
+    if bravo_response.status_code == 400:
+        raise BravoException(bravo_response.json().get('error', 'Failed to query data.'))
+    elif bravo_response.status_code != 200:
+        raise BravoException('Bravo API server failed with status code {}'.format(bravo_response.status_code))
     return bravo_response.json()
 
 
 def query_meta():
     if not credstore_exists():
-        print('No access tokens found. Please login first.')
-        return
+        raise BravoException('No access tokens found. Please login first.')
     credstore = read_credstore()
     headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
-    print(_query_nonpaged(query_url, headers))
+    json.dump(_query_nonpaged(query_url, headers), sys.stdout); print('')
 
 
 def parse_filter_expressions(filter_str):
@@ -288,11 +312,10 @@ def _query_paged(headers, url):
     page_no = 1
     while url:
         bravo_response = requests.get(url, headers=headers)
-        if bravo_response.status_code != 200:
-            if bravo_response.status_code == 400:
-                raise BravoException(bravo_response.json().get('error', 'Failed to query data.'))
-            else: 
-                bravo_response.raise_for_status()  # TODO: Method does not exist
+        if bravo_response.status_code == 400:
+            raise BravoException(bravo_response.json().get('error', 'Failed to query data.'))
+        elif bravo_response.status_code != 200: 
+            raise BravoException("Request failed with error:\n" + str(bravo_response._exception))
         bravo_response_data = bravo_response.json()
         if bravo_response_data['format'] == 'vcf' and page_no == 1:
             for line in bravo_response_data['meta']:
@@ -306,8 +329,7 @@ def _query_paged(headers, url):
 
 def query_region(chromosome, start, end, format_name, filter_expr):
     if not credstore_exists():
-        print('No access tokens found. Please login first.')
-        return
+        raise BravoException('No access tokens found. Please login first.')
     credstore = read_credstore()
     headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/region?chrom={}&start={}&end={}&vcf={}'.format(
@@ -315,13 +337,15 @@ def query_region(chromosome, start, end, format_name, filter_expr):
     if filter_expr:
         query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter_expr))
     for line in _query_paged(headers, query_url):
-        print(line)
+        if format_name == 'vcf':
+            print(line)
+        else:
+            json.dump(line, sys.stdout); print('')
 
 
 def query_gene(name, format_name, filter_expr):
     if not credstore_exists():
-        print('No access tokens found. Please login first.')
-        return
+        raise BravoException('No access tokens found. Please login first.')
     credstore = read_credstore()
     headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/gene?name={}&vcf={}'.format(
@@ -330,13 +354,15 @@ def query_gene(name, format_name, filter_expr):
         query_url = '{}&{}'.format(query_url, parse_filter_expressions(filter_expr))
 
     for line in _query_paged(headers, query_url):
-        print(line)
+        if format_name == 'vcf':
+            print(line)
+        else:
+            json.dump(line, sys.stdout); print('')
 
 
 def query_variant(variant_id, chromosome, position, format_name):
     if not credstore_exists():
-        print('No access tokens found. Please login first.')
-        return
+        raise BravoException('No access tokens found. Please login first.')
     credstore = read_credstore()
     headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     if variant_id is None:
@@ -350,7 +376,10 @@ def query_variant(variant_id, chromosome, position, format_name):
         query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/variant?variant_id={}&vcf={}'.format(
             BRAVO_API_VERSION, variant_id, 0 if format_name != 'vcf' else 1)
     for line in _query_paged(headers, query_url):
-        print(line)
+        if format_name == 'vcf':
+            print(line)
+        else:
+            json.dump(line, sys.stdout); print('')
 
 
 def load_region(chromosome, position, filter_expr):
@@ -373,8 +402,7 @@ def load_region(chromosome, position, filter_expr):
 
 def load_version():
     if not credstore_exists():
-        print('No access tokens found. Please login first.')
-        return
+        raise BravoException('No access tokens found. Please login first.')
     credstore = read_credstore()
     headers = {'Authorization': 'Bearer {}'.format(credstore['all'][credstore['active']]['access_token'])}
     query_url = 'https://bravo.sph.umich.edu/freeze5/hg38/api/{}/'.format(BRAVO_API_VERSION)
@@ -383,8 +411,7 @@ def load_version():
 
 def annotate(filter_expr):
     if not credstore_exists():
-        print('No access tokens found. Please login first.')
-        return
+        raise BravoException('No access tokens found. Please login first.')
     region = None
     data_version = load_version()
     fileformat_line = sys.stdin.readline()
@@ -424,9 +451,12 @@ def annotate(filter_expr):
                 sys.stdout.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(chromosome, position, in_fields[2], ref, alt, in_fields[5], in_fields[6], info, in_fields[8]))
             else:
                 sys.stdout.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(chromosome, position, in_fields[2], ref, alt, in_fields[5], in_fields[6], info))
- 
+
 
 if __name__ == '__main__':
+    if len(sys.argv) == 1:
+        argparser.print_help(sys.stderr)
+        sys.exit(1)
     args = argparser.parse_args()
     try:
         if args.command == 'login':
@@ -446,4 +476,6 @@ if __name__ == '__main__':
         elif args.command == 'annotate':
             annotate(args.filter)
     except BravoException as e:
-        print(e)
+        sys.stdout.flush()
+        print(e, file=sys.stderr)
+        sys.exit(1)
