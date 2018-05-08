@@ -139,7 +139,7 @@ class _requests_response(object):
         except HTTPError as exc:
             self.status_code = exc.getcode()
             try:
-                self._json = json.load(exc.fp)
+                self._json = _json_load_str_or_bytes(exc.fp)
             except JSONDecodeError as exc:
                 self._json = str(exc)
             self._exception = exc
@@ -147,9 +147,14 @@ class _requests_response(object):
             raise BravoException("Failed to connect ")
         else:
             self.status_code = response.getcode()
-            self._json = json.load(response.fp)
+            self._json = _json_load_str_or_bytes(response.fp)
     def json(self):
         return self._json
+if sys.version_info[0:2] == (2,7) or sys.version_info[0:2] >= (3,6):
+    _json_load_str_or_bytes = json.load
+else:
+    def _json_load_str_or_bytes(fp):
+        return json.loads(fp.read().decode())
 
 
 def credstore_exists():
