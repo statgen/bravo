@@ -17,7 +17,8 @@
             {% endfor %}
           {% endif %}
         {% endwith %}
-        {% if not current_user.is_authenticated %}
+
+        {% if config['GOOGLE_AUTH'] and not current_user.is_authenticated %}
         <div class="jumbotron" style="margin-top:3em">
           <p>To protect the privacy of our study participants, you must log in to view our data.</p>
           <br>
@@ -27,6 +28,7 @@
           </p>
         </div>
         {% endif %}
+
         <div class="row" id="home-titlebox">
             <div class="col-xs-12 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2">
                 <br><img src="{{ url_for('.static', filename='img/bravo_logo.png') }}" width="200px" />

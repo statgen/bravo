@@ -1,6 +1,8 @@
 """
 Utils for reading flat files that are loaded into database
 """
+import pysam
+from contextlib import closing
 import re
 import traceback
 import itertools
@@ -338,149 +340,79 @@ def get_canonical_transcripts(canonical_transcript_file):
 
 
 def get_omim_associations(omim_file):
+    header = omim_file.readline().rstrip('\n').split('\t')
     for line in omim_file:
-        fields = line.strip().split('\t')
-        if len(fields) == 4:
-            yield fields
-        else:
-            yield None
+        fields = line.rstrip('\n').split('\t')
+        assert len(header) == len(fields)
+        fields = dict(zip(header, fields))
+        if not fields['MIM gene accession'] or not fields['MIM gene description']:
+            continue
+        yield fields['Gene stable ID'], fields['Transcript stable ID'], fields['MIM gene accession'], fields['MIM gene description']
 
 
-def get_genes_from_gencode_gtf(gtf_file):
+def get_regions_from_gencode_gtf(gtf_file, region_types):
     """
-    Parse gencode GTF file;
-    Returns iter of gene dicts
+    Parse gencode GTF file.
+    Returns iter of regions ditcs
     """
     for line in gtf_file:
         if line.startswith('#'):
             continue
-        fields = line.strip('\n').split('\t')
-
-        if fields[2] != 'gene':
+        fields = line.rstrip('\n').split('\t')
+        if fields[2] not in region_types:
             continue
-
         chrom = fields[0][3:]
-        start = int(fields[3]) + 1  # bed files are 0-indexed
-        stop = int(fields[4]) + 1
+        start = long(fields[3])
+        stop = long(fields[4])
         info = dict(x.strip().split() for x in fields[8].split(';') if x != '')
-        info = {k: v.strip('"') for k, v in info.items()}
-        gene_id = info['gene_id'].split('.')[0]
-
-        gene = {
-            'gene_id': gene_id,
-            'gene_name': info['gene_name'],
-            'gene_name_upper': info['gene_name'].upper(),
+        region = {
             'chrom': chrom,
             'start': start,
             'stop': stop,
             'strand': fields[6],
             'xstart': Xpos.from_chrom_pos(chrom, start),
             'xstop': Xpos.from_chrom_pos(chrom, stop),
+            'gene_id': info['gene_id'].strip('"').split('.')[0],
         }
+        if 'gene' in region_types:
+            region['gene_name'] = info['gene_name'].strip('"')
+        if 'transcript' in region_types:
+            region['transcript_id'] = info['transcript_id'].strip('"').split('.')[0] if 'transcript_id' in info else None
+        if 'exon' in region_types or 'CDS' in region_types or 'UTR' in region_types:
+            if 'transcript_id' not in region:
+                region['transcript_id'] = info['transcript_id'].strip('"').split('.')[0] if 'transcript_id' in info else None
+            region['feature_type'] = fields[2]
+        yield region
+
+
+def get_genenames(genenames_file):
+    """
+    Parse file with genes from HGNC.
+    Returns iter of gene dicts.
+    """
+    header = genenames_file.readline().strip('\n').split('\t')
+    for line in genenames_file:
+        fields = line.rstrip('\n').split('\t')
+        assert len(header) == len(fields)
+        fields = dict(zip(header, fields))
+        if not fields['ensembl_gene_id']:
+            continue
+        gene = {
+            'gene_name': fields['symbol'],
+            'ensembl_gene': fields['ensembl_gene_id'],
+            'gene_full_name': fields['name'],
+            'gene_other_names': fields['alias_symbol'].strip('"').split('|') if fields['alias_symbol'] else []
+        }
+        if fields['prev_symbol'] and fields['prev_symbol'] not in gene['gene_other_names']:
+            for name in fields['prev_symbol'].strip('"').split('|'):    
+                gene['gene_other_names'].append(name)
         yield gene
 
 
-def get_transcripts_from_gencode_gtf(gtf_file):
-    """
-    Parse gencode GTF file;
-    Returns iter of transcript dicts
-    """
-    for line in gtf_file:
-        if line.startswith('#'):
-            continue
-        fields = line.strip('\n').split('\t')
-
-        if fields[2] != 'transcript':
-            continue
-
-        chrom = fields[0][3:]
-        start = int(fields[3]) + 1  # bed files are 0-indexed
-        stop = int(fields[4]) + 1
-        info = dict(x.strip().split() for x in fields[8].split(';') if x != '')
-        info = {k: v.strip('"') for k, v in info.items()}
-        transcript_id = info['transcript_id'].split('.')[0]
-        gene_id = info['gene_id'].split('.')[0]
-
-        gene = {
-            'transcript_id': transcript_id,
-            'gene_id': gene_id,
-            'chrom': chrom,
-            'start': start,
-            'stop': stop,
-            'strand': fields[6],
-            'xstart': Xpos.from_chrom_pos(chrom, start),
-            'xstop': Xpos.from_chrom_pos(chrom, stop),
-        }
-        yield gene
-
-
-def get_exons_from_gencode_gtf(gtf_file):
-    """
-    Parse gencode GTF file;
-    Returns iter of transcript dicts
-    """
-    for line in gtf_file:
-        if line.startswith('#'):
-            continue
-        fields = line.strip('\n').split('\t')
-
-        if fields[2] not in ['exon', 'CDS', 'UTR']:
-            continue
-
-        chrom = fields[0][3:]
-        feature_type = fields[2]
-        start = int(fields[3]) + 1  # bed files are 0-indexed
-        stop = int(fields[4]) + 1
-        info = dict(x.strip().split() for x in fields[8].split(';') if x != '')
-        info = {k: v.strip('"') for k, v in info.items()}
-        transcript_id = info['transcript_id'].split('.')[0]
-        gene_id = info['gene_id'].split('.')[0]
-
-        exon = {
-            'feature_type': feature_type,
-            'transcript_id': transcript_id,
-            'gene_id': gene_id,
-            'chrom': chrom,
-            'start': start,
-            'stop': stop,
-            'strand': fields[6],
-            'xstart': Xpos.from_chrom_pos(chrom, start),
-            'xstop': Xpos.from_chrom_pos(chrom, stop),
-        }
-        yield exon
-
-
-def get_dbnsfp_info(dbnsfp_file):
-    """
-    Parse dbNSFP_gene file;
-    Returns iter of transcript dicts
-    """
-    header = dbnsfp_file.next().split('\t')
-    fields = dict(zip(header, range(len(header))))
-    for line in dbnsfp_file:
-        line = line.split('\t')
-        other_names = line[fields["Gene_old_names"]].split(';') if line[fields["Gene_old_names"]] != '.' else []
-        if line[fields["Gene_other_names"]] != '.':
-            other_names.extend(line[fields["Gene_other_names"]].split(';'))
-        gene_info = {
-            'gene_name': line[fields["Gene_name"]],
-            'ensembl_gene': line[fields["Ensembl_gene"]],
-            'gene_full_name': line[fields["Gene_full_name"]],
-            'gene_other_names': other_names
-        } 
-        yield gene_info
-
-
-def get_snp_from_dbsnp_file(dbsnp_file):
-    for line in dbsnp_file:
-        fields = line.split('\t')
-        if len(fields) < 3: continue
-        rsid = int(fields[0])
-        chrom = fields[1].rstrip('T')
-        if chrom == 'PAR': continue
-        start = int(fields[2]) + 1
-        snp = {
-            'xpos': Xpos.from_chrom_pos(chrom, start),
-            'rsid': rsid
-        }
-        yield snp
+def get_snp_from_dbsnp_file(dbsnp_file, chrom, start_bp = None, end_bp = None):
+    with closing(pysam.Tabixfile(dbsnp_file, 'r')) as tabix:
+        chrom_out = chrom[:-1] if chrom == 'MT' or chrom == 'chrMT' else chrom
+        for row in tabix.fetch(chrom, start_bp, end_bp):
+            fields = row.split('\t')
+            if len(fields) == 3:
+                yield { 'xpos': Xpos.from_chrom_pos(chrom_out, int(fields[2]) + 1), 'rsid': int(fields[0]) }
