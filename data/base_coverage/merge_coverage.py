@@ -1,100 +1,100 @@
 import sys
+import pysam
 import gzip
 import json
 from collections import deque
 import argparse
 import operator
 
-argparser = argparse.ArgumentParser(description = 'Merges overlapping coverage (compressed with gzip) files. Requirements: (a) All files must store same chromosome; (b) No regions can be covered by more than two files; (c) There are no such two files, that store nested regions; (d) All positions within single coverage file are unique and in ascending order.')
-argparser.add_argument('--in', metavar = 'file', dest = 'inCoverageGZFsList', required = True, help = 'List of coverage (compressed with gzip) files. One file per line.')
-argparser.add_argument('--out', metavar = 'file', dest = 'outCoverageGZF', required = True, help = 'Output coverage (compressed with gzip) file')
 
-def readCoverageGZFsList(inCoverageGZFsList):
-   unorderedCoverageGZFs = dict()
-   with open(inCoverageGZFsList, 'r') as f:
-      for line in f:
+argparser = argparse.ArgumentParser(description = 'Merges overlapping JSON coverage (compressed with bgzip/gzip) files. Requirements: (a) All files must store same chromosome; (b) No regions can be covered by more than two files; (c) There are no such two files, that store nested regions; (d) All positions within single coverage file are unique and in ascending order.')
+argparser.add_argument('-i', '--in', metavar = 'file', dest = 'in_files_list', required = True, help = 'List of JSON coverage (compressed with bgzip/gzip) files. One file per line.')
+argparser.add_argument('-o', '--out', metavar = 'file', dest = 'out_merged_file', required = True, help = 'Output JSON coverage (compressed with bgzip) file')
+
+
+def read_files_list(files_list):
+   unordered_coverage_files = dict()
+   with open(files_list, 'r') as ifile:
+      for line in ifile:
          if line.startswith('#'):
             continue
-         coverageGZF = line.rstrip()
-         with gzip.GzipFile(coverageGZF) as z:
-            for line in z:
+         coverage_file = line.rstrip()
+         with gzip.GzipFile(coverage_file) as iz:
+            for line in iz:
                fields = line.rstrip().split('\t', 2)
-               unorderedCoverageGZFs[long(fields[1])] =(coverageGZF, fields[0])
+               position = long(fields[1])
+               chrom = fields[0]
+               unordered_coverage_files[position] = (coverage_file, chrom)
                break
-
-   coverageGZFs = [[unorderedCoverageGZFs[position][0], unorderedCoverageGZFs[position][1], position, sys.maxsize] for position in sorted(unorderedCoverageGZFs.iterkeys())]   
- 
-   for i in xrange(1, len(coverageGZFs)):
-      if coverageGZFs[i - 1][1] != coverageGZFs[i][1]:
+   ordered_coverage_files = [{
+            'name': unordered_coverage_files[position][0],
+            'chrom': unordered_coverage_files[position][1],
+            'leftmost_position': position,
+            'next_leftmost_position': sys.maxsize} for position in sorted(unordered_coverage_files.iterkeys())]
+   for i in xrange(1, len(ordered_coverage_files)):
+      if ordered_coverage_files[i - 1]['chrom'] != ordered_coverage_files[i]['chrom']:
          raise Exception('Input files store different contigs/chromosomes!')
-      if coverageGZFs[i - 1][2] == coverageGZFs[i][2]:
+      if ordered_coverage_files[i - 1]['leftmost_position'] == ordered_coverage_files[i]['leftmost_position']:
          raise Exception('Two input files store identical leftmost positions!')
+   for i in xrange(0, len(ordered_coverage_files) - 1):
+      ordered_coverage_files[i]['next_leftmost_position'] = ordered_coverage_files[i + 1]['leftmost_position']
+   return ordered_coverage_files
 
-   for i in xrange(0, len(coverageGZFs) - 1):
-      coverageGZFs[i][3] = coverageGZFs[i + 1][2] 
 
-   return coverageGZFs
-
-def mergeCoverageGZFs(coverageGZFs, outCoverageGZF):
-   with gzip.GzipFile(outCoverageGZF, 'w') as oz:
-
-      overlapHead = deque([])
-      overlapTail = deque([])
- 
-      for coverageGZF in coverageGZFs:
-         lastPosition = None
-         with gzip.GzipFile(coverageGZF[0]) as iz: 
+def merge_coverage_files(coverage_files, out_coverage_file):
+   with pysam.BGZFile(out_coverage_file, 'w') as oz:
+      overlap_head = deque([])
+      overlap_tail = deque([])
+      for coverage_file in coverage_files:
+         last_position = None
+         with gzip.GzipFile(coverage_file['name']) as iz:
             for line in iz:
                fields = line.split('\t')
-
-               contig = fields[0]
-               if contig != coverageGZF[1]:
-                  raise Exception('Multiple chromosomes detected within single coverage file!')
+               chrom = fields[0]
+               if chrom != coverage_file['chrom']:
+                  raise Exception('Multiple chromosomes detected within {} coverage file!'.format(coverage_file['name']))
                position = long(fields[1])
-              
-               if lastPosition is None or lastPosition < position:
-                  lastPosition = position
-               else:
-                  raise Exception('Positions within single coverage file are not in ascending order or not unique!')
- 
-               while overlapHead:
-                  (overlapPosition, overlapLine) = overlapHead[0]
 
-                  if overlapPosition >= coverageGZF[3]:
+               if last_position is None or last_position < position:
+                  last_position = position
+               else:
+                  raise Exception('Positions within {} coverage file are not in ascending order or not unique!'.format(coverage_file['name']))
+
+               while overlap_head:
+                  (overlap_position, overlap_line) = overlap_head[0]
+
+                  if overlap_position >= coverage_file['next_leftmost_position']:
                      raise Exception("Overlapping regions are present in more than two coverage files!")
 
-                  if overlapPosition < position:
-                     oz.write(overlapLine)
-                     overlapHead.popleft()
-                  elif overlapPosition == position:
-                     overlapHead.popleft()
-                     overlapData = json.loads(overlapLine.split('\t')[2])
+                  if overlap_position < position:
+                     oz.write(overlap_line)
+                     overlap_head.popleft()
+                  elif overlap_position == position:
+                     overlap_head.popleft()
+                     overlap_data = json.loads(overlap_line.split('\t')[2])
                      data = json.loads(fields[2])
-                     if overlapData['mean'] > data['mean']:
-                        line = overlapLine
+                     if overlap_data['mean'] > data['mean']:
+                        line = overlap_line
                      else:
-                        break 
+                        break
                   else:
                      break
 
-               if position < coverageGZF[3]:
+               if position < coverage_file['next_leftmost_position']:
                   oz.write(line)
                else:
-                  overlapTail.append((position, line))
-                 
-         if overlapHead:
+                  overlap_tail.append((position, line))
+
+         if overlap_head:
             raise Exception("Nested regions detected in two coverage files!")
-      
-         overlapHead = overlapTail
-         overlapTail = deque([])
-     
-      if overlapTail:
-         raise Exception("Error while merging coverage files!")  
+         overlap_head = overlap_tail
+         overlap_tail = deque([])
+
+      if overlap_tail:
+         raise Exception("Error while merging coverage files!")
 
 
 if __name__ == "__main__":
    args = argparser.parse_args()
-
-   coverageGZFs = readCoverageGZFsList(args.inCoverageGZFsList)
-   mergeCoverageGZFs(coverageGZFs, args.outCoverageGZF)
-
+   coverage_files = read_files_list(args.in_files_list)
+   merge_coverage_files(coverage_files, args.out_merged_file)
