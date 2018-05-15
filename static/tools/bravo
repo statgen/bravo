@@ -114,7 +114,7 @@ class requests(object):
     def post(url, headers=None, data=None):
         headers = headers or {}
         if isinstance(data, dict): data = urlencode(data)
-        if data is not None: data = bytes(data)
+        if data is not None: data = data.encode('utf8')
         req = Request(url, headers=headers, data=data)
         return _requests_response(req)
 class _requests_response(object):
@@ -155,6 +155,7 @@ if sys.version_info[0:2] == (2,7) or sys.version_info[0:2] >= (3,6):
 else:
     def _json_load_str_or_bytes(fp):
         return json.loads(fp.read().decode())
+
 
 
 def credstore_exists():
