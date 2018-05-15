@@ -98,3 +98,4 @@ if __name__ == "__main__":
    args = argparser.parse_args()
    coverage_files = read_files_list(args.in_files_list)
    merge_coverage_files(coverage_files, args.out_merged_file)
+   pysam.tabix_index(args.out_merged_file, seq_col = 0, start_col = 1, end_col = 1)
