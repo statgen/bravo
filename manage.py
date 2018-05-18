@@ -49,6 +49,13 @@ argparser_variants.add_argument('-t', '--threads', metavar = 'number', required 
 argparser_bamcache = argparser_subparsers.add_parser('bam_cache', help = 'Creates MongoDB collection for storing paths to cached BAM\CRAM files for the IGV browser.')
 argparser_bamcache.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 
+argparser_custom_variants = argparser_subparsers.add_parser('custom_variants', help = 'Creates and populates an additional MongoDB collection for variants. Useful when there is a need to serve multiple different variants sets (e.g. after subsetting samples) through the API.')
+argparser_custom_variants.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
+argparser_custom_variants.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
+argparser_custom_variants.add_argument('-n', '--name', metavar = 'name', required = True, type = str, dest = 'collection_name', help = 'MongoDB destination collection name.')
+argparser_custom_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of thrads to use.')
+
+
 
 def load_config(name):
     """Loads Bravo configuration class.
@@ -228,6 +235,23 @@ def create_sequence_cache(collection_name):
     sequences.SequencesClient.create_cache_collection_and_index(db, collection_name)
 
 
+def load_custom_variants(variants_files, collection_name, threads):
+    """Creates and populates MongoDB collection with given name for additional variants.
+    
+    Arguments:
+    variants_files -- list of one or more VCF/BCF files with variants (no genotypes) compressed using bgzip and indexed using tabix.
+    collection_name -- name of MongoDB collection that will store variants.
+    threads -- number of threads to use.
+    """
+    db = get_db_connection()
+    if collection_name in db.collection_names():
+        db[collection_name].drop()
+    with contextlib.closing(multiprocessing.Pool(threads)) as threads_pool:
+        threads_pool.map(functools.partial(_write_to_collection, collection = collection_name, reader = parsing.get_variants_from_sites_vcf_withou_annotation), get_file_contig_pairs(variants_files))
+    db[collection_name].create_indexes([pymongo.operations.IndexModel(key) for key in ['xpos', 'xstop', 'filter']]) 
+    sys.stdout.write('Inserted {} variant(s).\n'.format(db[collection_name].count()))
+
+
 if __name__ == '__main__':
     global mongo_host
     global mongo_port
@@ -273,6 +297,10 @@ if __name__ == '__main__':
         sys.stdout.write('Creating {} collection in {} database.\n'.format(igv_cache_collection_name, mongo_db_name))
         create_sequence_cache(igv_cache_collection_name)
         sys.stdout.write('Done creating {} collection in {} database.\n'.format(igv_cache_collection_name, mongo_db_name))
+    elif args.command == 'custom_variants':
+        sys.stdout.write('Creating {} collection in {} database.\n'.format(args.collection_name, mongo_db_name))
+        load_custom_variants(args.variants_files, args.collection_name, args.threads)
+        sys.stdout.write('Done creating {} collection in {} database.\n'.format(args.collection_name, mongo_db_name))
     else:
         raise Exception('Command {} is not supported.'.format(args.command))
 
@@ -290,16 +318,4 @@ def load_percentiles(vcfs):
     if not all(x.strip() for x in vcfs):
         sys.exit("VCF file name(s) must be a non-empty string(s).")
     exac.load_percentiles(vcfs)
-
-
-@manager.option('-c', '--collection', dest = 'collection', type = str, required = True, help = 'Destination Mongo collection name.') 
-@manager.option('-v', '--vcf', dest = 'vcfs', type = str, nargs = '+', required = True, help = 'Input VCF name(s).')
-def load_custom_variants_file(collection, vcfs):
-    "Loads variants from the specified VCF file(s) into a new Mongo collection.\
-     Useful when there is a need to serve multiple different variants sets (e.g. after subsetting samples) through the API."
-
-    if not collection.strip():
-        sys.exit("Collection name must be a non-empty string.")
-    if not all(x.strip() for x in vcfs):
-        sys.exit("VCF file name(s) must be a non-empty string(s).")
-    exac.load_custom_variants_file(collection, vcfs)
+'''

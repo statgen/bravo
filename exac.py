@@ -78,55 +78,6 @@ def get_autocomplete_strings():
 def get_coverage_handler():
     return CoverageHandler(app.config['BASE_COVERAGE'])
 
-def get_tabix_file_contig_pairs(tabix_filenames):
-    filename_contig_pairs = []
-    for tabix_filename in tabix_filenames:
-        with pysam.Tabixfile(tabix_filename) as tabix_file:
-            for contig in tabix_file.contigs:
-                filename_contig_pairs.append((tabix_filename, contig))
-    def _sort_key(pair):
-        (filename, contig) = pair
-        if contig.startswith('chr'): contig = contig[3:]
-        if contig.isdigit(): return int(contig)
-        return 0 # for X/Y/MT
-    filename_contig_pairs.sort(key=_sort_key) # Sort from large -> small chromosomes
-    return filename_contig_pairs
-
-def get_records_from_tabix_contig(tabix_filename, contig, record_parser):
-    start_time = time.time()
-    with pysam.Tabixfile(tabix_filename) as tabix_file:
-        record_i = 0 # in case record_parser never yields anything.
-        for record_i, parsed_record in enumerate(record_parser(itertools.chain(tabix_file.header, tabix_file.fetch(contig, 0, 10**10, multiple_iterators=True))), start=1):
-            yield parsed_record
-
-            if record_i % int(1e6) == 0:
-                print("Loaded {:11,} records in {:6,} seconds from contig {!r:6} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
-    print("Loaded {:11,} records in {:6,} seconds from contig {!r:6} of {!r}".format(record_i, int(time.time()-start_time), contig, tabix_filename))
-
-
-def _load_variants_from_tabix_file_and_contig(args, collection_name, parser):
-    tabix_file, contig = args
-    db = get_db(new_connection = True)
-    collection = db[collection_name]
-    variants_generator = get_records_from_tabix_contig(tabix_file, contig, parser)
-    try:
-        collection.insert(variants_generator, w = 0)
-    except pymongo.errors.InvalidOperation:
-        pass  # handle error when variant_generator is empty
-
-
-def load_custom_variants_file(collection_name, vcfs):
-    db = get_db()
-    if collection_name in db.collection_names():
-        raise Exception("{} collection already exists.".format(collection_name))
-    file_contig_pairs = get_tabix_file_contig_pairs(vcfs)
-    with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
-        pool.map_async(functools.partial(_load_variants_from_tabix_file_and_contig, collection_name = collection_name, parser = get_variants_from_sites_vcf_without_annotation), file_contig_pairs).get(9999999)
-    collection = db[collection_name]
-    for key in ('xpos', 'xstop', 'filter'):
-        print 'creating index on {} in db.{}'.format(key, collection_name)
-        collection.create_index(key)
-
 
 def load_percentiles(vcfs):
     with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
