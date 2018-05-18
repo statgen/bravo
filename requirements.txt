@@ -22,3 +22,5 @@ Werkzeug==0.14.1
 WTForms==2.1
 boltons
 psutil==5.4.3
+gevent
+gunicorn
