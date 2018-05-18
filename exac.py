@@ -115,25 +115,6 @@ def _load_variants_from_tabix_file_and_contig(args, collection_name, parser):
         pass  # handle error when variant_generator is empty
 
 
-def load_variants_file():
-    if len(app.config['SITES_VCFS']) == 0:
-        raise IOError("No vcf file found.")
-
-    db = get_db()
-    db.variants.drop()
-    print("Dropped db.variants")
-
-    file_contig_pairs = get_tabix_file_contig_pairs(app.config['SITES_VCFS'])
-    with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
-        # workaround for Pool.map() from <http://stackoverflow.com/a/1408476/1166306>
-        pool.map_async(functools.partial(_load_variants_from_tabix_file_and_contig, collection_name = 'variants', parser = get_variants_from_sites_vcf), file_contig_pairs).get(9999999)
-
-    # TODO: use db.variants.create_indexes([pymongo.operations.IndexModel(key) for key in 'xpos xstop rsids filter'.split()])
-    for key in ('xpos', 'xstop', 'rsids', 'filter'):
-        print 'creating index on {} in db.{}'.format(key, 'variants')
-        db.variants.create_index(key)
-
-
 def load_custom_variants_file(collection_name, vcfs):
     db = get_db()
     if collection_name in db.collection_names():

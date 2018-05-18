@@ -40,6 +40,11 @@ argparser_metrics = argparser_subparsers.add_parser('metrics', help = 'Creates a
 argparser_metrics.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_metrics.add_argument('-m', '--metrics', metavar = 'file', required = True, type = str, dest = 'metrics_file', help = 'File with the pre-calculated metrics across all variants. Every metric must be stored on a separate line in JSON format.')
 
+argparser_variants = argparser_subparsers.add_parser('variants', help = 'Creates and populates MongoDB collection for variants.')
+argparser_variants.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
+argparser_variants.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
+argparser_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of thrads to use.')
+
 
 def load_config(name):
     """Loads Bravo configuration class.
@@ -201,6 +206,21 @@ def load_metrics(metrics_file):
     sys.stdout.write('Inserted {} metric(s).\n'.format(db.metrics.count()))
 
 
+def load_variants(variants_files, threads):
+    """Creates and populates MongoDB collection for variants.
+
+    Arguments:
+    variants_files -- list of one or more VCF/BCF files with variants (no genotypes) compressed using bgzip and indexed using tabix.
+    threads -- number of threads to use.
+    """
+    db = get_db_connection()
+    db.variants.drop()
+    with contextlib.closing(multiprocessing.Pool(threads)) as threads_pool:
+        threads_pool.map(functools.partial(_write_to_collection, collection = 'variants', reader = parsing.get_variants_from_sites_vcf), get_file_contig_pairs(variants_files))
+    db.variants.create_indexes([pymongo.operations.IndexModel(key) for key in ['xpos', 'xstop', 'rsids', 'filter']])
+    sys.stdout.write('Inserted {} variant(s).\n'.format(db.variants.count()))
+
+
 if __name__ == '__main__':
     global mongo_host
     global mongo_port
@@ -237,6 +257,10 @@ if __name__ == '__main__':
         sys.stdout.write('Creating metrics collection in {} database.\n'.format(mongo_db_name))
         load_metrics(args.metrics_file)
         sys.stdout.write('Done creating metrics collection in {} databases.\n'.format(mongo_db_name))
+    elif args.command == 'variants':
+        sys.stdout.write('Creating variants collection in {} database.\n'.format(mongo_db_name))
+        load_variants(args.variants_files, args.threads)
+        sys.stdout.write('Done creating variants collection in {} database.\n'.format(mongo_db_name))
     else:
         raise Exception('Command {} is not supported.'.format(args.command))
 
