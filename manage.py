@@ -247,7 +247,7 @@ def load_custom_variants(variants_files, collection_name, threads):
     if collection_name in db.collection_names():
         db[collection_name].drop()
     with contextlib.closing(multiprocessing.Pool(threads)) as threads_pool:
-        threads_pool.map(functools.partial(_write_to_collection, collection = collection_name, reader = parsing.get_variants_from_sites_vcf_withou_annotation), get_file_contig_pairs(variants_files))
+        threads_pool.map(functools.partial(_write_to_collection, collection = collection_name, reader = parsing.get_variants_from_sites_vcf_without_annotation), get_file_contig_pairs(variants_files))
     db[collection_name].create_indexes([pymongo.operations.IndexModel(key) for key in ['xpos', 'xstop', 'filter']]) 
     sys.stdout.write('Inserted {} variant(s).\n'.format(db[collection_name].count()))
 
