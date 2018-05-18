@@ -321,4 +321,35 @@ def load_percentiles(vcfs):
     if not all(x.strip() for x in vcfs):
         sys.exit("VCF file name(s) must be a non-empty string(s).")
     exac.load_percentiles(vcfs)
+
+def load_percentiles(vcfs):
+    with contextlib.closing(multiprocessing.Pool(app.config['LOAD_DB_PARALLEL_PROCESSES'])) as pool:
+        pool.map_async(_load_percentiles_from_vcf, vcfs).get(9999999)
+
+
+def _load_percentiles_from_vcf(vcf):
+    db = get_db()
+    n_variants = 0
+    n_matched = 0
+    n_modified = 0
+    with gzip.GzipFile(vcf, 'r') as ivcf:
+        start_time = time.time()
+        requests = []
+        for variant in get_variants_from_sites_vcf_only_percentiles(ivcf):
+            requests.append(pymongo.operations.UpdateOne(
+                {'xpos': variant['xpos'], 'ref': variant['ref'], 'alt': variant['alt']},
+                {'$set': {'quality_metrics_percentiles': variant['percentiles']}},
+                upsert = False))
+            n_variants += 1
+            if n_variants % 1000000 == 0:
+                res = db.variants.bulk_write(requests, ordered = False)
+                n_matched += res.matched_count
+                n_modified += res.modified_count
+                requests = []
+                print 'VCF {}. Processed {} variant(s) in {} second(s), {} matched, {} modified.'.format(vcf, n_variants, int(time.time() - start_time), n_matched, n_modified) 
+        if len(requests) > 0:
+            res = db.variants.bulk_write(requests, ordered = False)
+            n_matched += res.matched_count
+            n_modified += res.modified_count
+            print 'Finished. VCF {}. Processed {} variant(s) in {} second(s), {} matched, {} modified.'.format(vcf, n_variants, int(time.time() - start_time), n_matched, n_modified)
 '''
