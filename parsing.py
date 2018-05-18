@@ -21,38 +21,6 @@ from utils import *
 # }
 
 
-def get_base_coverage_from_file(base_coverage_file):
-    """
-    Read a base coverage file and return iter of dicts that look like:
-    {
-        'xpos': 1e9+1,
-        'mean': 0.0,
-        'median': 0.0,
-        '1': 0.0,
-        '5': 0.0,
-        '10': 0.0,
-        '15': 0.0,
-        '20': 0.0,
-        '25': 0.0,
-        '30': 0.0,
-        '50': 0.0,
-        '100': 0.0,
-    }
-    """
-
-    float_header_fields = ['mean', 'median', '1', '5', '10', '15', '20', '25', '30', '50', '100']
-    for line in base_coverage_file:
-        if line.startswith('#'):
-            continue
-        fields = line.strip('\n').split('\t')
-        d = {
-            'xpos': Xpos.from_chrom_pos(fields[0], int(fields[1])),
-            'pos': int(fields[1]),
-        }
-        for i, k in enumerate(float_header_fields):
-            d[k] = float(fields[i+2])
-        yield d
-
 def get_variants_from_sites_vcf_without_annotation(sites_vcf):
     for line in sites_vcf:
         try:
