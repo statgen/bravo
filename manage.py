@@ -13,6 +13,7 @@ import contextlib
 import multiprocessing
 import functools
 import json
+import sequences
 
 argparser = argparse.ArgumentParser(description = 'Tool for creating and populating Bravo database.')
 argparser_subparsers = argparser.add_subparsers(help = '', dest = 'command')
@@ -44,6 +45,9 @@ argparser_variants = argparser_subparsers.add_parser('variants', help = 'Creates
 argparser_variants.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_variants.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
 argparser_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of thrads to use.')
+
+argparser_bamcache = argparser_subparsers.add_parser('bam_cache', help = 'Creates MongoDB collection for storing paths to cached BAM\CRAM files for the IGV browser.')
+argparser_bamcache.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 
 
 def load_config(name):
@@ -213,6 +217,17 @@ def load_variants(variants_files, threads):
     sys.stdout.write('Inserted {} variant(s).\n'.format(db.variants.count()))
 
 
+def create_sequence_cache(collection_name):
+    """Creates Mongo collection with unique index to store paths to cached BAM\CRAM files for the IGV browser.\
+     Important: Mongo will not do any cleaning if cache becomes too large."
+
+    Arguments:
+    collection_name -- name of MongoDB collection that will store paths to cached files.
+    """
+    db = get_db_connection()
+    sequences.SequencesClient.create_cache_collection_and_index(db, collection_name)
+
+
 if __name__ == '__main__':
     global mongo_host
     global mongo_port
@@ -227,6 +242,7 @@ if __name__ == '__main__':
     mongo_host = config['MONGO']['host']
     mongo_port = config['MONGO']['port']
     mongo_db_name = config['MONGO']['name']
+    igv_cache_collection_name = config['IGV_CACHE_COLLECTION']
 
     if args.command == 'genes':
         sys.stdout.write('Start loading genes to {} database.\n'.format(mongo_db_name))
@@ -253,6 +269,10 @@ if __name__ == '__main__':
         sys.stdout.write('Creating variants collection in {} database.\n'.format(mongo_db_name))
         load_variants(args.variants_files, args.threads)
         sys.stdout.write('Done creating variants collection in {} database.\n'.format(mongo_db_name))
+    elif args.command == 'bam_cache':
+        sys.stdout.write('Creating {} collection in {} database.\n'.format(igv_cache_collection_name, mongo_db_name))
+        create_sequence_cache(igv_cache_collection_name)
+        sys.stdout.write('Done creating {} collection in {} database.\n'.format(igv_cache_collection_name, mongo_db_name))
     else:
         raise Exception('Command {} is not supported.'.format(args.command))
 
@@ -283,14 +303,3 @@ def load_custom_variants_file(collection, vcfs):
     if not all(x.strip() for x in vcfs):
         sys.exit("VCF file name(s) must be a non-empty string(s).")
     exac.load_custom_variants_file(collection, vcfs)
-
-
-@manager.option('-c', '--collection', dest = 'collection', type = str, required = False, help = 'Mongo collection name to store paths to cached BAM/CRAM files.')
-def create_sequence_cache(collection):
-    "Creates Mongo collection with unique index to store paths to cached BAM\CRAM files for the IGV browser.\
-     Important: Mongo will not do any cleaning if cache becomes too large."
-    
-    if collection is not None and not collection.strip():
-        sys.exit("Collection name must be a non-empty string.")
-    exac.create_sequence_cache(collection)
-'''

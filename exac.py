@@ -160,15 +160,6 @@ def _load_percentiles_from_vcf(vcf):
             print 'Finished. VCF {}. Processed {} variant(s) in {} second(s), {} matched, {} modified.'.format(vcf, n_variants, int(time.time() - start_time), n_matched, n_modified)
 
 
-
-
-def create_sequence_cache(collection = None):
-    db = get_db()
-    if collection is None:
-        collection = app.config['IGV_CACHE_COLLECTION']
-    sequences.SequencesClient.create_cache_collection_and_index(db, collection)
-
-
 def require_agreement_to_terms_and_store_destination(func):
     """
     This decorator for routes checks that the user is logged in and has agreed to the terms.
