@@ -106,24 +106,17 @@ def load_gene_models(canonical_transcripts_file, omim_file, genenames_file, genc
                 gene['full_gene_name'] = genenames[gene_id][0]
                 gene['other_names'] = genenames[gene_id][1]
             db.genes.insert_one(gene)
-    db.genes.ensure_index('gene_id')
-    db.genes.ensure_index('gene_name')
-    db.genes.ensure_index('other_names')
-    db.genes.ensure_index('xstart')
-    db.genes.ensure_index('xstop')
+    db.genes.create_indexes([pymongo.operations.IndexModel(key) for key in ['gene_id', 'gene_name', 'other_names', 'xstart', 'xstop']])
     sys.stdout.write('Inserted {} gene(s).\n'.format(db.genes.count()))
   
     with gzip.GzipFile(gencode_file, 'r') as ifile:
         db.transcripts.insert_many(transcript for transcript in parsing.get_regions_from_gencode_gtf(ifile, {'transcript'}))
-    db.transcripts.ensure_index('transcript_id')
-    db.transcripts.ensure_index('gene_id')
+    db.transcripts.create_indexes([pymongo.operations.IndexModel(key) for key in ['transcript_id', 'gene_id']])
     sys.stdout.write('Inserted {} transcript(s).\n'.format(db.transcripts.count()))
 
     with gzip.GzipFile(gencode_file, 'r') as ifile:
         db.exons.insert_many(exon for exon in parsing.get_regions_from_gencode_gtf(ifile, {'exon', 'CDS', 'UTR'}))
-    db.exons.ensure_index('exon_id')
-    db.exons.ensure_index('transcript_id')
-    db.exons.ensure_index('gene_id')
+    db.exons.create_indexes([pymongo.operations.IndexModel(key) for key in ['exon_id', 'transcript_id', 'gene_id']])
     sys.stdout.write('Inserted {} exon(s).\n'.format(db.exons.count()))
 
 
@@ -133,7 +126,7 @@ def create_users():
     """
     db = get_db_connection()
     db.users.drop()
-    db.users.ensure_index('user_id')
+    db.users.create_index('user_id')
 
 
 def load_whitelist(whitelist_file):
@@ -149,7 +142,7 @@ def load_whitelist(whitelist_file):
             email = line.strip()
             if email:
                 db.whitelist.insert({'user_id': email})
-    db.whitelist.ensure_index('user_id')
+    db.whitelist.create_index('user_id')
     sys.stdout.write('Inserted {} email(s).\n'.format(db.whitelist.count()))
 
 
@@ -185,8 +178,7 @@ def load_dbsnp(dbsnp_files, threads):
     db.dbsnp.drop()
     with contextlib.closing(multiprocessing.Pool(threads)) as threads_pool:
         threads_pool.map(functools.partial(_write_to_collection, collection = 'dbsnp', reader = parsing.get_snp_from_dbsnp_file), get_file_contig_pairs(dbsnp_files))
-    db.dbsnp.ensure_index('rsid')
-    db.dbsnp.ensure_index('xpos')
+    db.dbsnp.create_indexes([pymongo.operations.IndexModel(key) for key in ['xpos', 'rsid']])
     sys.stdout.write('Inserted {} variant(s).\n'.format(db.dbsnp.count()))
 
 
@@ -202,7 +194,7 @@ def load_metrics(metrics_file):
         for line in ifile:
             metric = json.loads(line)
             db.metrics.insert(metric)
-    db.metrics.ensure_index('metric')
+    db.metrics.create_index('metric')
     sys.stdout.write('Inserted {} metric(s).\n'.format(db.metrics.count()))
 
 
