@@ -21,35 +21,40 @@ from utils import *
 # }
 
 
-def get_variants_from_sites_vcf_without_annotation(sites_vcf):
-    for line in sites_vcf:
-        try:
-            line = line.strip('\n')
-            if line.startswith('#'):
-                continue
-            fields = line.split('\t')
-            info_field = dict(x.split('=', 1) if '=' in x else (x, x) for x in re.split(';(?=\w)', fields[7]))
-            for i, alt_allele in enumerate(fields[4].split(',')):
-                variant = {}
-                variant['chrom'] = fields[0][3:] if fields[0].startswith('chr') else fields[0]
-                variant['pos'], variant['ref'], variant['alt'] = get_minimal_representation(fields[1], fields[3], alt_allele)
-                variant['xpos'] = Xpos.from_chrom_pos(variant['chrom'], variant['pos'])
-                variant['xstop'] = variant['xpos'] + len(variant['alt']) - len(variant['ref'])
-                variant['variant_id'] = '{}-{}-{}-{}'.format(variant['chrom'], variant['pos'], variant['ref'], variant['alt'])
-                variant['site_quality'] = float(fields[5])
-                variant['filter'] = fields[6]
-                variant['allele_count'] = int(info_field['AC'].split(',')[i])
-                if variant['allele_count'] == 0: continue
-                variant['allele_num'] = int(info_field['AN'])
-                assert variant['allele_num'] != 0, variant
-                variant['allele_freq'] = float(info_field['AF'].split(',')[i])
-                assert variant['allele_freq'] != 0, variant
-                variant['hom_count'] = int(info_field['Hom'].split(',')[i])
-                yield variant
-        except:
-            print("Error while parsing vcf line: " + line)
-            traceback.print_exc()
-            raise
+def get_variants_from_sites_vcf_without_annotation(vcf, chrom, start_bp, end_bp):
+    """Reads sites VCF/BCF file and returns iterator over variant dicts.
+
+    Arguments:
+    vcf -- VCF/BCF file name.
+    chrom -- chromosome name.
+    start_bp -- start position in base-pairs.
+    end_bp -- end position in base-pairs.
+    """
+    with closing(pysam.VariantFile(vcf)) as ifile:
+        for record in ifile.fetch(chrom, start_bp, end_bp):
+            try:
+                for i, alt_allele in enumerate(record.alts):
+                    variant = {}
+                    variant['chrom'] = record.contig[3:] if record.contig.startswith('chr') else record.contig
+                    variant['pos'], variant['ref'], variant['alt'] = get_minimal_representation(record.pos, record.ref, alt_allele)
+                    variant['xpos'] = Xpos.from_chrom_pos(variant['chrom'], variant['pos'])
+                    variant['xstop'] = variant['xpos'] + len(variant['alt']) - len(variant['ref'])
+                    variant['variant_id'] = '{}-{}-{}-{}'.format(variant['chrom'], variant['pos'], variant['ref'], variant['alt'])
+                    variant['site_quality'] = record.qual
+                    variant['filter'] = ';'.join(record.filter.keys())
+                    variant['allele_count'] = record.info['AC'][i]
+                    if variant['allele_count'] == 0:
+                        continue
+                    variant['allele_num'] = record.info['AN']
+                    assert variant['allele_num'] != 0, variant
+                    variant['allele_freq'] = record.info['AF'][i]
+                    assert variant['allele_freq'] != 0, variant
+                    variant['hom_count'] = record.info['Hom'][i]
+                    yield variant
+            except:
+                print("Error while parsing VCF/BCF record: " + record)
+                traceback.print_exc()
+                raise
 
 
 def get_variants_from_sites_vcf_only_percentiles(sites_vcf):
