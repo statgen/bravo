@@ -52,7 +52,7 @@ def get_variants_from_sites_vcf_without_annotation(vcf, chrom, start_bp, end_bp)
                     variant['hom_count'] = record.info['Hom'][i]
                     yield variant
             except:
-                print("Error while parsing VCF/BCF record: " + record)
+                print("Error while parsing VCF/BCF record: " + record.__str__())
                 traceback.print_exc()
                 raise
 
@@ -158,7 +158,7 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp):
                     keep_only_needed_annotation_fields(variant)
                     yield variant
             except:       
-                print("Error parsing VCF/BCF record: " + record)
+                print("Error parsing VCF/BCF record: " + record.__str__())
                 traceback.print_exc()
                 raise
 

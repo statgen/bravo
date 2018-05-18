@@ -14,6 +14,7 @@ import multiprocessing
 import functools
 import json
 import sequences
+from itertools import chain,islice
 
 argparser = argparse.ArgumentParser(description = 'Tool for creating and populating Bravo database.')
 argparser_subparsers = argparser.add_subparsers(help = '', dest = 'command')
@@ -175,8 +176,10 @@ def _write_to_collection(args, collection, reader):
     file, chrom = args
     if chrom != 'PAR':
         db = get_db_connection()
-        db[collection].insert_many(reader(file, chrom, None, None))
- 
+        documents = reader(file, chrom, None, None)
+        for document in documents:
+            db[collection].insert_many(chain([document], islice(documents, 99999))) # insert in chunks of 100000 documents
+
 
 def load_dbsnp(dbsnp_files, threads):
     """Creates and populates MongoDB collection for dbSNP variants.
