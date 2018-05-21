@@ -64,6 +64,12 @@ Compress(app)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 5 # 5 second browser cache timeout
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
+BASE_COVERAGE = []
+BASE_COVERAGE.extend({'bp-min-length':0,                  'path':path} for path in glob.glob(app.config['BASE_COVERAGE_DIRECTORY'] + 'full/*.json.gz'))
+BASE_COVERAGE.extend({'bp-min-length':300, 'binned':True, 'path':path} for path in glob.glob(app.config['BASE_COVERAGE_DIRECTORY'] + 'bin_25e-2/*.json.gz'))
+BASE_COVERAGE.extend({'bp-min-length':1000,'binned':True, 'path':path} for path in glob.glob(app.config['BASE_COVERAGE_DIRECTORY'] + 'bin_50e-2/*.json.gz'))
+BASE_COVERAGE.extend({'bp-min-length':3000,'binned':True, 'path':path} for path in glob.glob(app.config['BASE_COVERAGE_DIRECTORY'] + 'bin_75e-2/*.json.gz'))
+
 MAX_REGION_LENGTH = int(350e3) # Longer than TTN (305kb), short enough to perform okay.
 
 def get_db(new_connection=False):
@@ -87,7 +93,7 @@ def get_autocomplete_strings():
 
 @boltons.cacheutils.cached({})
 def get_coverage_handler():
-    return CoverageHandler(app.config['BASE_COVERAGE'])
+    return CoverageHandler(BASE_COVERAGE)
 
 
 def require_agreement_to_terms_and_store_destination(func):

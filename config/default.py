@@ -44,10 +44,4 @@ ADMINS = [
 ADMIN = False # True if app is running in admin mode.
 ADMIN_ALLOWED_IP = []
 
-#cov_dir = '/var/browser_coverage/topmed_freeze2_random1000_hg38/'
-BASE_COVERAGE = []
-#BASE_COVERAGE.extend({'bp-min-length':0,                  'path':path} for path in glob.glob(cov_dir + 'full/*.json.gz'))
-#BASE_COVERAGE.extend({'bp-min-length':300, 'binned':True, 'path':path} for path in glob.glob(cov_dir + 'bin_25e-2/*.json.gz'))
-#BASE_COVERAGE.extend({'bp-min-length':1000,'binned':True, 'path':path} for path in glob.glob(cov_dir + 'bin_50e-2/*.json.gz'))
-#BASE_COVERAGE.extend({'bp-min-length':3000,'binned':True, 'path':path} for path in glob.glob(cov_dir + 'bin_75e-2/*.json.gz'))
-
+BASE_COVERAGE_DIRECTORY = ''
