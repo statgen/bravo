@@ -11,4 +11,4 @@ RUN pip install -r requirements.txt
 
 EXPOSE 7778
 
-CMD ["gunicorn", "--bind", "127.0.0.1:7778", "--workers", "1", "-k", "gevent", "exac:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:7778", "--workers", "1", "-k", "gevent", "exac:app"]
