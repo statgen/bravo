@@ -44,9 +44,16 @@ from werkzeug.contrib.fixers import ProxyFix
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
 
-app = Flask(__name__)
+app = Flask(__name__, instance_relative_config = True)
 
-app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
+# Load default config
+app.config.from_object('config.default')
+# Load instance configuration if exists
+app.config.from_pyfile('config.py', silent = True)
+# Load configuration file specified in BRAVO_CONFIG_FILE environment variable if exists
+app.config.from_envvar('BRAVO_CONFIG_FILE', silent = True)
+
+#app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
 
 if app.config['PROXY']: app.wsgi_app = ProxyFix(app.wsgi_app)
 if 'GVS_URL_PREFIX' in os.environ: app.config['URL_PREFIX'] = os.environ['GVS_URL_PREFIX']
