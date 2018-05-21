@@ -40,11 +40,15 @@ import pysam
 import io
 import sequences
 from datetime import timedelta
+from werkzeug.contrib.fixers import ProxyFix
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')
 
 app = Flask(__name__)
+
 app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
+
+if app.config['PROXY']: app.wsgi_app = ProxyFix(app.wsgi_app)
 if 'GVS_URL_PREFIX' in os.environ: app.config['URL_PREFIX'] = os.environ['GVS_URL_PREFIX']
 if 'BRAVO_ADMIN_MODE' in os.environ: app.config['ADMIN'] = True if os.environ['BRAVO_ADMIN_MODE'].lower() == 'true' else False
 mail_on_500(app, app.config['ADMINS'])
@@ -112,6 +116,7 @@ def _err():
     error = traceback.format_exc()
     if request.form: print('Failed on {} with form {} and error:\n{}'.format(url, request.form, error))
     else: print('Failed on {} with error:\n{}'.format(url, error))
+
 
 @bp.route('/')
 def homepage():
