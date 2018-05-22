@@ -31,10 +31,10 @@ BRAVO_ACCESS_SECRET = ''
 BRAVO_AUTH_URL_PREFIX = '/api/' + BRAVO_API_VERSION + '/auth'
 BRAVO_API_URL_PREFIX = '/api/' + BRAVO_API_VERSION
 
-IGV_REFERENCE_PATH = ''
-IGV_CRAM_DIRECTORY = ''
+IGV_REFERENCE_PATH = '/var/bravo/data/genomes/'
+IGV_CRAM_DIRECTORY = '/var/bravo/data/cram/'
 IGV_CACHE_COLLECTION = 'igv_cache'
-IGV_CACHE_DIRECTORY = ''
+IGV_CACHE_DIRECTORY = '/var/bravo/cache/igv_cache/'
 IGV_CACHE_LIMIT = 1000
 
 ADMINS = [
@@ -44,4 +44,4 @@ ADMINS = [
 ADMIN = False # True if app is running in admin mode.
 ADMIN_ALLOWED_IP = []
 
-BASE_COVERAGE_DIRECTORY = ''
+BASE_COVERAGE_DIRECTORY = '/var/bravo/data/coverage/'
