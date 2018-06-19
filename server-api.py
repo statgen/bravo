@@ -16,12 +16,17 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument('--host', default = '0.0.0.0', help = 'The hostname to use to access this server.')
 argparser.add_argument('--port', type = int, default = 5000, help = 'An integer for the port number.')
 
-
 bp = Blueprint('bp', __name__, template_folder = 'templates', static_folder = 'static')
 
+app = Flask(__name__, instance_relative_config = True)
 
-app = Flask(__name__)
-app.config.from_object('flask_config.BravoFreeze5GRCh38Config')
+# Load default config
+app.config.from_object('config.default')
+# Load instance configuration if exists
+app.config.from_pyfile('config.py', silent = True)
+# Load configuration file specified in BRAVO_CONFIG_FILE environment variable if exists
+app.config.from_envvar('BRAVO_CONFIG_FILE', silent = True)
+
 
 proxy = app.config['PROXY']
 

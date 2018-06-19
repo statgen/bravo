@@ -24,3 +24,5 @@ boltons
 psutil==5.4.3
 gevent
 gunicorn
+webargs
+pyjwt
