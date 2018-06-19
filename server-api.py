@@ -31,22 +31,19 @@ app.config.from_envvar('BRAVO_CONFIG_FILE', silent = True)
 proxy = app.config['PROXY']
 
 URL_PREFIX = app.config['URL_PREFIX']
-BRAVO_API_URL_PREFIX = app.config['BRAVO_API_URL_PREFIX']
+API_URL_PREFIX = app.config['API_URL_PREFIX']
 BRAVO_ACCESS_SECRET = app.config['BRAVO_ACCESS_SECRET']
 
 mongo_host = app.config['MONGO']['host']
 mongo_port = app.config['MONGO']['port']
 mongo_db_name = app.config['MONGO']['name']
 
-dataset_name = app.config['DATASET_NAME']
-collection_name = os.environ['BRAVO_API_COLLECTION_NAME'] if 'BRAVO_API_COLLECTION_NAME' in os.environ else 'variants'
-bravo_api_version = app.config['BRAVO_API_VERSION']
+api_dataset_name = app.config['API_DATASET_NAME']
+api_collection_name = app.config['API_COLLECTION_NAME']
+api_version = app.config['API_VERSION']
 
-if 'BRAVO_API_URL_PREFIX' in os.environ:
-    BRAVO_API_URL_PREFIX = BRAVO_API_URL_PREFIX + '/' + os.environ['BRAVO_API_URL_PREFIX']
-
-pageSize = 1000
-maxRegion = 250000
+pageSize = app.config['API_PAGE_SIZE']
+maxRegion = app.config['API_MAX_REGION']
 
 projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True, 'rsids': True}
 allowed_sort_keys = {'pos': long, 'allele_count': int, 'allele_freq': float, 'allele_num': int, 'site_quality': float, 'filter': str, 'variant-id': str}
@@ -107,20 +104,24 @@ def authorize_access_token(email, issued_at):
 
 
 def request_is_valid():
-   if 'Authorization' not in request.headers:
-       return False
-   authorization = request.headers.get('Authorization').split()
-   if len(authorization) != 2:
-      return False
-   token_type = authorization[0].lower()
-   if token_type != 'bearer':
-      return False
-   email, issued_at, ip = validate_access_token(authorization[1])
-   if email is None or issued_at is None or ip is None:
-      return False
-   if ip != get_user_ip():
-      return False
-   return authorize_access_token(email, issued_at)
+   if app.config['API_GOOGLE_AUTH']:
+      if 'Authorization' not in request.headers:
+         return False
+      authorization = request.headers.get('Authorization').split()
+      if len(authorization) != 2:
+         return False
+      token_type = authorization[0].lower()
+      if token_type != 'bearer':
+         return False
+      email, issued_at, ip = validate_access_token(authorization[1])
+      if email is None or issued_at is None or ip is None:
+         return False
+      if ip != get_user_ip():
+         return False
+      return authorize_access_token(email, issued_at)
+   else:
+      if get_user_ip() in app.config['API_IP_WHITELIST']:
+         return True
 
 
 def require_authorization(func):
@@ -158,8 +159,8 @@ def handle_user_error(error):
 @require_authorization
 def get_name():
    response = jsonify({
-      'dataset': dataset_name,
-      'api_version': bravo_api_version
+      'dataset': api_dataset_name,
+      'api_version': api_version
    })
    response.status_code = 200
    return response
@@ -199,7 +200,7 @@ def get_variant():
    data = []
    response = { 'next': None }
    db = get_db()
-   collection = db[collection_name]
+   collection = db[api_collection_name]
    cursor = collection.find(mongo_filter, projection=projection)
    if not args['vcf']:
       response['format'] = 'json'
@@ -423,7 +424,7 @@ def get_region():
    last_variant = None
    last_object_id = None
    db = get_db()
-   collection = db[collection_name]
+   collection = db[api_collection_name]
    cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit']) 
    if not args['vcf']:
       response['format'] = 'json'
@@ -493,7 +494,7 @@ def get_gene():
    last_variant = None
    last_object_id = None
    db = get_db()
-   collection = db[collection_name]
+   collection = db[api_collection_name]
    cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
    if not args['vcf']:
       response['format'] = 'json'
@@ -521,10 +522,10 @@ def get_gene():
    return response
 
 
-limiter = Limiter(app, default_limits = ["180/15 minute"], key_func = get_user_ip)
+limiter = Limiter(app, default_limits = app.config['API_REQUESTS_RATE_LIMIT'], key_func = get_user_ip)
 
 
-app.register_blueprint(bp, url_prefix = URL_PREFIX + BRAVO_API_URL_PREFIX)
+app.register_blueprint(bp, url_prefix = URL_PREFIX + API_URL_PREFIX)
 
 
 if __name__ == '__main__':   

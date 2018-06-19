@@ -14,7 +14,7 @@ MONGO = {
     'name': 'example'
 }
 DOWNLOAD_ALL_FILEPATH = ''
-URL_PREFIX = ''
+URL_PREFIX = '/dev'
 
 GOOGLE_ANALYTICS_TRACKING_ID = ''
 SECRET_KEY = ''
@@ -25,11 +25,19 @@ TERMS = True # True if app requires 'Terms of Use'. Can be used only if GOOGLE_A
 
 EMAIL_WHITELIST = False # True if app has whitelisted emails. Can be used only if GOOGLE_AUTH is enabled.
 
-BRAVO_API_VERSION = 'v1'
+API_GOOGLE_AUTH = False
+API_IP_WHITELIST = [ '127.0.0.1' ]
+API_VERSION = ''
+API_DATASET_NAME = ''
+API_COLLECTION_NAME = 'variants'
+API_URL_PREFIX = '/api/' + API_VERSION
+API_PAGE_SIZE = 1000
+API_MAX_REGION = 250000
+API_REQUESTS_RATE_LIMIT = ['1800/15 minute']
+
 BRAVO_AUTH_SECRET = ''
 BRAVO_ACCESS_SECRET = ''
-BRAVO_AUTH_URL_PREFIX = '/api/' + BRAVO_API_VERSION + '/auth'
-BRAVO_API_URL_PREFIX = '/api/' + BRAVO_API_VERSION
+BRAVO_AUTH_URL_PREFIX = '/api/' + API_VERSION + '/auth'
 
 IGV_REFERENCE_PATH = '/var/bravo/data/genomes/'
 IGV_CRAM_DIRECTORY = '/var/bravo/data/cram/'
