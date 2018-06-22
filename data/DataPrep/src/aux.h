@@ -6,13 +6,15 @@
 #include <sstream>
 #include <stdexcept>
 #include <cmath>
+#include "bgzf.h"
 
 using namespace std;
 
 namespace aux {
 
-   string read_samples(const char* samples_file) throw (runtime_error);
+	string read_samples(const char* samples_file) throw (runtime_error);
 
+	void write(BGZF* f, const char* format, ...) throw (runtime_error);
 
 	inline int fcmp(double x, double y, double epsilon) {
 		int max_exponent = 0;

@@ -23,3 +23,24 @@ string aux::read_samples(const char* samples_file) throw (runtime_error) {
    buffer.flush();
    return buffer.str();
 }
+
+void aux::write(BGZF* f, const char* format, ...) throw (runtime_error) {
+   va_list arguments;
+   long int n = 0;
+   unsigned int BUFFER_SIZE = 32768u;
+   unsigned int max_string_length = BUFFER_SIZE - 1u;
+   char buffer[BUFFER_SIZE];
+
+   va_start(arguments, format);
+   if ((n = vsnprintf(buffer, max_string_length, format, arguments)) < 0) {
+      throw runtime_error("Error while writing to memory buffer!");
+   } else if (n > max_string_length) {
+      throw runtime_error("Too small memory buffer size for writing!");
+   }
+   va_end(arguments);
+
+   if (bgzf_write(f, buffer, n) < n) {
+      throw runtime_error("Error while writing to output file!");
+   }
+}
+

@@ -5,6 +5,7 @@ find_library(GTEST_LIB gtest HINT ${CGET_PREFIX}/lib)
 
 if(CGET_PREFIX)
     include_directories(${CGET_PREFIX}/include)
+    include_directories(${CGET_PREFIX}/include/htslib)
 endif()
 
 add_executable(testAll HistogramTest.cpp PercentilesTest.cpp Main_TestAll.cpp)

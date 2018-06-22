@@ -7,6 +7,7 @@
 #include <set>
 #include <cmath>
 #include <numeric>
+#include "bgzf.h"
 #include "hts.h"
 #include "vcf.h"
 #include "synced_bcf_reader.h"
@@ -46,7 +47,7 @@ int main(int argc, char* argv[]) {
 	try {
 		po::store(po::parse_command_line(argc, argv, desc), vm);
 		if (vm.count("help")) {
-			cout << "This program computes NS, AN, AC, AF, Hom, Het values for each variant. Output is suitable for dbGaP submission."  << endl << endl;
+			cout << "This program computes NS, AN, AC, AF, Hom, Het values for each variant. Output is suitable for a dbGaP submission."  << endl << endl;
 			cout << desc << endl;
 			return 0;
 		}
@@ -62,9 +63,10 @@ int main(int argc, char* argv[]) {
 			samples = read_samples(samples_file.c_str());
 		}
 
-		GzipWriter writer;
-
-		writer.open(output_file.c_str());
+		BGZF *ofp = bgzf_open(output_file.c_str(), "w");
+		if (!ofp) {
+			throw runtime_error("Error while opening output file!");
+		}
 
 		bcf_srs_t *sr = bcf_sr_init();
 
@@ -77,6 +79,7 @@ int main(int argc, char* argv[]) {
 				throw runtime_error("Error while subsetting region!");
 			}
 		}
+
 		if (bcf_sr_add_reader(sr, input_file.c_str()) <= 0) {
 			throw runtime_error("Error while initializing VCF/BCF reader!");
 		}
@@ -98,37 +101,37 @@ int main(int argc, char* argv[]) {
 		int pl_id = bcf_hdr_id2int(header, BCF_DT_ID, "PL");
 		bool pl_exists = (bcf_hdr_idinfo_exists(header, BCF_HL_FMT, pl_id) != 0);
 
-		writer.write("##fileformat=VCFv4.2\n");
+		write(ofp, "##fileformat=VCFv4.2\n");
 		for (int i = 0; i < header->nhrec; ++i) {
 			if (strcmp(header->hrec[i]->key, "FILTER") == 0) {
-				writer.write("##%s=<%s=%s", header->hrec[i]->key, header->hrec[i]->keys[0], header->hrec[i]->vals[0]);
+				write(ofp, "##%s=<%s=%s", header->hrec[i]->key, header->hrec[i]->keys[0], header->hrec[i]->vals[0]);
 				for (int j = 1; j < header->hrec[i]->nkeys; ++j) {
 					if (strcmp(header->hrec[i]->keys[j], "IDX") == 0) {
 						continue;
 					}
-					writer.write(",%s=%s", header->hrec[i]->keys[j], header->hrec[i]->vals[j]);
+					write(ofp, ",%s=%s", header->hrec[i]->keys[j], header->hrec[i]->vals[j]);
 				}
-				writer.write(">\n");
+				write(ofp, ">\n");
 			}
 		}
 		if (!label.empty()) {
-		   writer.write("##FORMAT=<ID=NA,Number=1,Type=Integer,Description=\"Number of alleles for the population.\"\n");
-		   writer.write("##FORMAT=<ID=FRQ,Number=.,Type=Float,Description=\"Frequency of each alternate allele.\"\n");
-	   }
-		writer.write("##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Coverage\">\n");
-		writer.write("##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Number of Alleles in Samples with Coverage\">\n");
-		writer.write("##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts in Samples with Coverage\">\n");
-		writer.write("##INFO=<ID=AF,Number=A,Type=Float,Description=\"Alternate Allele Frequencies\">\n");
-		writer.write("##INFO=<ID=Het,Number=A,Type=Integer,Description=\"Heterozygous Counts\">\n");
-		writer.write("##INFO=<ID=Hom,Number=A,Type=Integer,Description=\"Homozygous Alternate Counts\">\n");
+ 			write(ofp, "##FORMAT=<ID=NA,Number=1,Type=Integer,Description=\"Number of alleles for the population.\"\n");
+ 			write(ofp, "##FORMAT=<ID=FRQ,Number=.,Type=Float,Description=\"Frequency of each alternate allele.\"\n");
+	   	}
+		write(ofp, "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Coverage\">\n");
+		write(ofp, "##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Number of Alleles in Samples with Coverage\">\n");
+		write(ofp, "##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts in Samples with Coverage\">\n");
+		write(ofp, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Alternate Allele Frequencies\">\n");
+		write(ofp, "##INFO=<ID=Het,Number=A,Type=Integer,Description=\"Heterozygous Counts\">\n");
+		write(ofp, "##INFO=<ID=Hom,Number=A,Type=Integer,Description=\"Homozygous Alternate Counts\">\n");
 		if (!label.empty()) {
-		   writer.write("##INFO=<ID=VRT,Number=1,Type=Integer,Description=\"Variation type,1 - SNV: single nucleotide variation,2 - DIV: deletion/insertion variation,3 - HETEROZYGOUS: variable, but undefined at nucleotide level,4 - STR: short tandem repeat (microsatellite) variation, 5 - NAMED: insertion/deletion variation of named repetitive element,6 - NO VARIATON: sequence scanned for variation, but none observed,7 - MIXED: cluster contains submissions from 2 or more allelic classes (not used),8 - MNV: multiple nucleotide variation with alleles of common length greater than 1,9 - Exception\">\n");
+			write(ofp, "##INFO=<ID=VRT,Number=1,Type=Integer,Description=\"Variation type,1 - SNV: single nucleotide variation,2 - DIV: deletion/insertion variation,3 - HETEROZYGOUS: variable, but undefined at nucleotide level,4 - STR: short tandem repeat (microsatellite) variation, 5 - NAMED: insertion/deletion variation of named repetitive element,6 - NO VARIATON: sequence scanned for variation, but none observed,7 - MIXED: cluster contains submissions from 2 or more allelic classes (not used),8 - MNV: multiple nucleotide variation with alleles of common length greater than 1,9 - Exception\">\n");
 		}
 
 		if (!label.empty()) {
-			writer.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n" , label.c_str());
+			write(ofp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t%s\n" , label.c_str());
 		} else {
-			writer.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+			write(ofp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
 		}
 
 		int gt_index;
@@ -149,6 +152,10 @@ int main(int argc, char* argv[]) {
 
 		while (bcf_sr_next_line(sr) > 0) {
 			bcf1_t* rec = bcf_sr_get_line(sr, 0);
+
+            if ((sr->streaming == 0) && (rec->pos < sr->regions->start)) {
+                continue;
+            }
 
 			if ((rec->unpacked & BCF_UN_FMT) == 0) {
 				bcf_unpack(rec, BCF_UN_FMT);
@@ -266,53 +273,55 @@ int main(int argc, char* argv[]) {
 				continue;
 			}
 
-			writer.write("%s\t%lu\t%s\t%s\t%s", bcf_seqname(header, rec), rec->pos + 1, rec->d.id, rec->d.allele[0], rec->d.allele[1]);
+			write(ofp, "%s\t%lu\t%s\t%s\t%s", bcf_seqname(header, rec), rec->pos + 1, rec->d.id, rec->d.allele[0], rec->d.allele[1]);
 			for (int i = 2; i < rec->n_allele; ++i) {
-				writer.write(",%s", rec->d.allele[i]);
+				write(ofp, ",%s", rec->d.allele[i]);
 			}
 			if (isnan(rec->qual)) {
-				writer.write("\t.");
+				write(ofp, "\t.");
 			} else {
-				writer.write("\t%g", rec->qual);
+				write(ofp, "\t%g", rec->qual);
 			}
 			if (rec->d.n_flt <= 0) {
-				writer.write("\t.");
+				write(ofp, "\t.");
 			} else {
-				writer.write("\t%s", bcf_hdr_int2id(header, BCF_DT_ID, rec->d.flt[0]));
+				write(ofp, "\t%s", bcf_hdr_int2id(header, BCF_DT_ID, rec->d.flt[0]));
 				for (int i = 1; i < rec->d.n_flt; ++i) {
-					writer.write(";%s", bcf_hdr_int2id(header, BCF_DT_ID, rec->d.flt[i]));
+					write(ofp, ";%s", bcf_hdr_int2id(header, BCF_DT_ID, rec->d.flt[i]));
 				}
 			}
-			writer.write("\tNS=%d;AN=%d", ns, an);
-			writer.write(";AC=%d", ac[1]);
+			write(ofp, "\tNS=%d;AN=%d", ns, an);
+			write(ofp, ";AC=%d", ac[1]);
 			for (int i = 2; i < rec->n_allele; ++i) {
-				writer.write(",%d", ac[i]);
+				write(ofp, ",%d", ac[i]);
 			}
-			writer.write(";AF=%g", an > 0 ? (ac[1] / (double)an) : 0.0);
+			write(ofp, ";AF=%g", an > 0 ? (ac[1] / (double)an) : 0.0);
 			for (int i = 2; i < rec->n_allele; ++i) {
-				writer.write(",%g", an > 0 ? (ac[i] / (double)an) : 0.0);
+				write(ofp, ",%g", an > 0 ? (ac[i] / (double)an) : 0.0);
 			}
-			writer.write(";Het=%d", het[1]);
+			write(ofp, ";Het=%d", het[1]);
 			for (int i = 2; i < rec->n_allele; ++i) {
-				writer.write(",%d", het[i]);
+				write(ofp, ",%d", het[i]);
 			}
-			writer.write(";Hom=%d", hom[1]);
+			write(ofp, ";Hom=%d", hom[1]);
 			for (int i = 2; i < rec->n_allele; ++i) {
-				writer.write(",%d", hom[i]);
+				write(ofp, ",%d", hom[i]);
 			}
 			if (!label.empty()) {
-				writer.write(";VRT=%d\tNA:FRQ\t", vrt);
-				writer.write("%d:%g", an, an > 0 ? (ac[1] / (double)an) : 0.0);
+				write(ofp, ";VRT=%d\tNA:FRQ\t", vrt);
+				write(ofp, "%d:%g", an, an > 0 ? (ac[1] / (double)an) : 0.0);
 				for (int i = 2; i < rec->n_allele; ++i) {
-					writer.write(",%g", an > 0 ? (ac[i] / (double)an) : 0.0);
+					write(ofp, ",%g", an > 0 ? (ac[i] / (double)an) : 0.0);
 				}
 			}
-			writer.write("\n");
+			write(ofp, "\n");
 		}
 
 		bcf_sr_destroy(sr);
 
-		writer.close();
+		if (bgzf_close(ofp) != 0) {
+			throw runtime_error("Error while closing output file!");
+		}
 	} catch (exception &e) {
 		cout << "Error: " << endl;
 		cout << e.what() << endl;
