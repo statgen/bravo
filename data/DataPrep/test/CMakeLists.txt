@@ -1,36 +1,12 @@
 find_package(Threads REQUIRED)
+find_library(Z_LIB NAMES libz.a z HINT ${CGET_PREFIX}/lib)
+find_library(BOOST_PROGRAM_OPTIONS_LIB boost_program_options HINT ${CGET_PREFIX}/lib)
+find_library(GTEST_LIB gtest HINT ${CGET_PREFIX}/lib)
 
-include(ExternalProject)
-
-ExternalProject_Add(
-    gtest
-    URL https://github.com/google/googletest/archive/master.zip
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
-    # Disable install step
-    INSTALL_COMMAND ""
-    CMAKE_ARGS -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
-)
-
-ExternalProject_Get_Property(gtest source_dir binary_dir)
-
-find_package(ZLIB REQUIRED)
-
-message(STATUS "ZLIB version: " ${ZLIB_VERSION_STRING})
-message(STATUS "ZLIB header directory: " ${ZLIB_INCLUDE_DIRS})
-message(STATUS "ZLIB library: " ${ZLIB_LIBRARIES})
-
-
-add_library(libgtest IMPORTED STATIC GLOBAL)
-add_dependencies(libgtest gtest)
-
-set_target_properties(libgtest PROPERTIES
-    "IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/libgtest.a"
-    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-)
-
-include_directories(${source_dir}/googletest/include/ ${ZLIB_INCLUDE_DIRS})
-
+if(CGET_PREFIX)
+    include_directories(${CGET_PREFIX}/include)
+endif()
 
 add_executable(testAll HistogramTest.cpp PercentilesTest.cpp Main_TestAll.cpp)
-target_link_libraries(testAll Histogram Percentiles ${ZLIB_LIBRARIES} libgtest)
-install(TARGETS testAll DESTINATION ${CMAKE_BINARY_DIR}/bin)
+target_link_libraries(testAll Histogram Percentiles ${Z_LIB} ${GTEST_LIB})
+install(TARGETS testAll COMPONENT cli RUNTIME DESTINATION bin)
