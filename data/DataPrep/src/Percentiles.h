@@ -8,7 +8,6 @@
 #include <cmath>
 #include <iterator>
 #include "aux.h"
-#include "GzipWriter.h"
 
 using namespace std;
 using namespace aux;
@@ -53,7 +52,7 @@ public:
    void min_max(double& min, double& max) noexcept;
    void probability(double value, double& min, double& max) noexcept;
    void compute(vector<double> sorted_probabilities) noexcept;
-   void write(GzipWriter& writer);
+   void write(BGZF* f) throw (runtime_error);
 };
 
 #endif

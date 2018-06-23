@@ -4,7 +4,6 @@
 #include "aux.h"
 #include "synced_bcf_reader.h"
 #include "TypeSwitcher.h"
-#include "GzipWriter.h"
 #include <vector>
 #include <map>
 #include <set>
@@ -71,13 +70,16 @@ int main(int argc, char* argv[]) {
             samples = read_samples(samples_file.c_str());
         }
 
-        GzipWriter writer;
 
-        writer.open(output_file.c_str());
-        writer.write("##fileformat=VCFv4.2\n");
-        writer.write("##INFO=<ID=HET,Number=.,Type=String,Description=\"Heterozygous individuals selected at random.\">\n");
-        writer.write("##INFO=<ID=HOM,Number=.,Type=String,Description=\"Homozygous individuals selected at random.\">\n");
-        writer.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+        BGZF *ofp = bgzf_open(output_file.c_str(), "w");
+        if (!ofp) {
+            throw runtime_error("Error while opening output file!");
+        }
+
+        write(ofp, "##fileformat=VCFv4.2\n");
+        write(ofp, "##INFO=<ID=HET,Number=.,Type=String,Description=\"Heterozygous individuals selected at random.\">\n");
+        write(ofp, "##INFO=<ID=HOM,Number=.,Type=String,Description=\"Homozygous individuals selected at random.\">\n");
+        write(ofp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
 
         bcf_srs_t *sr = bcf_sr_init();
 
@@ -132,6 +134,10 @@ int main(int argc, char* argv[]) {
 
         while (bcf_sr_next_line(sr) > 0) {
             bcf1_t* rec = bcf_sr_get_line(sr, 0);
+
+            if ((sr->streaming == 0) && (rec->pos < sr->regions->start)) {
+                continue;
+            }
 
             if ((rec->unpacked & BCF_UN_FMT) == 0) {
                 bcf_unpack(rec, BCF_UN_FMT);
@@ -238,34 +244,34 @@ int main(int argc, char* argv[]) {
             }
 
             for (int i = 1; i < rec->n_allele; ++i) {
-                writer.write("%s\t%lu\t.\t%s\t%s\t.\t.\t", bcf_seqname(header, rec), rec->pos + 1, rec->d.allele[0], rec->d.allele[i]);
+                write(ofp, "%s\t%lu\t.\t%s\t%s\t.\t.\t", bcf_seqname(header, rec), rec->pos + 1, rec->d.allele[0], rec->d.allele[i]);
                 auto hom_it = hom_samples.find(i);
                 if (hom_it != hom_samples.end()) {
                     shuffle(hom_it->second.begin(), hom_it->second.end(), number_generator);
-                    writer.write("HOM=%s", header->samples[hom_it->second[0]]);
+                    write(ofp, "HOM=%s", header->samples[hom_it->second[0]]);
                     ++total_random_samples;
                     for (int i = 1; ((i < hom_it->second.size()) && (i < n_random)); ++i) {
-                        writer.write(",%s", header->samples[hom_it->second[i]]);
+                        write(ofp, ",%s", header->samples[hom_it->second[i]]);
                         ++total_random_samples;
                     }
                 }
                 auto het_it = het_samples.find(i);
                 if (het_it != het_samples.end()) {
                     if (hom_it != hom_samples.end()) {
-                        writer.write(";");
+                        write(ofp, ";");
                     }
                     shuffle(het_it->second.begin(), het_it->second.end(), number_generator);
-                    writer.write("HET=%s", header->samples[het_it->second[0]]);
+                    write(ofp, "HET=%s", header->samples[het_it->second[0]]);
                     ++total_random_samples;
                     for (int i = 1; ((i < het_it->second.size()) && (i < n_random)); ++i) {
-                        writer.write(",%s", header->samples[het_it->second[i]]);
+                        write(ofp, ",%s", header->samples[het_it->second[i]]);
                         ++total_random_samples;
                     }
                 }
                 if ((hom_it == hom_samples.end()) && (het_it == het_samples.end())) {
-                    writer.write(".\n");
+                    write(ofp, ".\n");
                 } else {
-                    writer.write("\n");
+                    write(ofp, "\n");
                 }
             }
         }
@@ -274,7 +280,10 @@ int main(int argc, char* argv[]) {
         cout << "Random samples: " << total_random_samples << endl;
 
         bcf_sr_destroy(sr);
-        writer.close();
+
+        if (bgzf_close(ofp) != 0) {
+            throw runtime_error("Error while closing output file!");
+        }
     } catch (exception &e) {
         cout << "Error: " << endl;
         cout << e.what() << endl;

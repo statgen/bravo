@@ -7,12 +7,10 @@
 #include <set>
 #include <cmath>
 #include <numeric>
-#include "bgzf.h"
 #include "hts.h"
 #include "vcf.h"
 #include "synced_bcf_reader.h"
 #include "TypeSwitcher.h"
-#include "GzipWriter.h"
 #include "aux.h"
 
 #include <boost/program_options.hpp>

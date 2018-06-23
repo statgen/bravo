@@ -133,24 +133,24 @@ void Percentiles::probability(double value, double& min, double& max) noexcept {
    }
 }
 
-void Percentiles::write(GzipWriter& writer) {
-   double min = 0.0, max = 0.0;
-   min_max(min, max);
-   writer.write("{");
-   writer.write("\"name\":\"%s\",", name.c_str());
-   writer.write("\"description\":\"%s\",", description.c_str());
-   writer.write("\"type\":\"percentiles\",");
-   writer.write("\"n\":%d,", n());
-   writer.write("\"n_pass\":%d,", n_pass());
-   writer.write("\"min\":%g,", min);
-   writer.write("\"max\":%g,", max);
-   writer.write("\"percentiles\":[");
-   if (percentiles.size() > 0) {
-      writer.write("{\"probability\":%g,\"value\":%g,\"n\":%d,\"n_pass\":%d}", percentiles[0].probability, percentiles[0].value, percentiles[0].n, percentiles[0].n_pass);
-      for (int i = 1; i < percentiles.size(); ++i) {
-         writer.write(",{\"probability\":%g,\"value\":%g,\"n\":%d,\"n_pass\":%d}", percentiles[i].probability, percentiles[i].value, percentiles[i].n, percentiles[i].n_pass);
-      }
-   }
-   writer.write("]");
-   writer.write("}");
+void Percentiles::write(BGZF* f) throw (runtime_error) {
+    double min = 0.0, max = 0.0;
+    min_max(min, max);
+    aux::write(f, "{");
+    aux::write(f, "\"name\":\"%s\",", name.c_str());
+    aux::write(f, "\"description\":\"%s\",", description.c_str());
+    aux::write(f, "\"type\":\"percentiles\",");
+    aux::write(f, "\"n\":%d,", n());
+    aux::write(f, "\"n_pass\":%d,", n_pass());
+    aux::write(f, "\"min\":%g,", min);
+    aux::write(f, "\"max\":%g,", max);
+    aux::write(f, "\"percentiles\":[");
+    if (percentiles.size() > 0) {
+        aux::write(f, "{\"probability\":%g,\"value\":%g,\"n\":%d,\"n_pass\":%d}", percentiles[0].probability, percentiles[0].value, percentiles[0].n, percentiles[0].n_pass);
+        for (int i = 1; i < percentiles.size(); ++i) {
+            aux::write(f, ",{\"probability\":%g,\"value\":%g,\"n\":%d,\"n_pass\":%d}", percentiles[i].probability, percentiles[i].value, percentiles[i].n, percentiles[i].n_pass);
+        }
+    }
+    aux::write(f, "]");
+    aux::write(f, "}");
 }

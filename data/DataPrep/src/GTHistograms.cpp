@@ -10,7 +10,6 @@
 #include "synced_bcf_reader.h"
 #include "Histogram.h"
 #include "TypeSwitcher.h"
-#include "GzipWriter.h"
 #include "aux.h"
 
 #include <boost/program_options.hpp>
