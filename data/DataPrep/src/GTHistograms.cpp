@@ -14,6 +14,7 @@
 #include "aux.h"
 
 #include <boost/program_options.hpp>
+
 namespace po = boost::program_options;
 
 using namespace std;
@@ -54,26 +55,28 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	if (!samples_file.empty()) {
-		samples = read_samples(samples_file.c_str());
-	}
-
 	try {
-		GzipWriter writer;
+        if (!samples_file.empty()) {
+            samples = read_samples(samples_file.c_str());
+        }
 
-		writer.open(output_file.c_str());
+        BGZF *ofp = bgzf_open(output_file.c_str(), "w");
+        if (!ofp) {
+            throw runtime_error("Error while opening output file!");
+        }
 
 		bcf_srs_t *sr = bcf_sr_init();
 
-      if ((input_file.compare("-") != 0) && (!region.empty())) {
-         bcf_sr_set_opt(sr, BCF_SR_REQUIRE_IDX);
-      }
+		if ((input_file.compare("-") != 0) && (!region.empty())) {
+        	bcf_sr_set_opt(sr, BCF_SR_REQUIRE_IDX);
+      	}
 
-   	if (!region.empty()) {
+   		if (!region.empty()) {
 			if (bcf_sr_set_regions(sr, region.c_str(), 0) < 0) {
 				throw runtime_error("Error while subsetting region!");
 			}
 		}
+
 		if (bcf_sr_add_reader(sr, input_file.c_str()) <= 0) {
 			throw runtime_error("Error while initializing VCF/BCF reader!");
 		}
@@ -102,13 +105,13 @@ int main(int argc, char* argv[]) {
 			throw runtime_error("GQ field was not found!");
 		}
 
-		writer.write("##fileformat=VCFv4.2\n");
+		write(ofp, "##fileformat=VCFv4.2\n");
 
-		writer.write("##INFO=<ID=AVGDP,Number=1,Type=Float,Description=\"Average Depth per Sample\">\n");
-		writer.write("##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Total Depth at Site\">\n");
-		writer.write("##INFO=<ID=DP_HIST,Number=R,Type=String,Description=\"Histogram for DP; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
-		writer.write("##INFO=<ID=GQ_HIST,Number=R,Type=String,Description=\"Histogram for GQ; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
-		writer.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+		write(ofp, "##INFO=<ID=AVGDP,Number=1,Type=Float,Description=\"Average Depth per Sample\">\n");
+		write(ofp, "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Total Depth at Site\">\n");
+		write(ofp, "##INFO=<ID=DP_HIST,Number=R,Type=String,Description=\"Histogram for DP; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
+		write(ofp, "##INFO=<ID=GQ_HIST,Number=R,Type=String,Description=\"Histogram for GQ; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
+		write(ofp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
 
 		int gt_index, dp_index, gq_index;
 		TypeSwitcher gt_switcher, dp_switcher, gq_switcher;
@@ -118,6 +121,10 @@ int main(int argc, char* argv[]) {
 
 		while (bcf_sr_next_line(sr) > 0) {
 			bcf1_t* rec = bcf_sr_get_line(sr, 0);
+
+            if ((sr->streaming == 0) && (rec->pos < sr->regions->start)) {
+                continue;
+            }
 
 			if (rec->unpacked == 1) {
 				bcf_unpack(rec, BCF_UN_FMT);
@@ -195,29 +202,31 @@ int main(int argc, char* argv[]) {
 				}
 			}
 
-			writer.write("%s\t%lu\t%s\t%s\t%s", bcf_seqname(header, rec), rec->pos + 1, rec->d.id, rec->d.allele[0], rec->d.allele[1]);
+			write(ofp, "%s\t%lu\t%s\t%s\t%s", bcf_seqname(header, rec), rec->pos + 1, rec->d.id, rec->d.allele[0], rec->d.allele[1]);
 			for (int i = 2; i < rec->n_allele; ++i) {
-				writer.write(",%s", rec->d.allele[i]);
+				write(ofp, ",%s", rec->d.allele[i]);
 			}
-			writer.write("\t.\t.\t");
+			write(ofp, "\t.\t.\t");
 
-			writer.write("AVGDP=%g", total_dp / (float)rec->n_sample);
-			writer.write(";DP=%d", total_dp);
-			writer.write(";DP_HIST=%s,%s", dp_histograms[0].get_text(), dp_histograms[1].get_text());
+			write(ofp, "AVGDP=%g", total_dp / (float)rec->n_sample);
+			write(ofp, ";DP=%d", total_dp);
+			write(ofp, ";DP_HIST=%s,%s", dp_histograms[0].get_text(), dp_histograms[1].get_text());
 			for (int i = 2; i < rec->n_allele; ++i) {
-				writer.write(",%s", dp_histograms[i].get_text());
+				write(ofp, ",%s", dp_histograms[i].get_text());
 			}
 
-			writer.write(";GQ_HIST=%s,%s", gq_histograms[0].get_text(), gq_histograms[1].get_text());
+			write(ofp, ";GQ_HIST=%s,%s", gq_histograms[0].get_text(), gq_histograms[1].get_text());
 			for (int i = 2; i < rec->n_allele; ++i) {
-				writer.write(",%s", gq_histograms[i].get_text());
+				write(ofp, ",%s", gq_histograms[i].get_text());
 			}
-			writer.write("\n");
+			write(ofp, "\n");
 		}
 
 		bcf_sr_destroy(sr);
 
-		writer.close();
+        if (bgzf_close(ofp) != 0) {
+            throw runtime_error("Error while closing output file!");
+        }
 	} catch (exception &e) {
 		cout << "Error: " << endl;
 		cout << e.what() << endl;
