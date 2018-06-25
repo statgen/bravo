@@ -78,12 +78,19 @@ TEST_F(HistogramTest, PopulateHistogram1) {
 		ASSERT_EQ(expected_bins[i].second, observed_bins[i].second);
 	}
 
+	ASSERT_EQ(histogram.get_n(), 14u);
+	ASSERT_EQ(histogram.get_total(), 591.0);
+	ASSERT_DOUBLE_EQ(histogram.get_average(), 42.21428571428571);
+
 	histogram.clear();
 	observed_bins = histogram.get_bins();
 	for (unsigned int i = 0u; i < expected_bins.size(); ++i) {
 		ASSERT_EQ(expected_bins[i].first, observed_bins[i].first);
 		ASSERT_EQ(0u, observed_bins[i].second);
 	}
+
+    ASSERT_EQ(histogram.get_n(), 0u);
+    ASSERT_EQ(histogram.get_total(), 0.0);
 }
 
 TEST_F(HistogramTest, PopulateHistogram2) {
@@ -123,6 +130,10 @@ TEST_F(HistogramTest, PopulateHistogram2) {
 	histogram.add(92);
 	histogram.add(93);
 
+    ASSERT_EQ(histogram.get_n(), 13u);
+    ASSERT_EQ(histogram.get_total(), 491.0);
+    ASSERT_DOUBLE_EQ(histogram.get_average(), 37.76923076923077);
+
 	vector<pair<double, unsigned int>> observed_bins = histogram.get_bins();
     ASSERT_EQ(expected_bins.size(), observed_bins.size());
 	for (unsigned int i = 0u; i < expected_bins.size(); ++i) {
@@ -136,6 +147,9 @@ TEST_F(HistogramTest, PopulateHistogram2) {
 		ASSERT_EQ(expected_bins[i].first, observed_bins[i].first);
 		ASSERT_EQ(0u, observed_bins[i].second);
 	}
+
+    ASSERT_EQ(histogram.get_n(), 0u);
+    ASSERT_EQ(histogram.get_total(), 0.0);
 }
 
 TEST_F(HistogramTest, PopulateHistogram3) {
@@ -155,6 +169,10 @@ TEST_F(HistogramTest, PopulateHistogram3) {
 	histogram.add(10);
 	histogram.add(10);
 
+    ASSERT_EQ(histogram.get_n(), 5u);
+    ASSERT_EQ(histogram.get_total(), 130.0);
+    ASSERT_DOUBLE_EQ(histogram.get_average(), 26.0);
+
 	vector<pair<double, unsigned int>> observed_bins = histogram.get_bins();
     ASSERT_EQ(expected_bins.size(), observed_bins.size());
 	for (unsigned int i = 0u; i < expected_bins.size(); ++i) {
@@ -168,6 +186,9 @@ TEST_F(HistogramTest, PopulateHistogram3) {
 		ASSERT_EQ(expected_bins[i].first, observed_bins[i].first);
 		ASSERT_EQ(0u, observed_bins[i].second);
 	}
+
+    ASSERT_EQ(histogram.get_n(), 0u);
+    ASSERT_EQ(histogram.get_total(), 0.0);
 }
 
 

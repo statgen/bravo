@@ -1,6 +1,6 @@
 #include "Histogram.h"
 
-Histogram::Histogram(const vector<double>& borders) : text(nullptr) {
+Histogram::Histogram(const vector<double>& borders) : total(0.0), n(0u), text(nullptr) {
 	set<double> sorted_unique_borders;
 
 	for (auto &&value : borders) {
@@ -32,6 +32,8 @@ Histogram::~Histogram() {
 }
 
 void Histogram::add(double value) noexcept {
+	total += value;
+	++n;
 	if (this->bins.size() == 1u) {
 		if (aux::fcmp(value, this->bins[0].first, 0.00000001) == 0) {
 			this->bins[0].second += 1u;
@@ -65,6 +67,20 @@ void Histogram::clear() noexcept {
 	for (auto &&pair : bins) {
 		pair.second = 0u;
 	}
+	total = 0.0;
+	n = 0u;
+}
+
+double Histogram::get_total() noexcept {
+	return total;
+}
+
+unsigned int Histogram::get_n() noexcept {
+	return n;
+}
+
+double Histogram::get_average() noexcept {
+	return total / (double)n;
 }
 
 const char* Histogram::get_text() throw (runtime_error) {

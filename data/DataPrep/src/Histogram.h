@@ -19,7 +19,12 @@ private:
 
 	pair<double, unsigned int> last_added_value;
 
+	double total;
+	unsigned int n;
+
+
 	char* text;
+
 
 public:
 	Histogram(const vector<double>& borders);
@@ -29,6 +34,9 @@ public:
 	void add(double value) noexcept;
 	vector<pair<double, unsigned int>> get_bins() noexcept;
 	void clear() noexcept;
+	double get_total() noexcept;
+	unsigned int get_n() noexcept;
+	double get_average() noexcept;
 	const char* get_text() throw (runtime_error);
 
 };

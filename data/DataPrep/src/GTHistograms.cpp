@@ -106,10 +106,15 @@ int main(int argc, char* argv[]) {
 
 		write(ofp, "##fileformat=VCFv4.2\n");
 
-		write(ofp, "##INFO=<ID=AVGDP,Number=1,Type=Float,Description=\"Average Depth per Sample\">\n");
-		write(ofp, "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Total Depth at Site\">\n");
-		write(ofp, "##INFO=<ID=DP_HIST,Number=R,Type=String,Description=\"Histogram for DP; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
-		write(ofp, "##INFO=<ID=GQ_HIST,Number=R,Type=String,Description=\"Histogram for GQ; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
+        write(ofp, "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Total depth at site\">\n");
+		write(ofp, "##INFO=<ID=AVGDP,Number=1,Type=Float,Description=\"Average depth per sample\">\n");
+        write(ofp, "##INFO=<ID=AVGDP_R,Number=R,Type=Float,Description=\"Average depth per sample carrying allele\">\n");
+        write(ofp, "##INFO=<ID=AVGGQ,Number=1,Type=Float,Description=\"Average genotype quality per sample\">\n");
+        write(ofp, "##INFO=<ID=AVGGQ_R,Number=R,Type=Float,Description=\"Average genotype quality per sample carrying allele\">\n");
+        write(ofp, "##INFO=<ID=DP_HIST,Number=1,Type=String,Description=\"Histogram of DP across all samples; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
+		write(ofp, "##INFO=<ID=DP_HIST_R,Number=R,Type=String,Description=\"Histograms of DP across samples carrying allele; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
+		write(ofp, "##INFO=<ID=GQ_HIST,Number=1,Type=String,Description=\"Histogram of GQ across all samples; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
+        write(ofp, "##INFO=<ID=GQ_HIST_R,Number=R,Type=String,Description=\"Histograms of GQ across samples carrying allele; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
 		write(ofp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
 
 		int gt_index, dp_index, gq_index;
@@ -173,7 +178,7 @@ int main(int argc, char* argv[]) {
 				gq_histograms.emplace_back(Histogram(hist_borders));
 			}
 
-			int total_dp = 0;
+            Histogram dp_histogram(hist_borders), gq_histogram(hist_borders);
 
 			for (int i = 0; i < rec->n_sample; ++i) {
 				(gt_switcher.*(gt_switcher.read))(gt_values);
@@ -188,7 +193,11 @@ int main(int argc, char* argv[]) {
 				}
 
 				if (dp_values[0] != bcf_int32_missing) {
-					total_dp += (int)dp_values[0];
+					dp_histogram.add((int)dp_values[0]);
+				}
+
+				if (gq_values[0] != bcf_int32_missing) {
+				    gq_histogram.add((int)gq_values[0]);
 				}
 
 				for (auto&& allele: unique_alleles) {
@@ -207,15 +216,25 @@ int main(int argc, char* argv[]) {
 			}
 			write(ofp, "\t.\t.\t");
 
-			write(ofp, "AVGDP=%g", total_dp / (float)rec->n_sample);
-			write(ofp, ";DP=%d", total_dp);
-			write(ofp, ";DP_HIST=%s,%s", dp_histograms[0].get_text(), dp_histograms[1].get_text());
-			for (int i = 2; i < rec->n_allele; ++i) {
+            write(ofp, "DP=%d", (long long int)dp_histogram.get_total());
+            write(ofp, ";AVGDP=%g", dp_histogram.get_average());
+            write(ofp, ";AVGDP_R=%g", dp_histograms[0].get_average());
+            for (int i = 1; i < rec->n_allele; ++i) {
+                write(ofp, ",%g", dp_histograms[i].get_average());
+            }
+            write(ofp, ";AVGGQ=%g", gq_histogram.get_average());
+            write(ofp, ";AVGGQ_R=%g", gq_histograms[0].get_average());
+            for (int i = 1; i < rec->n_allele; ++i) {
+                write(ofp, ",%g", gq_histograms[i].get_average());
+            }
+            write(ofp, ";DP_HIST=%s", dp_histogram.get_text());
+            write(ofp, ";GQ_HIST=%s", gq_histogram.get_text());
+            write(ofp, ";DP_HIST_R=%s", dp_histograms[0].get_text());
+			for (int i = 1; i < rec->n_allele; ++i) {
 				write(ofp, ",%s", dp_histograms[i].get_text());
 			}
-
-			write(ofp, ";GQ_HIST=%s,%s", gq_histograms[0].get_text(), gq_histograms[1].get_text());
-			for (int i = 2; i < rec->n_allele; ++i) {
+			write(ofp, ";GQ_HIST_R=%s", gq_histograms[0].get_text());
+			for (int i = 1; i < rec->n_allele; ++i) {
 				write(ofp, ",%s", gq_histograms[i].get_text());
 			}
 			write(ofp, "\n");
