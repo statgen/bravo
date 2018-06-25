@@ -3,10 +3,10 @@
 Percentiles::Percentiles(): raw_data_sorted(false) {
 }
 
-Percentiles::Percentiles(const string& name, const string& description): name(name), description(description), raw_data_sorted(false) {
+Percentiles::Percentiles(const string& name, const string& description): raw_data_sorted(false), name(name), description(description) {
 }
 
-Percentiles::Percentiles(const string& name, const string& description, vector<Percentiles>& many_percentiles): name(name), description(description), raw_data_sorted(false) {  
+Percentiles::Percentiles(const string& name, const string& description, vector<Percentiles>& many_percentiles): raw_data_sorted(false), name(name), description(description) {
    for (Percentiles& p : many_percentiles) {
       p.raw_data.shrink_to_fit();
    }
@@ -18,7 +18,7 @@ Percentiles::Percentiles(const string& name, const string& description, vector<P
    }
 }
 
-Percentiles::~Percentiles() {
+Percentiles::~Percentiles() noexcept {
 }
 
 void Percentiles::sort_raw_data() {

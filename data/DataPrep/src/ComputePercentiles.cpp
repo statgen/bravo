@@ -142,7 +142,6 @@ void parse_bcf_record(bcf_hdr_t *header, bcf1_t *rec, bcf_header_summary &h, bcf
     r.qual = rec->qual;
 
     for (int i = 0; i < rec->n_info; ++i) {
-        bcf_info_t info = rec->d.info[i];
         if (rec->d.info[i].key == h.af_id) {
             read_info_values(rec->d.info[i], r.af_values);
         } else if (rec->d.info[i].key == h.ac_id) {
@@ -225,7 +224,7 @@ int main(int argc, char *argv[]) {
 
         std::mutex cout_mutex;
 
-        for (auto &&input_file : input_files) {
+        for (auto it = input_files.begin(); it != input_files.end(); it++) {
             percentiles_per_file.emplace_back();
         }
 

@@ -20,11 +20,13 @@ Histogram::Histogram(const vector<double>& borders) : total(0.0), n(0u), text(nu
 Histogram::Histogram(Histogram &&histogram) {
 	this->bins = std::move(histogram.bins);
 	this->borders = std::move(histogram.borders);
+	this->total = histogram.total;
+	this->n = histogram.n;
 	this->text = histogram.text;
 	histogram.text = nullptr;
 }
 
-Histogram::~Histogram() {
+Histogram::~Histogram() noexcept {
 	if (text != nullptr) {
 		delete[] text;
 		text = nullptr;
