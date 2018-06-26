@@ -250,7 +250,7 @@ int main(int argc, char* argv[]) {
                     shuffle(hom_it->second.begin(), hom_it->second.end(), number_generator);
                     write(ofp, "HOM=%s", header->samples[hom_it->second[0]]);
                     ++total_random_samples;
-                    for (int i = 1; ((i < hom_it->second.size()) && (i < n_random)); ++i) {
+                    for (unsigned int i = 1; ((i < hom_it->second.size()) && (i < n_random)); ++i) {
                         write(ofp, ",%s", header->samples[hom_it->second[i]]);
                         ++total_random_samples;
                     }
@@ -263,7 +263,7 @@ int main(int argc, char* argv[]) {
                     shuffle(het_it->second.begin(), het_it->second.end(), number_generator);
                     write(ofp, "HET=%s", header->samples[het_it->second[0]]);
                     ++total_random_samples;
-                    for (int i = 1; ((i < het_it->second.size()) && (i < n_random)); ++i) {
+                    for (unsigned int i = 1; ((i < het_it->second.size()) && (i < n_random)); ++i) {
                         write(ofp, ",%s", header->samples[het_it->second[i]]);
                         ++total_random_samples;
                     }

@@ -147,7 +147,7 @@ void Percentiles::write(BGZF* f) throw (runtime_error) {
     aux::write(f, "\"percentiles\":[");
     if (percentiles.size() > 0) {
         aux::write(f, "{\"probability\":%g,\"value\":%g,\"n\":%d,\"n_pass\":%d}", percentiles[0].probability, percentiles[0].value, percentiles[0].n, percentiles[0].n_pass);
-        for (int i = 1; i < percentiles.size(); ++i) {
+        for (unsigned int i = 1u; i < percentiles.size(); ++i) {
             aux::write(f, ",{\"probability\":%g,\"value\":%g,\"n\":%d,\"n_pass\":%d}", percentiles[i].probability, percentiles[i].value, percentiles[i].n, percentiles[i].n_pass);
         }
     }

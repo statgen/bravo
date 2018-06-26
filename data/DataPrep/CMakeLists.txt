@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.4)
 project(DataPrep VERSION 0.0.1)
 include(GNUInstallDirs)
 add_compile_options(-Wall -Wpedantic)

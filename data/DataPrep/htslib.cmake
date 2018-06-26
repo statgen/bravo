@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.4)
 project(htslib VERSION 1.8)
 
 execute_process(COMMAND ./configure --enable-libcurl --enable-gcs --prefix=${CMAKE_INSTALL_PREFIX} WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
