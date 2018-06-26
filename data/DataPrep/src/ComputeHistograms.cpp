@@ -119,6 +119,9 @@ int main(int argc, char* argv[]) {
 
 		int gt_index, dp_index, gq_index;
 		TypeSwitcher gt_switcher, dp_switcher, gq_switcher;
+		unsigned int ac_sample, ac_total;
+		vector<unsigned int> ac;
+        int allele = 0;
 		vector<int32_t> gt_values, dp_values, gq_values;
 		vector<Histogram> dp_histograms, gq_histograms;
 		set<int> unique_alleles;
@@ -164,6 +167,11 @@ int main(int argc, char* argv[]) {
 			dp_switcher.init(&rec->d.fmt[dp_index]);
 			gq_switcher.init(&rec->d.fmt[gq_index]);
 
+			fill(ac.begin(), ac.end(), 0u); // cleanup allele counts
+			if (rec->n_allele > ac.size()) { // append additional allele counts if needed
+				ac.resize(rec->n_allele, 0u);
+			}
+
 			for (auto&& h : dp_histograms) { // cleanup DP histograms and reuse them
 				h.clear();
 			}
@@ -185,12 +193,20 @@ int main(int argc, char* argv[]) {
 				(dp_switcher.*(dp_switcher.read))(dp_values);
 				(gq_switcher.*(gq_switcher.read))(gq_values);
 
+                ac_sample = 0u;
 				unique_alleles.clear();
 				for (auto&& v : gt_values) {
 					if (!bcf_gt_is_missing(v)) {
-						unique_alleles.insert(bcf_gt_allele(v));
+					    allele = bcf_gt_allele(v);
+						unique_alleles.insert(allele);
+						ac[allele] += 1u;
+                        ++ac_sample;
 					}
 				}
+
+                if (ac_sample == 0u) { // all alleles missing for this sample
+                    continue;
+                }
 
 				if (dp_values[0] != bcf_int32_missing) {
 					dp_histogram.add((int)dp_values[0]);
@@ -208,6 +224,14 @@ int main(int argc, char* argv[]) {
 						gq_histograms[allele].add((int)gq_values[0]);
 					}
 				}
+			}
+
+			ac_total = ac[1];
+			for (int i = 2; i < rec->n_allele; ++i) {
+				ac_total += ac[i];
+			}
+			if (ac_total == 0) {
+				continue;
 			}
 
 			write(ofp, "%s\t%lu\t%s\t%s\t%s", bcf_seqname(header, rec), rec->pos + 1, rec->d.id, rec->d.allele[0], rec->d.allele[1]);

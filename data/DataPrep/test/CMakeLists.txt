@@ -15,4 +15,14 @@ endif()
 add_executable(testAll HistogramTest.cpp PercentilesTest.cpp ExecutableTest.cpp Main_TestAll.cpp)
 target_link_libraries(testAll Histogram Percentiles ${BOOST_SYSTEM_LIB} ${HTS_LIB} ${CURL_LIB} ${LZMA_LIB} ${LBZ2_LIB} ${Z_LIB} ${GTEST_LIB})
 install(TARGETS testAll COMPONENT cli RUNTIME DESTINATION test)
-install(FILES all_samples.test_input.vcf.gz all_samples.test_input.vcf.gz.tbi all_samples.counts.test_ok.vcf.gz all_samples.histograms.test_ok.vcf.gz DESTINATION test)
+install(FILES
+            input.vcf.gz
+            input.vcf.gz.tbi
+            input.subset.vcf.gz
+            input.subset.vcf.gz.tbi
+            samples.txt
+            allelecounts.output_ok.vcf.gz
+            allelecounts.region.output_ok.vcf.gz
+            histograms.output_ok.vcf.gz
+            histograms.region.output_ok.vcf.gz
+        DESTINATION test)
