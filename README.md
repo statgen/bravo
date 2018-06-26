@@ -49,22 +49,19 @@ Installation may take several hours or longer.
 
 ## Data Preparation
 
-In `data/` directory you will find tools/scripts to prepare your data for importing into Mongo database and using in Bravo browser.
+In the `data/` directory you will find tools/scripts to prepare your data for importing into Mongo database and using in Bravo browser.
 Some of these tools are implemented in C++ and need to be compiled as follows:
 
-    mkdir data/DataPrep/build
-    cd data/DataPrep/build
-    cmake ..
-    make install
+    cd data/DataPrep/
+    cget install .
 
-After successfull compilation, the executables will be installed in `data/DataPrep/build/bin`.
+After successfull compilation, the executables will be installed in `data/DataPrep/cget/bin`.
 Table below lists all tools that are needed for data preparation.
 
 | Tool | Localtion | Description |
 |:-----|:----------|:------------|
-| CountAlleles | `data/DataPrep/build/bin` | Computes NS, AN, AC, AF, Hom, Het values for each variant in a subset of samples (monomorphic variants are dropped) |
-| GTHistogram | `data/DataPrep/build/bin` | Computes histograms for DP and GQ fields for each variant in a subset of samples |
-| INFOPercentiles | `data/DataPrep/build/bin` | This program computes percentiles for the QUAL field or any arbitrary numeric INFO field across all variants |
+| ComputeAlleleCountsAndHistograms | `data/DataPrep/build/bin` | For each variant it computes NS, AN, AC, AF, Hom, Het, DP, AVGDP, AVGGQ, histograms for DP and GQ. Monomorphic variants are dropped (monomorphic variants may arise after subsetting individuals). |
+| ComputePercentiles | `data/DataPrep/build/bin` | This program computes percentiles for the QUAL field or any arbitrary numeric INFO field across all variants |
 | prepare_sequences.py | `data` | Generates CRAM file with sequences from heterozygous/homozygous samples |
 
 Specify `--help` to see all possible options for each of the above tools (e.g. `Count Alleles --help` or `python prepare_sequences.py --help`).
@@ -74,17 +71,14 @@ In addition to the in-house tools listed above, you will need Variant Effect Pre
 ### Prepare VCF
 
 If applicable, prepare a list of sample ID's that you want to include into Bravo.
-Then, on your raw VCF file(s) run the following (in parallel):
+Then, on your raw VCF file(s) run the following:
 
-1. Variant Effect Predictor (VEP). Genotypes are not required.
-2. CountAlleles. Requires genotypes (GT format field).
-3. GTHistograms. Requires genotypes (GT format field), depth (DP format field), and quality (GQ format field).
-
-Each tool will produce VCF file(s) with computed INFO fields. At the final step, merge this info fields into a single VCF using `bcftools annotate` command.
+1. `ComputeAlleleCountsAndHistograms` on your input VCF with raw genotypes.
+2. Variant Effect Predictor (VEP) on the output VCF from step (1).
 
 ### Prepare percentiles
 
-To compute percentiles for each INFO field in each variant, use `INFOPercentiles` tool.
+To compute percentiles for each INFO field in each variant, use `ComputePercentiles` tool.
 
 ### Prepare coverage
 
