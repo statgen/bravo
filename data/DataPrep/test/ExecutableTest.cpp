@@ -20,7 +20,7 @@ protected:
 };
 
 TEST_F(ExecutableTest, CountAllelesAll) {
-    string executable = "../bin/CountAlleles";
+    string executable = "../bin/ComputeAlleleCounts";
     vector<string> args = { "--in", "input.vcf.gz", "--out", "allelecounts.output.vcf.gz" };
     ASSERT_EQ(pr::system(executable, args), 0u);
     ifstream ok_file("allelecounts.output_ok.vcf.gz");
@@ -30,7 +30,7 @@ TEST_F(ExecutableTest, CountAllelesAll) {
 };
 
 TEST_F(ExecutableTest, CountAllelesSubset) {
-    string executable = "../bin/CountAlleles";
+    string executable = "../bin/ComputeAlleleCounts";
     vector<string> args1 = { "--in", "input.vcf.gz", "--out", "allelecounts.samples_option.output.vcf.gz", "--samples", "samples.txt" };
     vector<string> args2 = { "--in", "input.subset.vcf.gz", "--out", "allelecounts.subset.output.vcf.gz" };
     ASSERT_EQ(pr::system(executable, args1), 0u);
@@ -42,7 +42,7 @@ TEST_F(ExecutableTest, CountAllelesSubset) {
 };
 
 TEST_F(ExecutableTest, CountAllelesRegion) {
-    string executable = "../bin/CountAlleles";
+    string executable = "../bin/ComputeAlleleCounts";
     vector<string> args = { "--in", "input.vcf.gz", "--out", "allelecounts.region.output.vcf.gz", "--region", "22:16050739-16051721" };
     ASSERT_EQ(pr::system(executable, args), 0u);
     ifstream ok_file("allelecounts.region.output_ok.vcf.gz");
@@ -77,6 +77,15 @@ TEST_F(ExecutableTest, HistogramsRegion) {
     ASSERT_EQ(pr::system(executable, args), 0u);
     ifstream ok_file("histograms.region.output_ok.vcf.gz");
     ifstream test_output_file("histograms.region.output.vcf.gz");
+    ASSERT_TRUE(equal(istreambuf_iterator<char>(ok_file.rdbuf()), istreambuf_iterator<char>(), istreambuf_iterator<char>(test_output_file.rdbuf())));
+};
+
+TEST_F(ExecutableTest, AlleleCountsAndHistograms) {
+    string executable = "../bin/ComputeAlleleCountsAndHistograms";
+    vector<string> args = { "--in", "input.vcf.gz", "--out", "allelecounts_and_histograms.output.vcf.gz" };
+    ASSERT_EQ(pr::system(executable, args), 0u);
+    ifstream ok_file("allelecounts_and_histograms.output_ok.vcf.gz");
+    ifstream test_output_file("allelecounts_and_histograms.output.vcf.gz");
     ASSERT_TRUE(equal(istreambuf_iterator<char>(ok_file.rdbuf()), istreambuf_iterator<char>(), istreambuf_iterator<char>(test_output_file.rdbuf())));
 };
 

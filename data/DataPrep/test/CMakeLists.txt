@@ -25,4 +25,5 @@ install(FILES
             allelecounts.region.output_ok.vcf.gz
             histograms.output_ok.vcf.gz
             histograms.region.output_ok.vcf.gz
+            allelecounts_and_histograms.output_ok.vcf.gz
         DESTINATION test)
