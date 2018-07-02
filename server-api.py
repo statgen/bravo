@@ -119,9 +119,11 @@ def request_is_valid():
       if ip != get_user_ip():
          return False
       return authorize_access_token(email, issued_at)
-   else:
+   elif app.config['API_IP_WHITELIST']:
       if get_user_ip() in app.config['API_IP_WHITELIST']:
          return True
+   else:
+      return True
 
 
 def require_authorization(func):
