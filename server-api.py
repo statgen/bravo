@@ -137,7 +137,7 @@ def require_authorization(func):
 
 
 @parser.error_handler
-def handle_parsing_error(error):
+def handle_parsing_error(error, request):
    response = jsonify({ 'error': 'invalid query parameters' })
    response.status_code = 400
    abort(response)
@@ -495,7 +495,6 @@ def get_gene():
    data = [];
    last_variant = None
    last_object_id = None
-   db = get_db()
    collection = db[api_collection_name]
    cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
    if not args['vcf']:
@@ -522,6 +521,74 @@ def get_gene():
    response = jsonify(response)
    response.status_code = 200
    return response
+
+
+@bp.route('/transcript', methods = ['GET'])
+@require_authorization
+def get_transcript():
+   arguments = {
+       'transcript_id': fields.Str(required = True, validate = lambda x: len(x) > 0),
+       'allele_count': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, int))),
+       'allele_freq': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, float))),
+       'allele_num': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, int))),
+       'site_quality': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, float))),
+       'filter': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
+       'sort': fields.Function(deserialize = deserialize_query_sort),
+       'vcf': fields.Bool(required = False, missing = False),
+       'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = pageSize),
+       'last': fields.Function(deserialize = deserialize_query_last)
+   }
+
+   args = parser.parse(arguments, validate = validate_query)
+
+   db = get_db()
+   transcript = db.transcripts.find_one({'transcript_id': args['transcript_id']}, projection={'_id': False})
+   if not transcript:
+      raise UserError('Transcript with identifier equal to {} was not found.'.format(args['transcript_id']))
+
+   response = {
+      'transcript': {
+         'transcript_id': transcript['transcript_id'],
+         'gene_id': transcript['gene_id'],
+         'chrom': transcript['chrom'],
+         'start': transcript['start'],
+         'stop': transcript['stop'],
+         'strand': transcript['strand']
+      }
+   }
+
+   mongo_filter, mongo_sort = build_region_query(args, transcript['xstart'], transcript['xstop'])
+
+   data = [];
+   last_variant = None
+   last_object_id = None
+   collection = db[api_collection_name]
+   cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
+   if not args['vcf']:
+      response['format'] = 'json'
+      for r in cursor:
+         last_object_id = r.pop('_id')
+         r.pop('xpos', None)
+         data.append(r)
+         last_variant = r
+   else:
+      response['format'] = 'vcf'
+      response['header'] = vcf_header
+      response['meta'] = vcf_meta
+      for r in cursor:
+         last_object_id = r.pop('_id')
+         r.pop('xpos', None)
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={}'.format(
+            r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
+            r['allele_num'], r['allele_count'], r['allele_freq']))
+         last_variant = r
+
+   response['data'] = data
+   response['next'] = build_link_next(args, last_object_id, last_variant, mongo_sort) if len(data) == args['limit'] else None
+   response = jsonify(response)
+   response.status_code = 200
+   return response
+
 
 
 limiter = Limiter(app, default_limits = app.config['API_REQUESTS_RATE_LIMIT'], key_func = get_user_ip)
