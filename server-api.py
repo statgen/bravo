@@ -49,6 +49,9 @@ projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos
 allowed_sort_keys = {'pos': long, 'allele_count': int, 'allele_freq': float, 'allele_num': int, 'site_quality': float, 'filter': str, 'variant-id': str}
 allowed_filter_keys = {'allele_count', 'allele_freq', 'allele_num', 'site_quality', 'filter'}
 
+
+annotations_ordered = [ 'Gene', 'Feature_type', 'Feature', 'Consequence', 'HGVSc', 'HGVSp', 'LoF', 'LoF_filter', 'LoF_flags', 'LoF_info']
+
 vcf_header = '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO'
 vcf_meta = [
          '##fileformat=VCFv4.2',
@@ -60,7 +63,8 @@ vcf_meta = [
          '##FILTER=<ID=EXHET,Description="Excess heterozygosity with HWE p-value < 1e-6">',
          '##INFO=<ID=AN,Number=1,Type=Integer,Description="Number of Alleles in Samples with Coverage">',
          '##INFO=<ID=AC,Number=A,Type=Integer,Description="Alternate Allele Counts in Samples with Coverage">',
-         '##INFO=<ID=AF,Number=A,Type=Float,Description="Alternate Allele Frequencies">'
+         '##INFO=<ID=AF,Number=A,Type=Float,Description="Alternate Allele Frequencies">',
+         '##INFO=<ID=CSQ,Number=.,Type=String,Description="Consequence annotations from Ensembl VEP. Format: {}">'.format('|'.join(annotations_ordered))
       ]
 
 mongo = MongoClient(mongo_host, mongo_port, connect = True)
@@ -218,16 +222,18 @@ def get_variant():
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
-   else: # TODO: add annotations
+   else:
       response['format'] = 'vcf'
       response['header'] = vcf_header
       response['meta'] = vcf_meta
       for r in cursor:
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
-         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={}'.format(
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq']))
+            r['allele_num'], r['allele_count'], r['allele_freq'], 
+            ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['annotations'])
+         ))
          last_variant = r
    response['data'] = data
 
@@ -448,16 +454,18 @@ def get_region():
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
-   else: # TODO: add annotations
+   else:
       response['format'] = 'vcf'
       response['header'] = vcf_header
       response['meta'] = vcf_meta
       for r in cursor:
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
-         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={}'.format(
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq']))
+            r['allele_num'], r['allele_count'], r['allele_freq'],
+            ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['annotations'])
+         ))
          last_variant = r
 
    response['data'] = data
@@ -529,16 +537,18 @@ def get_gene():
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
-   else: # TODO: add annotations
+   else:
       response['format'] = 'vcf'
       response['header'] = vcf_header
       response['meta'] = vcf_meta
       for r in cursor:
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
-         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={}'.format(
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq']))
+            r['allele_num'], r['allele_count'], r['allele_freq'],
+            ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['annotations'])
+         ))
          last_variant = r
 
    response['data'] = data
@@ -608,16 +618,18 @@ def get_transcript():
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
-   else: # TODO: add annotations
+   else:
       response['format'] = 'vcf'
       response['header'] = vcf_header
       response['meta'] = vcf_meta
       for r in cursor:
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
-         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={}'.format(
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq']))
+            r['allele_num'], r['allele_count'], r['allele_freq'],
+            ','.join(['|'.join(a[k] for k in annotations_ordered) for a in r['annotations']])
+         ))
          last_variant = r
 
    response['data'] = data
