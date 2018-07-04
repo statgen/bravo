@@ -45,7 +45,7 @@ api_version = app.config['API_VERSION']
 pageSize = app.config['API_PAGE_SIZE']
 maxRegion = app.config['API_MAX_REGION']
 
-projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True, 'rsids': True}
+projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True, 'rsids': True, 'vep_annotations': { 'Gene': True, 'Feature': True, 'Feature_type': True, 'Consequence': True, 'HGVSc': True, 'HGVSp': True, 'LoF': True, 'LoF_info': True, 'LoF_flags': True, 'LoF_filter': True } }
 allowed_sort_keys = {'pos': long, 'allele_count': int, 'allele_freq': float, 'allele_num': int, 'site_quality': float, 'filter': str, 'variant-id': str}
 allowed_filter_keys = {'allele_count', 'allele_freq', 'allele_num', 'site_quality', 'filter'}
 
@@ -203,7 +203,10 @@ def get_variant():
    response = { 'next': None }
    db = get_db()
    collection = db[api_collection_name]
-   cursor = collection.find(mongo_filter, projection=projection)
+   cursor = collection.aggregate([
+      { '$match': mongo_filter },
+      { '$project': projection }
+   ])
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
@@ -211,7 +214,7 @@ def get_variant():
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
-   else:
+   else: # TODO: add annotations
       response['format'] = 'vcf'
       response['header'] = vcf_header
       response['meta'] = vcf_meta
@@ -227,7 +230,6 @@ def get_variant():
    response = jsonify(response)
    response.status_code = 200
    return response
-
 
 
 def deserialize_query_sort(value):
@@ -418,8 +420,6 @@ def get_region():
    xend = Xpos.from_chrom_pos(args['chrom'], args['end'])
 
    mongo_filter, mongo_sort = build_region_query(args, xstart, xend)
-   # print mongo_filter
-   # print mongo_sort
 
    data = [];
    response = {}
@@ -427,7 +427,12 @@ def get_region():
    last_object_id = None
    db = get_db()
    collection = db[api_collection_name]
-   cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit']) 
+   cursor = collection.aggregate([
+      { '$match': mongo_filter },
+      { '$sort': bson.son.SON(mongo_sort) },
+      { '$limit': args['limit'] },
+      { '$project': projection }
+   ])
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
@@ -435,7 +440,7 @@ def get_region():
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
-   else:
+   else: # TODO: add annotations
       response['format'] = 'vcf'
       response['header'] = vcf_header
       response['meta'] = vcf_meta
@@ -496,7 +501,16 @@ def get_gene():
    last_variant = None
    last_object_id = None
    collection = db[api_collection_name]
-   cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
+   #cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
+   annotation_filter = projection.copy()
+   annotation_filter['vep_annotations'] = { '$filter': { 'input': '$vep_annotations', 'as': 'a', 'cond': { '$eq': ['$$a.Gene', gene['gene_id']]} }}
+   cursor = collection.aggregate([
+      { '$match': mongo_filter },
+      { '$sort': bson.son.SON(mongo_sort) },
+      { '$limit': args['limit'] },
+      { '$project': projection },
+      { '$project': annotation_filter }
+   ])
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
@@ -504,7 +518,7 @@ def get_gene():
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
-   else:
+   else: # TODO: add annotations
       response['format'] = 'vcf'
       response['header'] = vcf_header
       response['meta'] = vcf_meta
@@ -563,7 +577,15 @@ def get_transcript():
    last_variant = None
    last_object_id = None
    collection = db[api_collection_name]
-   cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
+   annotation_filter = projection.copy()
+   annotation_filter['vep_annotations'] = { '$filter': { 'input': '$vep_annotations', 'as': 'a', 'cond': { '$eq': ['$$a.Feature', transcript['transcript_id']]} }}
+   cursor = collection.aggregate([
+      { '$match': mongo_filter },
+      { '$sort': bson.son.SON(mongo_sort) },
+      { '$limit': args['limit'] },
+      { '$project': projection },
+      { '$project': annotation_filter }
+   ])
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
@@ -571,7 +593,7 @@ def get_transcript():
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
-   else:
+   else: # TODO: add annotations
       response['format'] = 'vcf'
       response['header'] = vcf_header
       response['meta'] = vcf_meta
