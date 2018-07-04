@@ -203,9 +203,13 @@ def get_variant():
    response = { 'next': None }
    db = get_db()
    collection = db[api_collection_name]
+   rename = projection.copy()
+   rename.pop('vep_annotations', None)
+   rename['annotations'] = '$vep_annotations'
    cursor = collection.aggregate([
       { '$match': mongo_filter },
-      { '$project': projection }
+      { '$project': projection },
+      { '$project': rename }
    ])
    if not args['vcf']:
       response['format'] = 'json'
@@ -427,11 +431,15 @@ def get_region():
    last_object_id = None
    db = get_db()
    collection = db[api_collection_name]
+   rename = projection.copy()
+   rename.pop('vep_annotations', None)
+   rename['annotations'] = '$vep_annotations'
    cursor = collection.aggregate([
       { '$match': mongo_filter },
       { '$sort': bson.son.SON(mongo_sort) },
       { '$limit': args['limit'] },
-      { '$project': projection }
+      { '$project': projection },
+      { '$project': rename }
    ])
    if not args['vcf']:
       response['format'] = 'json'
@@ -501,15 +509,18 @@ def get_gene():
    last_variant = None
    last_object_id = None
    collection = db[api_collection_name]
-   #cursor = collection.find(mongo_filter, projection = projection).sort(mongo_sort).limit(args['limit'])
    annotation_filter = projection.copy()
    annotation_filter['vep_annotations'] = { '$filter': { 'input': '$vep_annotations', 'as': 'a', 'cond': { '$eq': ['$$a.Gene', gene['gene_id']]} }}
+   rename = projection.copy()
+   rename.pop('vep_annotations', None)
+   rename['annotations'] = '$vep_annotations'
    cursor = collection.aggregate([
       { '$match': mongo_filter },
       { '$sort': bson.son.SON(mongo_sort) },
       { '$limit': args['limit'] },
       { '$project': projection },
-      { '$project': annotation_filter }
+      { '$project': annotation_filter },
+      { '$project': rename }
    ])
    if not args['vcf']:
       response['format'] = 'json'
@@ -579,12 +590,16 @@ def get_transcript():
    collection = db[api_collection_name]
    annotation_filter = projection.copy()
    annotation_filter['vep_annotations'] = { '$filter': { 'input': '$vep_annotations', 'as': 'a', 'cond': { '$eq': ['$$a.Feature', transcript['transcript_id']]} }}
+   rename = projection.copy()
+   rename.pop('vep_annotations', None)
+   rename['annotations'] = '$vep_annotations'
    cursor = collection.aggregate([
       { '$match': mongo_filter },
       { '$sort': bson.son.SON(mongo_sort) },
       { '$limit': args['limit'] },
       { '$project': projection },
-      { '$project': annotation_filter }
+      { '$project': annotation_filter },
+      { '$project': rename }
    ])
    if not args['vcf']:
       response['format'] = 'json'
