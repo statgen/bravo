@@ -1,10 +1,8 @@
 #!/usr/bin/env python2
 
+import os
 import sys
 import argparse
-import imp
-import inspect
-import warnings
 import pymongo
 import gzip
 import parsing
@@ -14,62 +12,40 @@ import multiprocessing
 import functools
 import json
 import sequences
+from flask import Config
 from itertools import chain,islice
 
 argparser = argparse.ArgumentParser(description = 'Tool for creating and populating Bravo database.')
 argparser_subparsers = argparser.add_subparsers(help = '', dest = 'command')
 
 argparser_gene_models = argparser_subparsers.add_parser('genes', help = 'Creates and populates MongoDB collections for gene models.')
-argparser_gene_models.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_gene_models.add_argument('-t', '--canonical-transcripts', metavar = 'file', required = True, type = str, dest = 'canonical_transcripts_file', help = 'File (compressed using Gzip) with a list of canonical transcripts. Must have two columns without a header. First column stores Ensembl gene ID, second column stores Ensembl transcript ID.')
 argparser_gene_models.add_argument('-m', '--omim', metavar = 'file', required = True, type = str, dest = 'omim_file', help = 'File (compressed using Gzip) with genes descriptions from OMIM. Required columns separated by tab: Gene stable ID, Transcript stable ID, MIM gene accession, MIM gene description.')
 argparser_gene_models.add_argument('-f', '--dbnsfp', metavar = 'file', required = True, type = str, dest = 'genenames_file', help = 'File (compressed using Gzip) with gene names from HGNC. Required columns separated by tab: symbol, name, alias_symbol, prev_name, ensembl_gene_id.')
 argparser_gene_models.add_argument('-g', '--gencode', metavar = 'file', required = True, type = str, dest = 'gencode_file', help = 'File from GENCODE in compressed GTF format.')
 
 argparser_users = argparser_subparsers.add_parser('users', help = 'Creates MongoDB collection for user data.')
-argparser_users.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 
 argparser_whitelist = argparser_subparsers.add_parser('whitelist', help = 'Creates and populates MongoDB collection for whitelist\'ed users.')
-argparser_whitelist.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_whitelist.add_argument('-w', '--whitelist', metavar = 'file', required = True, type = str, dest = 'whitelist_file', help = 'Emails whitelist file. One email per line.')
 
 argparser_dbsnp = argparser_subparsers.add_parser('dbsnp', help = 'Creates and populates MongoDB collection with dbSNP variants.')
-argparser_dbsnp.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_dbsnp.add_argument('-d', '--dbsnp', metavar = 'file', required = True, type = str, nargs = '+', dest = 'dbsnp_files', help = 'File (or multiple files split by chromosome) with variants from dbSNP, compressed using bgzip and indexed using tabix. File must have three tab-delimited columns without header: integer part of rsId, chromosome, position (0-based).')
 argparser_dbsnp.add_argument('-t', '--threads', metavar = 'number', required = False, type = int, default = 1, dest = 'threads', help = 'Number of threads to use.')
 
 argparser_metrics = argparser_subparsers.add_parser('metrics', help = 'Creates and populates MongoDB collection with pre-calculated metrics across all variants.')
-argparser_metrics.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_metrics.add_argument('-m', '--metrics', metavar = 'file', required = True, type = str, dest = 'metrics_file', help = 'File with the pre-calculated metrics across all variants. Every metric must be stored on a separate line in JSON format.')
 
 argparser_variants = argparser_subparsers.add_parser('variants', help = 'Creates and populates MongoDB collection for variants.')
-argparser_variants.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_variants.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
 argparser_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of thrads to use.')
 
 argparser_bamcache = argparser_subparsers.add_parser('bam_cache', help = 'Creates MongoDB collection for storing paths to cached BAM\CRAM files for the IGV browser.')
-argparser_bamcache.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 
 argparser_custom_variants = argparser_subparsers.add_parser('custom_variants', help = 'Creates and populates an additional MongoDB collection for variants. Useful when there is a need to serve multiple different variants sets (e.g. after subsetting samples) through the API.')
-argparser_custom_variants.add_argument('-c', '--config', metavar = 'name', required = True, type = str, dest = 'config_class_name', help = 'Bravo configuration class name.')
 argparser_custom_variants.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
 argparser_custom_variants.add_argument('-n', '--name', metavar = 'name', required = True, type = str, dest = 'collection_name', help = 'MongoDB destination collection name.')
 argparser_custom_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of thrads to use.')
-
-
-
-def load_config(name):
-    """Loads Bravo configuration class.
-    
-    Arguments:
-    name -- string in the format '<module_name>.<class_name>'.
-    """
-    f, path, desc = imp.find_module(name.strip().split('.')[0])
-    m = imp.load_module(name, f, path, desc)
-    config = dict()
-    for member, value in inspect.getmembers(getattr(m, name.strip().split('.')[1])):
-        config[member] = value
-    return config
 
 
 def get_db_connection():
@@ -262,9 +238,13 @@ if __name__ == '__main__':
 
     args = argparser.parse_args()
    
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        config = load_config('flask_config.{}'.format(args.config_class_name))
+    config = Config(os.path.dirname(os.path.realpath(__file__)))
+    # Load default config
+    config.from_object('config.default')
+    # Load instance configuration if exists
+    config.from_pyfile('config.py', silent = True)
+    # Load configuration file specified in BRAVO_CONFIG_FILE environment variable if exists
+    config.from_envvar('BRAVO_CONFIG_FILE', silent = True)
 
     mongo_host = config['MONGO']['host']
     mongo_port = config['MONGO']['port']
