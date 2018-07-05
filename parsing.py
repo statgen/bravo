@@ -9,17 +9,6 @@ import itertools
 import boltons.iterutils
 from utils import *
 
-#Peter: this is no longer used.
-# POPS = {
-#     'AFR': 'African',
-#     'AMR': 'Latino',
-#     'EAS': 'East Asian',
-#     'FIN': 'European (Finnish)',
-#     'NFE': 'European (Non-Finnish)',
-#     'SAS': 'South Asian',
-#     'OTH': 'Other'
-# }
-
 
 def get_variants_from_sites_vcf_without_annotation(vcf, chrom, start_bp, end_bp):
     """Reads sites VCF/BCF file and returns iterator over variant dicts.
