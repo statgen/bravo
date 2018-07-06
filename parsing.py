@@ -10,42 +10,6 @@ import boltons.iterutils
 from utils import *
 
 
-def get_variants_from_sites_vcf_without_annotation(vcf, chrom, start_bp, end_bp):
-    """Reads sites VCF/BCF file and returns iterator over variant dicts.
-
-    Arguments:
-    vcf -- VCF/BCF file name.
-    chrom -- chromosome name.
-    start_bp -- start position in base-pairs.
-    end_bp -- end position in base-pairs.
-    """
-    with closing(pysam.VariantFile(vcf)) as ifile:
-        for record in ifile.fetch(chrom, start_bp, end_bp):
-            try:
-                for i, alt_allele in enumerate(record.alts):
-                    variant = {}
-                    variant['chrom'] = record.contig[3:] if record.contig.startswith('chr') else record.contig
-                    variant['pos'], variant['ref'], variant['alt'] = get_minimal_representation(record.pos, record.ref, alt_allele)
-                    variant['xpos'] = Xpos.from_chrom_pos(variant['chrom'], variant['pos'])
-                    variant['xstop'] = variant['xpos'] + len(variant['alt']) - len(variant['ref'])
-                    variant['variant_id'] = '{}-{}-{}-{}'.format(variant['chrom'], variant['pos'], variant['ref'], variant['alt'])
-                    variant['site_quality'] = record.qual
-                    variant['filter'] = ';'.join(record.filter.keys())
-                    variant['allele_count'] = record.info['AC'][i]
-                    if variant['allele_count'] == 0:
-                        continue
-                    variant['allele_num'] = record.info['AN']
-                    assert variant['allele_num'] != 0, variant
-                    variant['allele_freq'] = record.info['AF'][i]
-                    assert variant['allele_freq'] != 0, variant
-                    variant['hom_count'] = record.info['Hom'][i]
-                    yield variant
-            except:
-                print("Error while parsing VCF/BCF record: " + record.__str__())
-                traceback.print_exc()
-                raise
-
-
 def get_variants_from_sites_vcf_only_percentiles(sites_vcf):
     for line in sites_vcf:
         try:
@@ -76,7 +40,7 @@ def get_variants_from_sites_vcf_only_percentiles(sites_vcf):
             raise
 
 
-def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp):
+def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True):
     """Reads sites VCF/BCF file and returns iterator over veriant dicts.
     
     Arguments:
@@ -84,20 +48,22 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp):
     chrom -- chromosome name.
     start_bp -- start position in base-pairs.
     end_bp -- end position in base-pairs.
+    histograms -- if True, includes DP and GQ histograms.
     """
     with closing(pysam.VariantFile(vcf)) as ifile:
         vep_meta = ifile.header.info.get('CSQ', None)
         if vep_meta is None:
             raise Exception('Missing CSQ INFO field from VEP (Variant Effect Predictor)')
         vep_field_names = vep_meta.description.split(':', 1)[-1].strip().split('|')
-        dp_hist_meta = ifile.header.info.get('DP_HIST', None)
-        if dp_hist_meta is None:
-            raise Exception('Missing DP_HIST INFO field.')
-        dp_mids = [float(x) for x in dp_hist_meta.description.split(':', 1)[-1].strip().split('|')]
-        gq_hist_meta = ifile.header.info.get('GQ_HIST', None)
-        if gq_hist_meta is None:
-            raise Exception('Missing GQ_HIST INFO field.')  
-        gq_mids = [float(x) for x in gq_hist_meta.description.split(':', 1)[-1].strip().split('|')] 
+        if histograms:
+            dp_hist_meta = ifile.header.info.get('DP_HIST', None)
+            if dp_hist_meta is None:
+                raise Exception('Missing DP_HIST INFO field.')
+            dp_mids = [float(x) for x in dp_hist_meta.description.split(':', 1)[-1].strip().split('|')]
+            gq_hist_meta = ifile.header.info.get('GQ_HIST', None)
+            if gq_hist_meta is None:
+                raise Exception('Missing GQ_HIST INFO field.')  
+            gq_mids = [float(x) for x in gq_hist_meta.description.split(':', 1)[-1].strip().split('|')] 
         for record in ifile.fetch(chrom, start_bp, end_bp):
             try:
                 annotations = dict()
@@ -135,10 +101,11 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp):
                         variant['avgdp'] = record.info['AVGDP']
                     variant['cadd_raw'] = record.info['CADD_RAW'][i] if 'CADD_RAW' in record.info else None
                     variant['cadd_phred'] = record.info['CADD_PHRED'][i] if 'CADD_PHRED' in record.info else None
-                    hists_all = [record.info['DP_HIST'][0], record.info['DP_HIST'][i+1]]
-                    variant['genotype_depths'] = [zip(dp_mids, map(int, x.split('|'))) for x in hists_all]
-                    hists_all = [record.info['GQ_HIST'][0], record.info['GQ_HIST'][i+1]]
-                    variant['genotype_qualities'] = [zip(gq_mids, map(int, x.split('|'))) for x in hists_all]
+                    if histograms:
+                        hists_all = [record.info['DP_HIST'][0], record.info['DP_HIST'][i+1]]
+                        variant['genotype_depths'] = [zip(dp_mids, map(int, x.split('|'))) for x in hists_all]
+                        hists_all = [record.info['GQ_HIST'][0], record.info['GQ_HIST'][i+1]]
+                        variant['genotype_qualities'] = [zip(gq_mids, map(int, x.split('|'))) for x in hists_all]
                     variant['vep_annotations'] = allele_annotations
                     clean_annotation_consequences_for_variant(variant)
                     pop_afs = get_pop_afs(variant)
