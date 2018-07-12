@@ -221,6 +221,7 @@ def get_variant():
       response['format'] = 'json'
       for r in cursor:
          last_object_id = r.pop('_id')
+         r['annotations'] = [{k: a[k] for k in annotations_ordered} for a in r['annotations']]
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
