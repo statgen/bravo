@@ -7,10 +7,12 @@ import argparse
 import jwt
 import string
 import bson
+from bson.json_util import dumps
 from datetime import datetime
 from utils import Xpos
 from flask_limiter import Limiter
 import os
+import re
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--host', default = '0.0.0.0', help = 'The hostname to use to access this server.')
@@ -45,8 +47,8 @@ api_version = app.config['API_VERSION']
 pageSize = app.config['API_PAGE_SIZE']
 maxRegion = app.config['API_MAX_REGION']
 
-projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True, 'rsids': True, 'vep_annotations': { 'Gene': True, 'Feature': True, 'Feature_type': True, 'Consequence': True, 'HGVSc': True, 'HGVSp': True, 'LoF': True, 'LoF_info': True, 'LoF_flags': True, 'LoF_filter': True } }
-allowed_sort_keys = {'pos': long, 'allele_count': int, 'allele_freq': float, 'allele_num': int, 'site_quality': float, 'filter': str, 'variant-id': str}
+projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True, 'rsids': True, 'vep_annotations': True }
+allowed_sort_keys = {'pos': long, 'allele_count': int, 'allele_freq': float, 'allele_num': int, 'site_quality': float, 'filter': str, 'variant_id': str}
 allowed_filter_keys = {'allele_count', 'allele_freq', 'allele_num', 'site_quality', 'filter'}
 
 
@@ -294,104 +296,84 @@ def deserialize_query_filter(value, value_type):
          raise ValidationError('unsupported value type')
    except:
       raise ValidationError('invalid value type')
-   return (operator, value)
+   return { operator: value }
 
 
 def deserialize_query_last(value):
-   elements = value.strip().split(':')
-   if len(elements) == 0:
-      raise ValidationError('empty value')
-   objectid = elements[0]
-   if len(objectid) != 24 or any(c not in string.hexdigits for c in objectid):
-      raise ValidationError('invalid value')
-   return elements
+    elements = value.strip().split(':')
+    if len(elements) == 0:
+        raise ValidationError('empty value')
+    objectid = elements[-1]
+    if len(objectid) != 24 or any(c not in string.hexdigits for c in objectid):
+        raise ValidationError('invalid value')
+    return elements
 
 
-def validate_query(value):
-   # eliminate duplicated entries in filters and sort
-   for key in allowed_filter_keys:
-      key_filters = value.get(key, None)
-      if key_filters is not None:
-         value[key] = dict((x for x in key_filters))
-   if 'sort' in value:
-      value['sort'] = dict(value['sort']).items()
-   # check if last element is consistent with sort fields and cast to the corresponding types
-   if 'last' in value and len(value['last']) > 1:
-      if 'sort' not in value or len(value['last']) - 1 != len(value['sort']):
-         return False
-      try:
-         for i, key in enumerate((x for x, y in value['sort']), 1):
-            key_type = allowed_sort_keys[key]
-            if key_type == int:
-               value['last'][i] = int(value['last'][i])
-            elif key_type == long:
-               value['last'][i] = long(value['last'][i])
-            elif key_type == float:
-               value['last'][i] = float(value['last'][i])
-      except:
-         return False
-   return True
+def validate_query(value): 
+    # eliminate duplicated entries in filters and sort
+    if 'sort' in value:
+        value['sort'] = dict(value['sort']).items()
+    # check if last element is consistent with sort fields and cast to the corresponding types
+    if 'last' in value and len(value['last']) > 1:
+        if 'sort' not in value or len(value['last']) - 1 != len(value['sort']):
+            return False
+        try:
+            for i, key in enumerate((x for x, y in value['sort'])):
+                key_type = allowed_sort_keys[key]
+                if key_type == int:
+                    value['last'][i] = int(value['last'][i])
+                elif key_type == long:
+                    value['last'][i] = long(value['last'][i])
+                elif key_type == float:
+                    value['last'][i] = float(value['last'][i])
+        except:
+            return False
+    return True
 
 
 def build_region_query(args, xstart, xend):
-   # prepare sort conditions in mongo format
-   if 'sort' not in args or len(args['sort']) == 0:
-      mongo_sort = [(u'xpos', ASCENDING)] # xpos sorted by default if nothing else is specified
-   else:
-      mongo_sort = [(u'xpos', x[1]) if x[0] == 'pos' else x for x in args['sort']] # if user was sorting by 'pos', then replace 'pos' to 'xpos'
-
-   mongo_filter = {
-      'xpos' : {'$lte': xend, '$gte': xstart}
-   }
-
-   for filter_key in allowed_filter_keys:
-      filter_values = args.get(filter_key, None)
-      if filter_values is not None:
-         mongo_filter[filter_key] = filter_values
-
-   if 'last' in args:
-      objectid = args['last'][0]
-
-      if len(mongo_sort) > 0:
-         mongo_filter['$or'] = list()
-
-         key, sort_direction = mongo_sort[0]
-         last_value = args['last'][1]
-         if key not in mongo_filter:
-            mongo_filter[key] = {}
-         if sort_direction == ASCENDING:
-            mongo_filter[key].update({ '$gte': last_value })
-            mongo_filter['$or'].append({key: {'$ne': last_value}})
-         else:
-            mongo_filter[key].update({ '$lte': last_value })
-            mongo_filter['$or'].append({key: {'$ne': last_value}})
-
-         if len(mongo_sort) > 1:
-            mongo_filter['$or'].append({ '$and':[ { '$or': [ {'_id': {'$gt': bson.objectid.ObjectId(objectid)}}  ] } ]})
-            for i in xrange(len(mongo_sort) - 1, 0, -1):
-               key, sort_direction = mongo_sort[i]
-               last_value = args['last'][i + 1]
-               for filters in mongo_filter['$or'][-1]['$and']:
-                  filters['$or'].append({key: {'$ne': last_value}})
-               mongo_filter['$or'][-1]['$and'].append({ '$or': [ {key: { '$gte' if sort_direction == ASCENDING else '$lte': last_value}} ]})
-         else:
-            mongo_filter['$or'].append({'_id': {'$gt': bson.objectid.ObjectId(objectid)}})
-      else:
-         mongo_filter['_id'] = {'$gt': bson.objectid.ObjectId(objectid)}
-   return mongo_filter, mongo_sort
+    # prepare sort conditions in mongo format
+    if 'sort' not in args or len(args['sort']) == 0:
+        mongo_sort = [(u'xpos', ASCENDING)] # xpos sorted by default if nothing else is specified
+    else:
+        mongo_sort = [(u'xpos', x[1]) if x[0] == 'pos' else x for x in args['sort']] # if user was sorting by 'pos', then replace 'pos' to 'xpos'
+    mongo_filter = []
+    # prepare user-specified filter conditions in mongo format
+    mongo_user_filter = [ {'xpos': {'$gte': xstart}}, {'xpos': {'$lte': xend}} ]
+    for key in allowed_filter_keys:
+        values = args.get(key, None)
+        if values is not None:
+            if len(values) == 1:
+                mongo_user_filter.append({key: values[0]})
+            else:
+                mongo_user_filter.append({'$or': [{key: v} for v in values]})
+    # adjust filter conditions if auto-generated 'next' field is present
+    mongo_last_filter = []
+    if 'last' in args:
+        for i, (key, direction) in enumerate(mongo_sort):
+            # adjust user-specified filter. mongodb opitmizer will take care about overlapping condtitions
+            # add auto-generated filter
+            if direction == ASCENDING:
+                mongo_user_filter.append({key: {'$gte': args['last'][i]}})
+                mongo_last_filter.append({key: {'$gt': args['last'][i]}})
+            else:
+                mongo_user_filter.append({key: {'$lte': args['last'][i]}})
+                mongo_last_filter.append({key: {'$lt': args['last'][i]}})
+        mongo_last_filter.append({'_id': {'$gt': bson.objectid.ObjectId(args['last'][-1])}})
+        mongo_filter.append({'$or': mongo_last_filter})             
+    mongo_filter.extend(mongo_user_filter)
+    return {'$and':  mongo_filter}, mongo_sort
 
 
 def build_link_next(args, last_object_id, last_variant, mongo_sort):
-   if last_object_id is None or last_variant is None:
-      return None
-   link_next = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems() if arg != 'last'))
-   if 'sort' not in args or len(args['sort']) == 0:
-      if len(mongo_sort) > 0:
-         link_next += '&sort=' +  ','.join(('{}:{}'.format('pos' if key == 'xpos' else key, 'asc' if sort_direction == ASCENDING else 'desc') for key, sort_direction in mongo_sort))
-   link_next = '{}&last={}'.format(link_next, last_object_id)
-   for key, sort_direction in mongo_sort:
-      link_next += ':{}'.format(last_variant[key] if key != 'xpos' else Xpos.from_chrom_pos(last_variant['chrom'], last_variant['pos']))
-   return link_next
+    if last_object_id is None or last_variant is None:
+        return None
+    link_next = request.base_url + '?' + '&'.join(('{}={}'.format(arg, value) for arg, value in request.args.iteritems(True) if arg != 'last'))
+    if ('sort' not in args or len(args['sort']) == 0) and mongo_sort:
+        link_next += '&sort=' +  ','.join(('{}:{}'.format('pos' if key == 'xpos' else key, 'asc' if sort_direction == ASCENDING else 'desc') for key, sort_direction in mongo_sort))
+    if mongo_sort:
+        link_next += '&last=' + ':'.join(['{}'.format( dumps(last_variant[key] if key != 'xpos' else Xpos.from_chrom_pos(last_variant['chrom'], last_variant['pos']))  ) for key, direction in mongo_sort]) + ':'
+    return link_next + str(last_object_id)
 
 
 @bp.route('/region', methods = ['GET'])
@@ -406,6 +388,8 @@ def get_region():
        'allele_num': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, int))),
        'site_quality': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, float))),
        'filter': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
+       'annotations.lof': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
+       'annotations.consequence': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
        'sort': fields.Function(deserialize = deserialize_query_sort),
        'vcf': fields.Bool(required = False, missing = False),
        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = pageSize),
@@ -413,8 +397,6 @@ def get_region():
    }
 
    args = parser.parse(arguments, validate = validate_query)
-
-   #print args
 
    if args['start'] >= args['end']:
       raise UserError('Start position must be less than end position.')
@@ -431,26 +413,38 @@ def get_region():
 
    mongo_filter, mongo_sort = build_region_query(args, xstart, xend)
 
+   annotations_filter = []
+   annotations = args.get('annotations', None)
+   if annotations is not None:
+      filters = annotations.get('lof', None)
+      if filters is not None:
+         if len(filters) == 1:
+            annotations_filter.append({'LoF': filters[0]})
+         else:
+            annotations_filter.append({'$or': [{'LoF': v} for v in filters]})
+      filters = annotations.get('consequence', None)
+      if filters is not None:
+         annotations_filter.append({'$or': [{'Consequence': re.compile(v.values()[0])} if v.keys()[0] == '$eq' else {'Consequence': {'$not': re.compile(v.values()[0])}} for v in filters ] })
+   if annotations_filter:
+      mongo_filter['$and'].append({'vep_annotations': {'$elemMatch': {'$and': annotations_filter}}})
+
+   #print mongo_filter
+
    data = [];
    response = {}
    last_variant = None
    last_object_id = None
    db = get_db()
    collection = db[api_collection_name]
-   rename = projection.copy()
-   rename.pop('vep_annotations', None)
-   rename['annotations'] = '$vep_annotations'
-   cursor = collection.aggregate([
-      { '$match': mongo_filter },
-      { '$sort': bson.son.SON(mongo_sort) },
-      { '$limit': args['limit'] },
-      { '$project': projection },
-      { '$project': rename }
-   ])
+
+   # can be replaced with collection.aggregate. However in Mongo 3.4. collection.aggregate produced different query plan than collection.find, which was not optimal
+   cursor = collection.find(mongo_filter, projection).sort(mongo_sort + [('_id', ASCENDING)]).limit(args['limit'])
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
          last_object_id = r.pop('_id')
+         r['annotations'] = [{k: a[k] for k in annotations_ordered} for a in r['vep_annotations']]
+         r.pop('vep_annotations')
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
@@ -464,7 +458,7 @@ def get_region():
          data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
             r['allele_num'], r['allele_count'], r['allele_freq'],
-            ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['annotations'])
+            ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['vep_annotations'])
          ))
          last_variant = r
 
@@ -485,6 +479,8 @@ def get_gene():
        'allele_num': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, int))),
        'site_quality': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, float))),
        'filter': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
+       'annotations.lof': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
+       'annotations.consequence': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
        'sort': fields.Function(deserialize = deserialize_query_sort),
        'vcf': fields.Bool(required = False, missing = False),
        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = pageSize),
@@ -513,27 +509,34 @@ def get_gene():
 
    mongo_filter, mongo_sort = build_region_query(args, gene['xstart'], gene['xstop'])
 
+   annotations_filter = [ { 'Gene': gene['gene_id'] } ]
+   annotations = args.get('annotations', None)
+   if annotations is not None:
+      filters = annotations.get('lof', None)
+      if filters is not None:
+         if len(filters) == 1:
+            annotations_filter.append({'LoF': filters[0]})
+         else:
+            annotations_filter.append({'$or': [{'LoF': v} for v in filters]})
+      filters = annotations.get('consequence', None)
+      if filters is not None:
+         annotations_filter.append({'$or': [{'Consequence': re.compile(v.values()[0])} if v.keys()[0] == '$eq' else {'Consequence': {'$not': re.compile(v.values()[0])}} for v in filters ] })
+   mongo_filter['$and'].append({'vep_annotations': {'$elemMatch': {'$and': annotations_filter}}})
+
    data = [];
    last_variant = None
    last_object_id = None
    collection = db[api_collection_name]
-   annotation_filter = projection.copy()
-   annotation_filter['vep_annotations'] = { '$filter': { 'input': '$vep_annotations', 'as': 'a', 'cond': { '$eq': ['$$a.Gene', gene['gene_id']]} }}
-   rename = projection.copy()
-   rename.pop('vep_annotations', None)
-   rename['annotations'] = '$vep_annotations'
-   cursor = collection.aggregate([
-      { '$match': mongo_filter },
-      { '$sort': bson.son.SON(mongo_sort) },
-      { '$limit': args['limit'] },
-      { '$project': projection },
-      { '$project': annotation_filter },
-      { '$project': rename }
-   ])
+   
+   # can be replaced with collection.aggregate. However in Mongo 3.4. collection.aggregate produced different query plan than collection.find, which was not optimal
+   cursor = collection.find(mongo_filter, projection).sort(mongo_sort + [('_id', ASCENDING)]).limit(args['limit']) 
+
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
          last_object_id = r.pop('_id')
+         r['annotations'] = [{k: a[k] for k in annotations_ordered} for a in r['vep_annotations'] if a['Gene'] == gene['gene_id']]
+         r.pop('vep_annotations', None)
          r.pop('xpos', None)
          data.append(r)
          last_variant = r
@@ -547,7 +550,7 @@ def get_gene():
          data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
             r['allele_num'], r['allele_count'], r['allele_freq'],
-            ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['annotations'])
+            ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['vep_annotations'] if a['Gene'] == gene['gene_id'])
          ))
          last_variant = r
 
@@ -568,6 +571,8 @@ def get_transcript():
        'allele_num': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, int))),
        'site_quality': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, float))),
        'filter': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
+       'annotations.lof': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
+       'annotations.consequence': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))), 
        'sort': fields.Function(deserialize = deserialize_query_sort),
        'vcf': fields.Bool(required = False, missing = False),
        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = pageSize),
@@ -593,29 +598,33 @@ def get_transcript():
    }
 
    mongo_filter, mongo_sort = build_region_query(args, transcript['xstart'], transcript['xstop'])
+   annotations_filter = [ { 'Feature': transcript['transcript_id'] } ]
+   annotations = args.get('annotations', None)
+   if annotations is not None:
+      filters = annotations.get('lof', None)
+      if filters is not None:
+         if len(filters) == 1:
+            annotations_filter.append({'LoF': filters[0]})
+         else:
+            annotations_filter.append({'$or': [{'LoF': v} for v in filters]})
+      filters = annotations.get('consequence', None)
+      if filters is not None:
+         annotations_filter.append({'$or': [{'Consequence': re.compile(v.values()[0])} if v.keys()[0] == '$eq' else {'Consequence': {'$not': re.compile(v.values()[0])}} for v in filters ] })
+   mongo_filter['$and'].append({'vep_annotations': {'$elemMatch': {'$and': annotations_filter}}})
 
    data = [];
    last_variant = None
    last_object_id = None
    collection = db[api_collection_name]
-   annotation_filter = projection.copy()
-   annotation_filter['vep_annotations'] = { '$filter': { 'input': '$vep_annotations', 'as': 'a', 'cond': { '$eq': ['$$a.Feature', transcript['transcript_id']]} }}
-   rename = projection.copy()
-   rename.pop('vep_annotations', None)
-   rename['annotations'] = '$vep_annotations'
-   cursor = collection.aggregate([
-      { '$match': mongo_filter },
-      { '$sort': bson.son.SON(mongo_sort) },
-      { '$limit': args['limit'] },
-      { '$project': projection },
-      { '$project': annotation_filter },
-      { '$project': rename }
-   ])
+   # can be replaced with collection.aggregate. However in Mongo 3.4. collection.aggregate produced different query plan than collection.find, which was not optimal
+   cursor = collection.find(mongo_filter, projection).sort(mongo_sort + [('_id', ASCENDING)]).limit(args['limit'])
    if not args['vcf']:
       response['format'] = 'json'
       for r in cursor:
          last_object_id = r.pop('_id')
+         r['annotations'] = {k: a[k] for k in annotations_ordered for a in r['vep_annotations'] if a['Feature'] == transcript['transcript_id']}
          r.pop('xpos', None)
+         r.pop('vep_annotations', None)
          data.append(r)
          last_variant = r
    else:
@@ -628,10 +637,9 @@ def get_transcript():
          data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
             r['allele_num'], r['allele_count'], r['allele_freq'],
-            ','.join(['|'.join(a[k] for k in annotations_ordered) for a in r['annotations']])
+            ','.join(['|'.join(a[k] for k in annotations_ordered) for a in r['vep_annotations'] if a['Feature'] == transcript['transcript_id']])
          ))
          last_variant = r
-
    response['data'] = data
    response['next'] = build_link_next(args, last_object_id, last_variant, mongo_sort) if len(data) == args['limit'] else None
    response = jsonify(response)
