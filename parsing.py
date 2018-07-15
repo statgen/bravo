@@ -40,6 +40,42 @@ def get_variants_from_sites_vcf_only_percentiles(sites_vcf):
             raise
 
 
+def get_variants_from_sites_vcf_only_dp_gq(vcf, chrom, start_bp, end_bp):
+    """Reads sites VCF/BCF file and returns iterator over veriant dicts with AVGDP, AVGGQ, AVGDP_ALT, and AVGGQ_ALT fields.
+    
+    Arguments:
+    vcf -- VCF/BCF file name.
+    chrom -- chromosome name.
+    start_bp -- start position in base-pairs.
+    end_bp -- end position in base-pairs.
+    """
+    with closing(pysam.VariantFile(vcf)) as ifile:
+        if 'AVGDP' not in ifile.header.info:
+            raise Exception('Missing AVGDP INFO field')
+        if 'AVGDP_R' not in ifile.header.info:
+            raise Exception('Missing AVGDP_R INFO field')
+        if 'AVGGQ' not in ifile.header.info:
+            raise Exception('Missing AVGGQ INFO field')
+        if 'AVGGQ_R' not in ifile.header.info:
+            raise Exception('Missing AVGGQ_R INFO field')
+        for record in ifile.fetch(chrom, start_bp, end_bp):
+            try:
+                for i, alt_allele in enumerate(record.alts):
+                    variant = {}
+                    chrom = record.contig[3:] if record.contig.startswith('chr') else record.contig
+                    pos, variant['ref'], variant['alt'] = get_minimal_representation(record.pos, record.ref, alt_allele)
+                    variant['xpos'] = Xpos.from_chrom_pos(chrom, pos)
+                    variant['avgdp'] = record.info['AVGDP']
+                    variant['avgdp_alt'] = record.info['AVGDP_R'][i + 1]
+                    variant['avggq'] = record.info['AVGGQ']
+                    variant['avggq_alt'] = record.info['AVGGQ_R'][i + 1]
+                    yield variant
+            except:
+                print("Error parsing VCF/BCF record: " + record.__str__())
+                traceback.print_exc()
+                raise
+
+
 def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True):
     """Reads sites VCF/BCF file and returns iterator over veriant dicts.
     
