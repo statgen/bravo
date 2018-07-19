@@ -47,7 +47,7 @@ api_version = app.config['API_VERSION']
 pageSize = app.config['API_PAGE_SIZE']
 maxRegion = app.config['API_MAX_REGION']
 
-projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True, 'rsids': True, 'vep_annotations': True }
+projection = {'_id': True, 'xpos': True, 'variant_id': True, 'chrom': True, 'pos': True,  'ref': True, 'alt': True, 'site_quality': True, 'filter': True, 'allele_num': True, 'allele_count': True, 'allele_freq': True, 'rsids': True, 'avgdp': True, 'avgdp_alt': True, 'avggq': True, 'avggq_alt': True, 'vep_annotations': True }
 allowed_sort_keys = {'pos': long, 'allele_count': int, 'allele_freq': float, 'allele_num': int, 'site_quality': float, 'filter': str, 'variant_id': str}
 allowed_filter_keys = {'allele_count', 'allele_freq', 'allele_num', 'site_quality', 'filter'}
 
@@ -66,6 +66,10 @@ vcf_meta = [
          '##INFO=<ID=AN,Number=1,Type=Integer,Description="Number of Alleles in Samples with Coverage">',
          '##INFO=<ID=AC,Number=A,Type=Integer,Description="Alternate Allele Counts in Samples with Coverage">',
          '##INFO=<ID=AF,Number=A,Type=Float,Description="Alternate Allele Frequencies">',
+         '##INFO=<ID=AVGDP,Number=1,Type=Float,Description="Average depth per sample">',
+         '##INFO=<ID=AVGDP_ALT,Number=A,Type=Float,Description="Average depth per sample carrying alternate allele">',
+         '##INFO=<ID=AVGGQ,Number=1,Type=Float,Description="Average genotype quality per sample">',
+         '##INFO=<ID=AVGGQ_ALT,Number=A,Type=Float,Description="Average genotype quality per sample carrying alternate allele">',
          '##INFO=<ID=CSQ,Number=.,Type=String,Description="Consequence annotations from Ensembl VEP. Format: {}">'.format('|'.join(annotations_ordered))
       ]
 
@@ -232,9 +236,9 @@ def get_variant():
       for r in cursor:
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
-         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};AVGDP={};AVGDP_ALT={};AVGGQ={};AVGGQ_ALT={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq'], 
+            r['allele_num'], r['allele_count'], r['allele_freq'], r['avgdp'], r['avgdp_alt'], r['avggq'], r['avggq_alt'], 
             ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['annotations'])
          ))
          last_variant = r
@@ -456,9 +460,9 @@ def get_region():
       for r in cursor:
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
-         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};AVGDP={};AVGDP_ALT={};AVGGQ={};AVGGQ_ALT={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq'],
+            r['allele_num'], r['allele_count'], r['allele_freq'], r['avgdp'], r['avgdp_alt'], r['avggq'], r['avggq_alt'],
             ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['vep_annotations'])
          ))
          last_variant = r
@@ -548,9 +552,9 @@ def get_gene():
       for r in cursor:
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
-         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};AVGDP={};AVGDP_ALT={};AVGGQ={};AVGGQ_ALT={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq'],
+            r['allele_num'], r['allele_count'], r['allele_freq'], r['avgdp'], r['avgdp_alt'], r['avggq'], r['avggq_alt'],
             ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['vep_annotations'] if a['Gene'] == gene['gene_id'])
          ))
          last_variant = r
@@ -635,9 +639,9 @@ def get_transcript():
       for r in cursor:
          last_object_id = r.pop('_id')
          r.pop('xpos', None)
-         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};CSQ={}'.format(
+         data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};AVGDP={};AVGDP_ALT={};AVGGQ={};AVGGQ_ALT={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq'],
+            r['allele_num'], r['allele_count'], r['allele_freq'], r['avgdp'], r['avgdp_alt'], r['avggq'], r['avggq_alt'],
             ','.join(['|'.join(a[k] for k in annotations_ordered) for a in r['vep_annotations'] if a['Feature'] == transcript['transcript_id']])
          ))
          last_variant = r
