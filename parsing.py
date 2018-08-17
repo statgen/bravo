@@ -330,7 +330,7 @@ def get_genenames(genenames_file):
         yield gene
 
 
-def get_snp_from_dbsnp_file(dbsnp_file, chrom, start_bp = None, end_bp = None):
+def get_snp_from_dbsnp_file(dbsnp_file, chrom, start_bp = None, end_bp = None, histograms = False):
     with closing(pysam.Tabixfile(dbsnp_file, 'r')) as tabix:
         chrom_out = chrom[:-1] if chrom == 'MT' or chrom == 'chrMT' else chrom
         for row in tabix.fetch(chrom, start_bp, end_bp):
