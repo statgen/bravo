@@ -12,4 +12,3 @@ services:
     image: "mongo:3.4"
     volumes:
      - /data/mongo/db:/data/db
-    
