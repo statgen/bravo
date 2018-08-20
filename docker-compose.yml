@@ -3,13 +3,13 @@ services:
   web:
     build: .
     ports:
-     - "7778:80"
+     - "8080:80"
     volumes:
-     - /var/bravo:/var/bravo
+     - /data:/data
     environment:
      - BRAVO_CONFIG_FILE=/var/bravo/config/config.py
   mongo:
     image: "mongo:3.4"
     volumes:
-     - /var/bravo/mongo/db:/data/db
+     - /data/mongo/db:/data/db
     
