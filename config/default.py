@@ -40,11 +40,11 @@ BRAVO_ACCESS_SECRET = ''
 BRAVO_AUTH_URL_PREFIX = '/api/' + API_VERSION + '/auth'
 
 IGV_REFERENCE_PATH = '/data/genomes/'
-IGV_CRAM_DIRECTORY = 'data/cram/'
+IGV_CRAM_DIRECTORY = '/data/cram/'
 IGV_CACHE_COLLECTION = 'igv_cache'
 IGV_CACHE_DIRECTORY = '/data/cache/igv_cache/'
-BASE_COVERAGE_DIRECTORY = '/var/bravo/data/coverage/'
 IGV_CACHE_LIMIT = 1000
+BASE_COVERAGE_DIRECTORY = '/data/coverage/'
 
 ADMINS = [
     'email@email.email'
