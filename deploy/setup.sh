@@ -1,6 +1,7 @@
 #!/bin/bash
 
 install_docker_ce() {
+    echo "Installing Docker CE"
     sudo apt-get update
 
     # Allow Apt to work over https
@@ -17,6 +18,7 @@ install_docker_ce() {
 }
 
 install_docker_compose() {
+    echo "Installing Docker Compose"
     # Get latest release
     sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m) -o \
     /usr/local/bin/docker-compose
@@ -26,6 +28,7 @@ install_docker_compose() {
 }
 
 install_google_cloud_sdk() {
+    echo "Installing Google Cloud SDK"
     # Create environment variable for correct distribution
     export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
 
@@ -41,7 +44,9 @@ install_google_cloud_sdk() {
 }
 
 setup_bravo_env() {
-    mkdir /data
+    mkdir -p /data/cache/igv_cache
+
+    git clone https://github.com/statgen/bravo.git /var/bravo-installs/bravo
 }
 
 install_docker_ce
