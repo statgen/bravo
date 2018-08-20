@@ -9,7 +9,6 @@ genome_build=hg38
 deploy_dir=${PWD}/temp
 log_file=${PWD}/INSTALL.log
 threads=1
-config_name=BaseConfig
 
 setup_tabix_tools() {
     echo -e "${GREEN}=> Setup bgzip and tabix${NOCOLOR}"
@@ -148,7 +147,6 @@ while getopts ":hb:d:t:c:" opt; do
             echo -e "\t-b build        Human genome build version: hg38 (default), hg19."
             echo -e "\t-d directory    Working directory for temporary deployment files and scripts. Default is ./temp."
             echo -e "\t-t threads      Number of parallel threads. Default is 1."
-            echo -e "\t-c config       Name configuration name. Default is BaseConfig."
             echo ""
             exit 0
             ;;
@@ -160,9 +158,6 @@ while getopts ":hb:d:t:c:" opt; do
             ;;
         t)
             threads=$OPTARG
-            ;;
-        c)
-            config_name=$OPTARG
             ;;
         \?)
             echo "Invalid option: -$OPTARG"
@@ -190,7 +185,6 @@ mkdir ${deploy_dir}
 echo "Setting up Bravo for human genome version ${genome_build}."
 echo "Writing temporary deployment files to ${deploy_dir}."
 echo "Writing log information to ${log_file}."
-echo "Using ${config_name} configuration."
 echo -n "" > ${log_file}
 
 echo -e "${RED}DOWNLOADING REQUIRED TOOLS/LIBRARIES${NOCOLOR}"
@@ -212,8 +206,8 @@ download_canonical_transcripts
 
 echo -e "${RED}LOADING EXTERNAL DATA TO DATABASE${NOCOLOR}"
 
-python ../manage.py genes -c ${config_name} -t ${canonical_transcripts_file} -m ${omim_file} -f ${hgnc_file} -g ${gencode_file}
-python ../manage.py dbsnp -c ${config_name} -d ${dbsnp_file} -t ${threads}
+python ../manage.py genes -t ${canonical_transcripts_file} -m ${omim_file} -f ${hgnc_file} -g ${gencode_file}
+python ../manage.py dbsnp -d ${dbsnp_file} -t ${threads}
 
 rm -rf ${deploy_dir}
 
