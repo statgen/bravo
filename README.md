@@ -2,7 +2,7 @@ Installation
 ============
 
 1. [System Dependencies](#system-dependencies)
-2. [Installation](#installation)
+2. [Configuration](#configuration)
 3. [Data Preparation](#data-preparation)
    1. [Prepare VCF](#prepare-vcf)
    2. [Prepare percentiles](#prepare-percentiles)
@@ -17,35 +17,22 @@ Installation
 
 ## System Dependencies
 
-Install MongoDB.  Configure it and make it run all the time.
+System dependencies can be installed using the `setup.sh` script.
+This script will also create the correct directory structure on the local host.
 
-Install python packages in a virtualenv.
+In addition to these dependencies, it is also recommended to proxy the application behind Apache, Nginx, or similar software.
 
-    virtualenv venv
-    source venv/bin/activate
-    pip2 install -r requirements.txt
+## Configuration
 
-Some packages will require Python headers (python-dev on some systems).
+The configuration for environmental dependent settings can be found at `config/default.py`.
+Most settings can be left at their default values, however some will need to be changed to match your environment.
 
-You probably want to run Flask behind something else, like Apache2.
 
-## Installation
+In order to load a human genome into the database, you can either run the `data-import.sh` script directly or use the commands located inside.
+In either case you will need to modify the script to reflect your environment and needs. By default the script will execute the `INSTALL.sh` script
+with the default hg38 genome and use 12 threads.
 
-1. Modify the `MONGO` variable in `flask_config.py`, e.g.:
-```python
-MONGO = {
-    'host': 'localhost', # MongoDB hostname
-    'port': 27017,       # MongoDB port
-    'name': 'bravo'      # Bravo database name
-}
-```
-
-2. Run `INSTALL.pl` script in `deploy` directory. Specify a human genome build version after `-b`, and a number of threads after `-t`:
-```
-cd deploy
-./INSTALL.pl -b hg38 -t 12
-```
-Installation may take several hours or longer.
+__Warning__: Data initialization may take several hours or longer.
 
 ## Data Preparation
 
@@ -109,9 +96,9 @@ Second, you need to set up a OAuth with Google. Go [here](https://console.develo
 **Attention!** Don't expose to anyone your `Client ID` and `Client secret`, and make sure you are using HTTPS for your callback URL.
 
 Third, follow these steps to enable authentication in Bravo:
-1. Set the `GOOGLE_AUTH` variable in Bravo configuration file to `True`.
-2. Assign the `GOOGLE_LOGIN_CLIENT_ID` variable in Bravo configuration file to your `Client ID` from Google.
-3. Assign the `GOOGLE_LOGIN_CLIENT_SECRET` variable in Bravo configuration file to your `Client secret` from Google.
+1. Set the `GOOGLE_AUTH` variable in the Bravo configuration file `config/default.py` to `True`.
+2. Assign the `GOOGLE_LOGIN_CLIENT_ID` variable in the Bravo configuration file `config/default.py` to your `Client ID` from Google.
+3. Assign the `GOOGLE_LOGIN_CLIENT_SECRET` variable in the Bravo configuration file `config/default.py` to your `Client secret` from Google.
 
 ### Email Whitelist
 Bravo allows whitelist specific users based on their email address. To enable whitelisting, follow these steps:
