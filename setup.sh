@@ -45,8 +45,6 @@ install_google_cloud_sdk() {
 
 setup_bravo_env() {
     mkdir -p /data/cache/igv_cache
-
-    git clone https://github.com/statgen/bravo.git /var/bravo-installs/bravo
 }
 
 install_docker_ce
