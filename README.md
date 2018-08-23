@@ -32,7 +32,7 @@ In order to load a human genome into the database, you can either run the `data-
 In either case you will need to modify the script to reflect your environment and needs. By default the script will execute the `INSTALL.sh` script
 with the default hg38 genome and use 12 threads.
 
-__Warning__: Data initialization may take several hours or longer.
+**Warning**: Data initialization may take several hours or longer.
 
 ## Data Preparation
 
@@ -42,7 +42,7 @@ Some of these tools are implemented in C++ and need to be compiled as follows:
     cd data/DataPrep/
     cget install .
 
-After successfull compilation, the executables will be installed in `data/DataPrep/cget/bin`.
+After successful compilation, the executables will be installed in `data/DataPrep/cget/bin`.
 Table below lists all tools that are needed for data preparation.
 
 | Tool | Localtion | Description |
@@ -77,14 +77,14 @@ Make a couple directories with different levels of binning (and again, one `.jso
 
 3. Tabix them all.
 
-4. Reference all of the coverage files in `BASE_COVERAGE` in `flask_config.py`.
+4. Reference all of the coverage files in `BASE_COVERAGE` in `default.py`.
 
 ### Prepare CRAM
 
 Bravo uses IGV.js to visualize raw sequenced from up to 10 random alternate allele carriers.    
     
 ## Access Control
-    
+
 ### Authentication
 
 Bravo supports user authentication using Google's OAuth 2.0 protocol, which is optional and is disabled by default. This section describes how to enable it.
@@ -116,21 +116,10 @@ If your Bravo users must to agree to any terms/conditions before browsing your d
 
 
 ## Google Analytics
-This step is optional. Go [here](https://analytics.google.com/analytics/web) and do whatever you have to to get your own `UA-xxxxxx-xx` tracking id.  Put that in `flask_config.py`.  Or just leave the default `UA-01234567-89`, and you won't receive any of the tracking data.
+This step is optional. Go [here](https://analytics.google.com/analytics/web) and do whatever you have to to get your own `UA-xxxxxx-xx` tracking id.  Put that in `default.py`.  Or just leave the default `UA-01234567-89`, and you won't receive any of the tracking data.
 
 ## Start the server
 
-You can run the development server with:
+In order to start the service, run `docker-compose up -d` from the projects home directory.
 
-    source venv/bin/activate
-    ./exac.py
-
-And visit on your browser:
-
-    http://localhost:5000
-    http://localhost:5000/gene/ENSG00000237683
-    http://localhost:5000/variant/20-76735-A-T
-
-For testing, you can open up an interactive shell with:
-
-    ./manage.py shell
+If you are making changed to configuration files or code and need to reload the changes, run `docker-compose up --build -d` in order to rebuild the containers with your updates.
