@@ -55,6 +55,8 @@ You will need to edit some of the settings to match your environment.
 It is recommended that you run your BRAVO application behind a reverse proxy such as Apache. An example Apache configuration can be found in `apache-example.conf`.
 In order to use Apache as a reverse proxy you will need to enable the `mod_proxy` and `mod_proxy_http` modules using the command `sudo a2enmod proxy proxy_http`.
 
+You will also need to change the BRAVO configuration file setting `PROXY` from `False` to `True` and reload your application as described in the [Launch the Application](#launch-the-application) section.
+
 ### Access Control
 
 #### Authentication
