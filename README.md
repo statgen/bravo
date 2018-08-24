@@ -1,8 +1,7 @@
-![BRAVO](static/img/bravo_logo.png?raw=true "BRowse All Variants Online")
+# BRAVO
+BRowse All Variants Online
 
-
-Installation
-============
+## Installation
 
 1. [System Setup](#system-setup)
 2. [Configuration](#configuration)
