@@ -69,9 +69,9 @@ Second, you need to set up a OAuth with Google. Go [here](https://console.develo
 **Attention!** Don't expose to anyone your `Client ID` and `Client secret`, and make sure you are using HTTPS for your callback URL.
 
 Third, follow these steps to enable authentication in BRAVO: 
-1. Set the `GOOGLE_AUTH` variable in the  BRAVO configuration file `config/default.py` to `True`.
-2. Assign the `GOOGLE_LOGIN_CLIENT_ID` variable in the BRAVO configuration file `config/default.py` to your `Client ID` from Google.
-3. Assign the `GOOGLE_LOGIN_CLIENT_SECRET` variable in the BRAVO configuration file `config/default.py` to your `Client secret` from Google.
+1. Set the `GOOGLE_AUTH` variable in the  BRAVO configuration file to `True`.
+2. Assign the `GOOGLE_LOGIN_CLIENT_ID` variable in the BRAVO configuration file to your `Client ID` from Google.
+3. Assign the `GOOGLE_LOGIN_CLIENT_SECRET` variable in the BRAVO configuration file to your `Client secret` from Google.
 
 #### Email Whitelist
 
