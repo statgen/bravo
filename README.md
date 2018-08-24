@@ -19,7 +19,7 @@ BRowse All Variants Online
     1. [Prepare coverage](#prepare-coverage)
     1. [Prepare CRAM](#prepare-cram)
 1. [Load Data]()
-1. [Data Backup & Restore](#data-backup-&-restore)
+1. [Data Backup and Restore](#data-backup-and-restore)
 
 ## System Setup
 
@@ -159,7 +159,7 @@ In order to load a human genome into the database, you can either run the `data-
 
 **Warning:** Data initialization may take several hours or longer.
 
-## Data Backup & Restore
+## Data Backup and Restore
 
 Data backup and restoration is handled through MongoDB database dumps to archives. Optionally these can be moved to Google Cloud Storage or the platform of your choice.
 Scripts to perform both the database dump as well as the restore can be found in `backup-cmds.sh`. You can modify these scripts to meet the needs of your environment.
