@@ -11,8 +11,8 @@ $(function() {
         showCenterGuide: true,
         reference: {
            id: "hg38",
-           fastaURL: "https://bravo.sph.umich.edu/genomes/hs38DH.fa",
-           indexURL: "https://bravo.sph.umich.edu/genomes/hs38DH.fa.fai"
+           fastaURL: window.model.fasta_url,
+           indexURL: window.model.fasta_url + ".fai"
         }
     };
 

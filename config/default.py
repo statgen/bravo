@@ -45,6 +45,7 @@ IGV_CACHE_COLLECTION = 'igv_cache'
 IGV_CACHE_DIRECTORY = '/data/cache/igv_cache/'
 IGV_CACHE_LIMIT = 1000
 BASE_COVERAGE_DIRECTORY = '/data/coverage/'
+FASTA_URL = 'https://your.bravo.domain.name/genomes/hs38DH.fa'
 
 ADMINS = [
     'email@email.email'
