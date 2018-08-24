@@ -7,6 +7,7 @@ Installation
 1. [System Setup](#system-setup)
 2. [Configuration](#configuration)
     - [Application Settings](#application-Settings)
+    - [Apache Config](#apache-config)
     - [Access Control](#access-control)
         - [Authentication](#authentication)
         - [Email Whitelist](#email-whitelist)
@@ -48,6 +49,11 @@ The script will also create the default directory structure on the local host at
 
 The BRAVO configuration file for project dependent settings can be found at `config/default.py`.
 You will need to edit some of the settings to match your environment.
+
+### Apache Config
+
+It is recommended that you run your BRAVO application behind a reverse proxy such as Apache. An example Apache configuration can be found in `apache-example.conf`.
+In order to use Apache as a reverse proxy you will need to enable the `mod_proxy` and `mod_proxy_http` modules using the command `sudo a2enmod proxy proxy_http`.
 
 ### Access Control
 
