@@ -2,13 +2,18 @@ version: '3'
 services:
   web:
     build: .
+    networks:
+      - bravo
     ports:
      - "8080:80"
     volumes:
      - /data:/data
-    environment:
-     - BRAVO_CONFIG_FILE=/var/bravo/config/config.py
   mongo:
     image: "mongo:3.4"
     volumes:
      - /data/mongo/db:/data/db
+    networks:
+      - bravo
+networks:
+  bravo:
+    name: bravoWebApp
