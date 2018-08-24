@@ -4,7 +4,7 @@ BRowse All Variants Online
 ## Installation
 
 1. [System Setup](#system-setup)
-2. [Configuration](#configuration)
+1. [Configuration](#configuration)
     - [Application Settings](#application-Settings)
     - [Apache Config](#apache-config)
     - [Access Control](#access-control)
@@ -12,14 +12,14 @@ BRowse All Variants Online
         - [Email Whitelist](#email-whitelist)
         - [Terms of Use](#terms-of-use)
     - [Google Analytics](#google-analytics)
-3. [Launch the Application](#launch-the-application)
-4. [Data Preparation](#data-preparation)
+1. [Launch the Application](#launch-the-application)
+1. [Data Preparation](#data-preparation)
     1. [Prepare VCF](#prepare-vcf)
-    2. [Prepare percentiles](#prepare-percentiles)
-    3. [Prepare coverage](#prepare-coverage)
-    4. [Prepare CRAM](#prepare-cram)
-5. [Load Data]()
-6. [Data Backup & Restore](#data-backup-&-restore)
+    1. [Prepare percentiles](#prepare-percentiles)
+    1. [Prepare coverage](#prepare-coverage)
+    1. [Prepare CRAM](#prepare-cram)
+1. [Load Data]()
+1. [Data Backup & Restore](#data-backup-&-restore)
 
 ## System Setup
 
