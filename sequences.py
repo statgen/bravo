@@ -100,7 +100,7 @@ class SequencesClient(object):
         variant = db.variants.find_one({'xpos': xpos, 'ref': ref, 'alt': alt}, projection = {'_id': False})
         if variant is None:
             return None
-        # check if exists in cache        
+        # check if exists in cache
         cache_entry =  db[self._cache_collection].find_one({'name': variant_id}, projection = {'_id': False})
         if cache_entry is not None:
             return { 'names': cache_entry['sample'] }

@@ -30,8 +30,8 @@ def delete_cache(db, collection, cursor, delay):
     if len(ids_to_remove) > 0:
         requests = [ pymongo.DeleteMany({ '_id': { '$in': ids_to_remove } })]
         result = db[collection].bulk_write(requests)
-    if len(files_to_remove) > 0: 
-        time.sleep(delay) # sleep a little to allow finish any active downloads of selected cached files          
+    if len(files_to_remove) > 0:
+        time.sleep(delay) # sleep a little to allow finish any active downloads of selected cached files
         for bam, bai in files_to_remove:
             try:
                 os.remove(os.path.join(cache_dir, bam))
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     else:
         with open(args.pid_file, 'w') as f:
             f.write('{}'.format(pid))
-   
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         config = load_config('flask_config.BravoFreeze5GRCh38Config')

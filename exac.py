@@ -194,11 +194,11 @@ def administration_users_api():
         abort(404)
     db = get_db()
     args = json.loads(request.form['args'])
- 
+
     mongo_projection = {
-        '_id': False, 
+        '_id': False,
         'username': True,
-        'email': True, 
+        'email': True,
         'enabled_api': {'$ifNull': ['$enabled_api', False]},
         'no_newsletters': {'ifNull': ['no_newsletters', False]},
     }
@@ -232,7 +232,7 @@ def variant_page(variant_id):
         _log()
         variant = lookups.get_variant_by_variant_id(db, variant_id, default_to_boring_variant = False)
         if not variant: return not_found_page('The requested variant {!s} could not be found.'.format(variant_id))
-     
+
         pop_names = {k + '_AF': '1000G ' + v for k, v in {'AFR':'African', 'AMR':'American', 'EAS':'East Asian', 'EUR':'European', 'SAS':'South Asian'}.items()}
         if 'pop_afs' in variant:
             variant['pop_afs'] = {pop_names.get(k, k): v for k, v in variant['pop_afs'].items()}
@@ -246,7 +246,7 @@ def variant_page(variant_id):
 
         base_coverage = get_coverage_handler().get_coverage_for_intervalset(
             IntervalSet.from_xstart_xstop(variant['xpos'], variant['xpos']+len(variant['ref'])-1))
-        
+
         metrics = lookups.get_metrics(db)
         variant['quality_metrics']['QUAL'] = variant['site_quality']
 
@@ -312,7 +312,7 @@ def region_page(chrom, start, stop):
             start = int(start)
         except:
             return bad_request_page('The start position {!s} is not integer.'.format(start))
-        try: 
+        try:
             stop = int(stop)
         except:
             return bad_request_page('The stop position {!s} is not integer.'.format(stop))
@@ -537,7 +537,7 @@ def test_bai(variant_id, sample_id):
         file_path = sequencesClient.get_bai(db, variant_id, sample_id)
         if file_path is None: _err(); abort(500)
         print 'Done preparing BAM and BAI. Took %s seconds' % (time.time() - start_time)
-        return make_response(send_file(file_path, as_attachment = False)) 
+        return make_response(send_file(file_path, as_attachment = False))
     except: _err(); abort(500)
 
 
@@ -586,14 +586,14 @@ class User(UserMixin):
 
 
 def encode_user(user):
-    return { '_type': 'User', 
-             'user_id': user.get_id(), 
-             'username': user.username, 
-             'email': user.email, 
-             'agreed_to_terms': user.agreed_to_terms, 
-             'picture': user.picture, 
-             'enabled_api': user.enabled_api, 
-             'google_client_id': user.google_client_id, 
+    return { '_type': 'User',
+             'user_id': user.get_id(),
+             'username': user.username,
+             'email': user.email,
+             'agreed_to_terms': user.agreed_to_terms,
+             'picture': user.picture,
+             'enabled_api': user.enabled_api,
+             'google_client_id': user.google_client_id,
              'no_newsletters': user.no_newsletters }
 
 
@@ -637,11 +637,11 @@ def load_user(id):
 def agree_to_terms():
     "this route is for when the user has clicked 'I agree to the terms'."
     _log()
-    if app.config['GOOGLE_AUTH'] and app.config['TERMS']: 
+    if app.config['GOOGLE_AUTH'] and app.config['TERMS']:
         if not current_user.is_anonymous:
             db = get_db()
             current_user.agreed_to_terms = True
-            result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})     
+            result = db.users.update_one({"user_id": current_user.get_id()}, {"$set": {"agreed_to_terms": current_user.agreed_to_terms}})
         return redirect(session.pop('original_destination', url_for('.homepage')))
     abort(404)
 

@@ -61,12 +61,12 @@ def get_db_connection():
 
 def load_gene_models(canonical_transcripts_file, omim_file, genenames_file, gencode_file):
     """Creates and populates the following MongoDB collections: genes, transcripts, exons.
-    
+
     Arguments:
     canonical_transcripts_file -- file with a list of canonical transcripts. No header. Two columns: Ensebl gene ID, Ensembl transcript ID.
     omim_file -- file with genes descriptions from OMIM. Required columns separated by tab: Gene stable ID, Transcript stable ID, MIM gene accession, MIM gene description.
     genenames_file -- file with gene names from HGNC. Required columns separated by tab: symbol, name, alias_symbol, prev_name, ensembl_gene_id.
-    gencode_file -- file from GENCODE in compressed GTF format. 
+    gencode_file -- file from GENCODE in compressed GTF format.
     """
     db = get_db_connection()
     db.genes.drop()
@@ -102,7 +102,7 @@ def load_gene_models(canonical_transcripts_file, omim_file, genenames_file, genc
             db.genes.insert_one(gene)
     db.genes.create_indexes([pymongo.operations.IndexModel(key) for key in ['gene_id', 'gene_name', 'other_names', 'xstart', 'xstop']])
     sys.stdout.write('Inserted {} gene(s).\n'.format(db.genes.count()))
-  
+
     with gzip.GzipFile(gencode_file, 'r') as ifile:
         db.transcripts.insert_many(transcript for transcript in parsing.get_regions_from_gencode_gtf(ifile, {'transcript'}))
     db.transcripts.create_indexes([pymongo.operations.IndexModel(key) for key in ['transcript_id', 'gene_id']])
@@ -180,7 +180,7 @@ def load_dbsnp(dbsnp_files, threads):
 
 def load_metrics(metrics_file):
     """Creates and populates MongoDB collection for metrics calculated across all variants.
-    
+
     Arguments:
     metrics_file -- file with metrics. One metric per line in JSON format.
     """
@@ -222,7 +222,7 @@ def create_sequence_cache(collection_name):
 
 def load_custom_variants(variants_files, collection_name, threads):
     """Creates and populates MongoDB collection with given name for additional variants.
-    
+
     Arguments:
     variants_files -- list of one or more VCF/BCF files with variants (no genotypes) compressed using bgzip and indexed using tabix.
     collection_name -- name of MongoDB collection that will store variants.
@@ -233,7 +233,7 @@ def load_custom_variants(variants_files, collection_name, threads):
         db[collection_name].drop()
     with contextlib.closing(multiprocessing.Pool(threads)) as threads_pool:
         threads_pool.map(functools.partial(_write_to_collection, collection = collection_name, reader = parsing.get_variants_from_sites_vcf, histograms = False), get_file_contig_pairs(variants_files))
-    db[collection_name].create_indexes([pymongo.operations.IndexModel(key) for key in ['xpos', 'xstop', 'filter']]) 
+    db[collection_name].create_indexes([pymongo.operations.IndexModel(key) for key in ['xpos', 'xstop', 'filter']])
     sys.stdout.write('Inserted {} variant(s).\n'.format(db[collection_name].count()))
 
 
@@ -256,7 +256,7 @@ def _update_collection(args, collection, reader):
             n_matched += res.matched_count
             n_modified += res.modified_count
             requests = []
-            sys.stdout.write('VCF/BCF {}. Processed {} document(s) in {} second(s), {} matched, {} modified.\n'.format(file, n_documents, int(time.time() - start_time), n_matched, n_modified)) 
+            sys.stdout.write('VCF/BCF {}. Processed {} document(s) in {} second(s), {} matched, {} modified.\n'.format(file, n_documents, int(time.time() - start_time), n_matched, n_modified))
     if len(requests) > 0:
         res = db[collection].bulk_write(requests, ordered = False)
         n_matched += res.matched_count
@@ -266,7 +266,7 @@ def _update_collection(args, collection, reader):
 
 def update_variants(variants_files, threads):
     """Updates varians collection with AVGDP, AVGGQ, AVGDP_ALT, AVGGQ_ALT fields.
-    
+
     Arguments:
     variants_files -- list of one or more VCF/BCF files with variants (no genotypes) compressed using bgzip and indexed using tabix.
     threads -- number of threads to use.
@@ -281,7 +281,7 @@ if __name__ == '__main__':
     global mongo_db_name
 
     args = argparser.parse_args()
-   
+
     config = Config(os.path.dirname(os.path.realpath(__file__)))
     # Load default config
     config.from_object('config.default')
@@ -311,7 +311,7 @@ if __name__ == '__main__':
         sys.stdout.write('Creating dbSNP collection in {} database.\n'.format(mongo_db_name))
         sys.stdout.write('Using {} thread(s).\n'.format(args.threads))
         load_dbsnp(args.dbsnp_files, args.threads)
-        sys.stdout.write('Done creating dbSNP collection in {} database.\n'.format(mongo_db_name))      
+        sys.stdout.write('Done creating dbSNP collection in {} database.\n'.format(mongo_db_name))
     elif args.command == 'metrics':
         sys.stdout.write('Creating metrics collection in {} database.\n'.format(mongo_db_name))
         load_metrics(args.metrics_file)

@@ -238,7 +238,7 @@ def get_variant():
          r.pop('xpos', None)
          data.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\tAN={};AC={};AF={};AVGDP={};AVGDP_ALT={};AVGGQ={};AVGGQ_ALT={};CSQ={}'.format(
             r['chrom'], r['pos'], ';'.join(r['rsids']) if r['rsids'] else '.', r['ref'], r['alt'], r['site_quality'], r['filter'],
-            r['allele_num'], r['allele_count'], r['allele_freq'], r['avgdp'], r['avgdp_alt'], r['avggq'], r['avggq_alt'], 
+            r['allele_num'], r['allele_count'], r['allele_freq'], r['avgdp'], r['avgdp_alt'], r['avggq'], r['avggq_alt'],
             ','.join('|'.join(a[k] for k in annotations_ordered) for a in r['annotations'])
          ))
          last_variant = r
@@ -314,7 +314,7 @@ def deserialize_query_last(value):
     return elements
 
 
-def validate_query(value): 
+def validate_query(value):
     # eliminate duplicated entries in filters and sort
     if 'sort' in value:
         value['sort'] = dict(value['sort']).items()
@@ -365,7 +365,7 @@ def build_region_query(args, xstart, xend):
                 mongo_user_filter.append({key: {'$lte': args['last'][i]}})
                 mongo_last_filter.append({key: {'$lt': args['last'][i]}})
         mongo_last_filter.append({'_id': {'$gt': bson.objectid.ObjectId(args['last'][-1])}})
-        mongo_filter.append({'$or': mongo_last_filter})             
+        mongo_filter.append({'$or': mongo_last_filter})
     mongo_filter.extend(mongo_user_filter)
     return {'$and':  mongo_filter}, mongo_sort
 
@@ -532,9 +532,9 @@ def get_gene():
    last_variant = None
    last_object_id = None
    collection = db[api_collection_name]
-   
+
    # can be replaced with collection.aggregate. However in Mongo 3.4. collection.aggregate produced different query plan than collection.find, which was not optimal
-   cursor = collection.find(mongo_filter, projection).sort(mongo_sort + [('_id', ASCENDING)]).limit(args['limit']) 
+   cursor = collection.find(mongo_filter, projection).sort(mongo_sort + [('_id', ASCENDING)]).limit(args['limit'])
 
    if not args['vcf']:
       response['format'] = 'json'
@@ -577,7 +577,7 @@ def get_transcript():
        'site_quality': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, float))),
        'filter': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
        'annotations.lof': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
-       'annotations.consequence': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))), 
+       'annotations.consequence': fields.List(fields.Function(deserialize = lambda x: deserialize_query_filter(x, str))),
        'sort': fields.Function(deserialize = deserialize_query_sort),
        'vcf': fields.Bool(required = False, missing = False),
        'limit': fields.Int(required = False, validate = lambda x: x > 0, missing = pageSize),
@@ -659,6 +659,6 @@ limiter = Limiter(app, default_limits = app.config['API_REQUESTS_RATE_LIMIT'], k
 app.register_blueprint(bp, url_prefix = URL_PREFIX + API_URL_PREFIX)
 
 
-if __name__ == '__main__':   
+if __name__ == '__main__':
    args = argparser.parse_args()
    app.run(host = args.host, port = args.port, threaded = True, use_reloader = True)

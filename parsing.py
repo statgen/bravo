@@ -42,7 +42,7 @@ def get_variants_from_sites_vcf_only_percentiles(sites_vcf):
 
 def get_variants_from_sites_vcf_only_dp_gq(vcf, chrom, start_bp, end_bp):
     """Reads sites VCF/BCF file and returns iterator over veriant dicts with AVGDP, AVGGQ, AVGDP_ALT, and AVGGQ_ALT fields.
-    
+
     Arguments:
     vcf -- VCF/BCF file name.
     chrom -- chromosome name.
@@ -78,7 +78,7 @@ def get_variants_from_sites_vcf_only_dp_gq(vcf, chrom, start_bp, end_bp):
 
 def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True):
     """Reads sites VCF/BCF file and returns iterator over veriant dicts.
-    
+
     Arguments:
     vcf -- VCF/BCF file name.
     chrom -- chromosome name.
@@ -98,8 +98,8 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
             dp_mids = [float(x) for x in dp_hist_meta.description.split(':', 1)[-1].strip().split('|')]
             gq_hist_meta = ifile.header.info.get('GQ_HIST', None)
             if gq_hist_meta is None:
-                raise Exception('Missing GQ_HIST INFO field.')  
-            gq_mids = [float(x) for x in gq_hist_meta.description.split(':', 1)[-1].strip().split('|')] 
+                raise Exception('Missing GQ_HIST INFO field.')
+            gq_mids = [float(x) for x in gq_hist_meta.description.split(':', 1)[-1].strip().split('|')]
         for record in ifile.fetch(chrom, start_bp, end_bp):
             try:
                 annotations = dict()
@@ -114,14 +114,14 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
                     variant['pos'], variant['ref'], variant['alt'] = get_minimal_representation(record.pos, record.ref, alt_allele)
                     variant['xpos'] = Xpos.from_chrom_pos(variant['chrom'], variant['pos'])
                     variant['xstop'] = variant['xpos'] + len(variant['alt']) - len(variant['ref'])
-                    variant['variant_id'] = '{}-{}-{}-{}'.format(variant['chrom'], variant['pos'], variant['ref'], variant['alt']) 
-                    allele_annotations = annotations[i + 1]    
+                    variant['variant_id'] = '{}-{}-{}-{}'.format(variant['chrom'], variant['pos'], variant['ref'], variant['alt'])
+                    allele_annotations = annotations[i + 1]
                     if allele_annotations:
                         variant['rsids'] = [rsid for rsid in allele_annotations[0]['Existing_variation'].split('&') if rsid.startswith('rs')]
                     else:
                         variant['rsids'] = []
                     variant['site_quality'] = record.qual
-                    variant['filter'] = ';'.join(record.filter.keys())  
+                    variant['filter'] = ';'.join(record.filter.keys())
                     variant['allele_count'] = record.info['AC'][i]
                     if variant['allele_count'] == 0:
                         continue
@@ -149,7 +149,7 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
                         variant['pop_afs'] = pop_afs
                     keep_only_needed_annotation_fields(variant)
                     yield variant
-            except:       
+            except:
                 print("Error parsing VCF/BCF record: " + record.__str__())
                 traceback.print_exc()
                 raise
@@ -325,7 +325,7 @@ def get_genenames(genenames_file):
             'gene_other_names': fields['alias_symbol'].strip('"').split('|') if fields['alias_symbol'] else []
         }
         if fields['prev_symbol'] and fields['prev_symbol'] not in gene['gene_other_names']:
-            for name in fields['prev_symbol'].strip('"').split('|'):    
+            for name in fields['prev_symbol'].strip('"').split('|'):
                 gene['gene_other_names'].append(name)
         yield gene
 
