@@ -1,13 +1,14 @@
-import os
-import sys
+import argparse
 import imp
 import inspect
-import warnings
-import pymongo
+import os
 import re
+import sys
 import time
+import warnings
+
 import psutil
-import argparse
+import pymongo
 
 argparser = argparse.ArgumentParser(description = 'This script performs Bravo IGV cache cleaning.')
 argparser.add_argument('-p', '--pid-file', metavar = 'file', dest = 'pid_file', type = str, default = 'igv_cache.pid', required = False, help = 'PID file path. PID file is used to ensure that only one instance of this script is running at a time.')

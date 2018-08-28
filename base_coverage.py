@@ -1,9 +1,9 @@
 import json
-import pysam
 import time
 
-from utils import Xpos
+import pysam
 from lookups import IntervalSet
+from utils import Xpos
 
 
 class CoverageHandler(object):

@@ -1,14 +1,15 @@
-from flask import Flask, request, jsonify, abort, url_for, Blueprint, render_template
-import requests
-from pymongo import MongoClient
+import argparse
 import functools
-import urllib
-import jwt
-from datetime import datetime
 import hashlib
 import os
-import argparse
+import urllib
+from datetime import datetime
 
+import jwt
+import requests
+from flask import (Blueprint, Flask, abort, jsonify, render_template, request,
+                   url_for)
+from pymongo import MongoClient
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')

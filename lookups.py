@@ -1,11 +1,12 @@
-import re
-from utils import * # TODO: explicitly list
 import itertools
-import pysam
 import json
+import re
 import time
-import pymongo
+
 import boltons.iterutils
+import pymongo
+import pysam
+from utils import *  # TODO: explicitly list
 
 SEARCH_LIMIT = 10000
 
@@ -474,4 +475,3 @@ def get_variants_in_intervalset(db, intervalset):
     for mongo_match_region in intervalset.to_list_of_mongos():
         for variant in db.variants.find(mongo_match_region, projection={'_id': False}):
             yield variant
-

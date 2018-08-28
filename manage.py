@@ -1,20 +1,21 @@
 #!/usr/bin/env python2
 
+import argparse
+import contextlib
+import functools
+import gzip
+import json
+import multiprocessing
 import os
 import sys
-import argparse
-import pymongo
-import gzip
-import parsing
-import pysam
-import contextlib
-import multiprocessing
-import functools
-import json
-import sequences
 import time
+from itertools import chain, islice
+
+import parsing
+import pymongo
+import pysam
+import sequences
 from flask import Config
-from itertools import chain,islice
 
 argparser = argparse.ArgumentParser(description = 'Tool for creating and populating Bravo database.')
 argparser_subparsers = argparser.add_subparsers(help = '', dest = 'command')

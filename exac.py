@@ -1,45 +1,42 @@
 #!/usr/bin/env python2
 
+import contextlib
+import functools
+import glob
+import gzip
+import io
 import itertools
 import json
+import multiprocessing
 import os
+import random
+import re
+import socket
+import sys
+import time
+import traceback
+from collections import Counter, defaultdict
+from datetime import timedelta
+from ipaddress import AddressValueError, ip_network
+from multiprocessing import Process
+
+import auth
+import boltons.cacheutils
+import lookups
 import pymongo
 import pysam
-import gzip
-import random
-import os
-import boltons.cacheutils
-
-from flask import Flask, Response, request, session, g, redirect, url_for, abort, render_template, flash, jsonify, make_response, send_file, Blueprint
+import sequences
+from base_coverage import CoverageHandler
+from flask import (Blueprint, Flask, Response, abort, flash, g, jsonify,
+                   make_response, redirect, render_template, request,
+                   send_file, session, url_for)
 from flask_compress import Compress
 from flask_errormail import mail_on_500
-from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
-
-from collections import defaultdict, Counter
-from multiprocessing import Process
-import multiprocessing
-import glob
-import traceback
-import time
-import sys
-import functools
-import contextlib
-
-from parsing import *
-import lookups
+from flask_login import (LoginManager, UserMixin, current_user, login_user,
+                         logout_user)
 from lookups import IntervalSet, TranscriptSet
+from parsing import *
 from utils import *
-from base_coverage import CoverageHandler
-import auth
-
-import socket
-from ipaddress import ip_network, AddressValueError
-import re
-
-import pysam
-import io
-import sequences
-from datetime import timedelta
 from werkzeug.contrib.fixers import ProxyFix
 
 bp = Blueprint('bp', __name__, template_folder='templates', static_folder='static')

@@ -1,9 +1,11 @@
 import os
-import pysam
-import pymongo
 import random
 import string
+
+import pymongo
+import pysam
 from utils import Xpos
+
 
 class SequencesClient(object):
     '''Manages CRAMS for all chromosomes. Assumes one CRAM per chromosome.'''

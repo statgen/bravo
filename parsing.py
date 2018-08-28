@@ -1,12 +1,13 @@
 """
 Utils for reading flat files that are loaded into database
 """
-import pysam
-from contextlib import closing
+import itertools
 import re
 import traceback
-import itertools
+from contextlib import closing
+
 import boltons.iterutils
+import pysam
 from utils import *
 
 
