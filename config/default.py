@@ -1,6 +1,6 @@
 DEBUG = False
 TESTING = False
-PROXY = False                       # True if app is proxied by Apache or similar. 
+PROXY = False                       # True if app is proxied by Apache or similar.
 
 # Application Settings
 BROWSER_NAME = 'Bravo'
@@ -32,7 +32,7 @@ TERMS = True                        # True if app requires 'Terms of Use'. Can b
 EMAIL_WHITELIST = False             # True if app has whitelisted emails. Can be used only if GOOGLE_AUTH is enabled.
 
 API_GOOGLE_AUTH = False
-API_IP_WHITELIST = [ '127.0.0.1' ]
+API_IP_WHITELIST = ['127.0.0.1']
 API_VERSION = ''
 API_DATASET_NAME = ''
 API_COLLECTION_NAME = 'variants'
@@ -63,4 +63,3 @@ ADMINS = [
 
 ADMIN = False                       # True if app is running in admin mode.
 ADMIN_ALLOWED_IP = []               # IPs allowed to reach admin interface
-
