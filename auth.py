@@ -1,7 +1,10 @@
-from flask import url_for, redirect, request
-from rauth import OAuth2Service
-import json, urllib2
+import json
+import urllib2
+
 import requests
+from flask import redirect, request, url_for
+from rauth import OAuth2Service
+
 
 class GoogleSignIn(object):
     def __init__(self, current_app):

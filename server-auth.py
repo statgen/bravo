@@ -1,14 +1,15 @@
-from flask import Flask, request, jsonify, abort, url_for, Blueprint, render_template
-import requests
-from pymongo import MongoClient
+import argparse
 import functools
-import urllib
-import jwt
-from datetime import datetime
 import hashlib
 import os
-import argparse
+import urllib
+from datetime import datetime
 
+import jwt
+import requests
+from flask import (Blueprint, Flask, abort, jsonify, render_template, request,
+                   url_for)
+from pymongo import MongoClient
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--host', default = '0.0.0.0', help = 'the hostname to use to access this server')
@@ -141,7 +142,7 @@ def auth_callback():
         decoded_auth_token = jwt.decode(auth_token, BRAVO_AUTH_SECRET)
     except jwt.InvalidTokenError:
         raise UserError('Bad authorization token.')
-    document = get_db().auth_tokens.find_one({ 'auth_token': auth_token, 'access_token': None, 'error': None }, projection = {'_id': False}) 
+    document = get_db().auth_tokens.find_one({ 'auth_token': auth_token, 'access_token': None, 'error': None }, projection = {'_id': False})
     if not document:
         raise UserError('Expired authorization token.')
     payload = {
@@ -179,7 +180,7 @@ def get_token():
         raise UserError('Bad authorization token.')
     ip = get_user_ip()
     if decoded_auth_token['ip'] != ip:
-        raise UserError('This authorization token was issued for different IP address.') 
+        raise UserError('This authorization token was issued for different IP address.')
     document = get_db().auth_tokens.find_one({ 'auth_token': auth_token }, projection = {'_id': False})
     if not document:
         raise UserError('Expired authorization token.')
@@ -193,7 +194,7 @@ def get_token():
             'token_type': 'Bearer',
             'ip': ip
         })
-    else:    
+    else:
         response = jsonify({
             'access_token': None
         })
@@ -231,6 +232,6 @@ def revoke_token():
 
 app.register_blueprint(bp, url_prefix = BRAVO_AUTH_URL_PREFIX)
 
-if __name__ == '__main__':   
+if __name__ == '__main__':
     args = argparser.parse_args()
     app.run(host = args.host, port = args.port, threaded = True, use_reloader = True)

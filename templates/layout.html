@@ -30,6 +30,7 @@
         window.model = window.model || {};
         window.model.dataset_name = "{{ config['DATASET_NAME'] }}";
         window.model.url_prefix = {{ url_for('.homepage')|tojson|safe }};
+        window.model.fasta_url = "{{ config['FASTA_URL'] }}";
     </script>
     <style type="text/css">
       .numsep { margin-left: 0.06em; margin-right: 0.06em; }

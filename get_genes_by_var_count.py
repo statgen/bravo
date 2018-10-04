@@ -1,5 +1,6 @@
-import pymongo
 import sys
+
+import pymongo
 
 num_genes = int(sys.argv[1])
 db = pymongo.Connection().exac
