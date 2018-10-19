@@ -106,45 +106,38 @@ If you are making changed to configuration files or code and need to reload the 
 
 In the `data/` directory you will find tools/scripts to prepare your data for importing into Mongo database and using in BRAVO browser.
 
+### Prepare VCF
+
+We recommend to process each chromosome separately in parallel. You can further parallelize the process by specifying chromosomal regions in steps (2) and (3).
+
 1. Compile data preparation tools:
    ```
    cd data/DataPrep/
-   cget install.
+   cget install .
    ```
    After successful compilation, the executables will be installed in `data/DataPrep/cget/bin`.
    
 2. Preprare VCF with the INFO fields NS, AN, AC, AF, Hom, Het, DP, AVGDP, AVGDP_R, AVGGQ, AVGGQ_R, DP_HIST, DP_HIST_R, GQ_HIST, and GQ_HIST_R:
    ```
-   ./ComputeAlleleCountsAndHistograms -i [input bcf/vcf] -s [samples file] -r [CHR:START-END] -o [output.vcf.gz]
+   ./cget/bin/ComputeAlleleCountsAndHistograms -i [input bcf/vcf] -s [samples file] -r [CHR:START-END] -o [output.vcf.gz]
    ```
    Input BCF/VCF must have DP and GQ FORMAT fields. Input BCF/VCF can be accessed both from local and from Google bucket storages. The input samples file (one sample ID per line) and chromosomal region CHR:START-END are optional.
 
 3. Run [Variant Effect Predictor (VEP)](https://www.ensembl.org/vep) on the VCF created in step (2):
    ```
-   ./vep -i [input vcf.gz] --plugin LoF --assembly [GRCh37/GRCh38] --cache --offline --vcf --sift b --polyphen b --ccds --uniprot --hgvs --symbol --numbers --domains --regulatory --canonical --protein --biotype --af --af_1kg --pubmed --shift_hgvs 0 --allele_number --format vcf --force --buffer_size 100000 --compress_output gzip --no_stats -o [output vcf.gz]
+   ./vep -i [input vcf.gz] --plugin LoF[,options]  --plugin CADD[,options] --assembly [GRCh37/GRCh38] --cache --offline --vcf --sift b --polyphen b --ccds --uniprot --hgvs --symbol --numbers --domains --regulatory --canonical --protein --biotype --af --af_1kg --pubmed --shift_hgvs 0 --allele_number --format vcf --force --buffer_size 100000 --compress_output gzip --no_stats -o [output vcf.gz]
    ```
-   Note: specify [LoF plugin](https://github.com/konradjk/loftee) configuration options as you need.
+   Specify [LoF plugin](https://github.com/konradjk/loftee) configuration options as you need.
 
-Table below lists all tools that are needed for data preparation.
+4. (Optional) Obtain CADD scores from [https://cadd.gs.washington.edu](https://cadd.gs.washington.edu) and annotate VCF from step (3):
+   ```
+   python add_cadd_scores.py --in-gzvcf [input vcf.gz] --in-cadd [cadd_file1] [cadd_file2] ...  --out-gzvcf [output vcf.gz]
+   ```
 
-| Tool | Location | Description |
-|:-----|:----------|:------------|
-| ComputeAlleleCountsAndHistograms | `data/DataPrep/build/bin` | For each variant it computes NS, AN, AC, AF, Hom, Het, DP, AVGDP, AVGDP_R, AVGGQ, AVGGQ_R, DP_HIST, DP_HIST_R, GQ_HIST, and GQ_HIST_R. Monomorphic variants are dropped (monomorphic variants may arise after subsetting individuals). |
-| ComputePercentiles | `data/DataPrep/build/bin` | This program computes percentiles for the QUAL field or any arbitrary numeric INFO field across all variants |
-| prepare_sequences.py | `data` | Generates CRAM file with sequences from heterozygous/homozygous samples |
-
-Specify `--help` to see all possible options for each of the above tools (e.g. `Count Alleles --help` or `python prepare_sequences.py --help`).
-
-In addition to the in-house tools listed above, you will need Variant Effect Predictor (VEP) and bcftools.
-
-### Prepare VCF
-
-If applicable, prepare a list of sample ID's that you want to include into BRAVO.
-Then, on your raw VCF file(s) run the following:
-
-1. `ComputeAlleleCountsAndHistograms` on your input VCF with raw genotypes:
-    `ComputeAlleleCountsAndHistograms -i [input bcf/vcf] -s [samples file] -r [chromosomal region] -o [output vcf.gz] `
-2. Variant Effect Predictor (VEP) on the output VCF from step (1).
+5. Now you are ready to import VCF's from step (4) into Mongo database:
+   ```
+   python manage.py variants -t [threads] -v [input chr1 vcf.gz] [input chr2 vcf.gz] ...
+   ```
 
 ### Prepare percentiles
 
