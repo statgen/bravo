@@ -125,7 +125,7 @@ We recommend to process each chromosome separately in parallel. You can further 
 
 3. Run [Variant Effect Predictor (VEP)](https://www.ensembl.org/vep) on the VCF created in step (2):
    ```
-   ./vep -i [input vcf.gz] --plugin LoF[,options]  --plugin CADD[,options] --assembly [GRCh37/GRCh38] --cache --offline --vcf --sift b --polyphen b --ccds --uniprot --hgvs --symbol --numbers --domains --regulatory --canonical --protein --biotype --af --af_1kg --pubmed --shift_hgvs 0 --allele_number --format vcf --force --buffer_size 100000 --compress_output gzip --no_stats -o [output vcf.gz]
+   ./vep -i [input vcf.gz] --plugin LoF[,options]  --assembly [GRCh37/GRCh38] --cache --offline --vcf --sift b --polyphen b --ccds --uniprot --hgvs --symbol --numbers --domains --regulatory --canonical --protein --biotype --af --af_1kg --pubmed --shift_hgvs 0 --allele_number --format vcf --force --buffer_size 100000 --compress_output gzip --no_stats -o [output vcf.gz]
    ```
    Specify [LoF plugin](https://github.com/konradjk/loftee) configuration options as you need.
 
