@@ -140,8 +140,31 @@ We recommend to process each chromosome separately in parallel. You can further 
    ```
 
 ### Prepare percentiles
+Percentiles must be computed separately for each INFO field.
 
-To compute percentiles for each INFO field in each variant, use `ComputePercentiles` tool.
+1. For each VCF INFO field (AVGDP, BQZ, CYZ, DP, FIBC_I, FIBC_P, HWE_SLP_I, HWE_SLP_P, IOR, NM0, NM1, NMZ, QUAL, STZ, SVM, ABE, ABZ) run:
+   ```
+   ./cget/bin/ComputePercentiles -i [input vcf.gz] -m [INFO field] -t [threads] -f [min MAF] -F [max MAF] -a [allele count] -p [number of perceniles] -d [description] -o [prefix for output files]
+   ```
+   Examples:
+   ```
+   ./cget/bin/ComputePercentiles -i /mymachine/myhome/mydata/chr*.mystudy.vcf.gz -t 10 -p 10 -o QUAL
+   ./cget/bin/ComputePercentiles -i /mymachine/myhome/mydata/chr*.mystudy.vcf.gz -m ABE -t 10 -p 10 -d "Expected allele Balance towards Reference Allele on Heterozygous Sites" -o ABE
+   ```
+
+2. For each INFO field `X` in step (1), you will have two files `X.all_percentiles.gz` and `X.variant_percentiles.gz`. The first is a compressed text file with INFO field description and percentiles in JSON format. The second is a compressed VCF file with `X_PCTL` INFO field which stores the corresponding percentile for every variant. Concatenate `*.all_percentiles.gz` files using your favourite tool e.g.:
+   ```
+   for f in *.all_percentiles.gz; do (zcat ${f}); echo; done | gzip -c > ALL.all_percentiles.gz;
+   ```
+   
+ 3. Import `ALL.all_percentiles.gz` from step (2) into Mongo database:
+    ```
+    python manage.py metrics -m ALL.all_percentiles.gz
+    ```
+ 4. Update Mongo database with variant percentiles from `*.variant_percentiles.gz` files:
+    ```
+    [will be added soon]
+    ```
 
 ### Prepare coverage
 
