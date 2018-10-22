@@ -168,15 +168,35 @@ Percentiles must be computed separately for each INFO field.
 
 ### Prepare coverage
 
-1. Use the code in `data/base_coverage/glf2depth/` to create a full coverage file (ie, with coverage for every available base).
-Make one `*.full.json.gz` for each chromosome in some directory.
+To prepare a coverage data for each base-pair position, you can use all your BAM/CRAM files or only a random subset of them (e.g. 1,000) if you need to reduce computational time.
 
-2. Use the scripts in `data/base_coverage/` to bin the coverage.
-Make a couple directories with different levels of binning (and again, one `.json.gz` file for each chromosome).
-
-3. Tabix them all.
-
-4. Reference all of the coverage files in `BASE_COVERAGE` in `default.py`.
+1. For each chromosome and for each BAM/CRAM file extract depth per base-pair:
+   ```
+   samtools view -q 20 -F 0x0704 -uh [CRAM/BAM file] [chromosome] | samtools calmd -uAEr - [reference FASTA] | bam clipOverlap --in -.ubam --out -.ubam | samtools mpileup -f [reference FASTA] -Q 20 -t DP - | cut -f1-4 | bgzip > [chromosome].[sample].depth.gz
+   ```
+   In this step we use [clipOverlap from BamUtil](https://genome.sph.umich.edu/wiki/BamUtil:_clipOverlap).
+ 
+2. For each chromosome, aggregate base-pair coverage acrosss output files `[chromosome].[sample].depth.gz` from step (1):
+   ```
+   python base_coverage/create_coverage.py -i [files list] aggregate -c [chromosome] -s [start bp] -e [end bp] | bgzip -c > [chromosome].[start].[end].json.gz
+   ```
+   The `files list` is a text file which lists all output files for a single chromosome from step (1).
+   
+3. For each chromosome, merge files `[chromosome].[start].[end].json.bgz` from step (2):
+   ```
+   python base_coverage/merge_coverage.py -i [files list] -o [chromosome].full.json.gz
+   ```
+   The `files list` is a text file which lists all output files for a single chromosome from step (2).
+ 
+4. After step (3), you should have coverage summary across your samples for each base pair in files `1.full.json.gz`, `2.full.json.gz`, ..., `22.full.json.gz`. For faster web-based visualization, you should prepare several pruned version of the coverage summary e.g.:
+   ```
+   python base_coverage/prune_coverage.py -i 22.full.json.gz -l 0.25 -o 22.bin_0.25.json.gz
+   python base_coverage/prune_coverage.py -i 22.full.json.gz -l 0.50 -o 22.bin_0.50.json.gz
+   python base_coverage/prune_coverage.py -i 22.full.json.gz -l 0.75 -o 22.bin_0.75.json.gz
+   python base_coverage/prune_coverage.py -i 22.full.json.gz -l 1.00 -o 22.bin_1.00.json.gz
+   ```
+5. Tabix all coverage summary files.
+6. Reference all of the coverage files in `BASE_COVERAGE` in `default.py`.
 
 ### Prepare CRAM
 
