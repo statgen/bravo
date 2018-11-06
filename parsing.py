@@ -93,14 +93,14 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
             raise Exception('Missing CSQ INFO field from VEP (Variant Effect Predictor)')
         vep_field_names = vep_meta.description.split(':', 1)[-1].strip().split('|')
         if histograms:
-            dp_hist_meta = ifile.header.info.get('DP_HIST', None)
-            if dp_hist_meta is None:
-                raise Exception('Missing DP_HIST INFO field.')
-            dp_mids = [float(x) for x in dp_hist_meta.description.split(':', 1)[-1].strip().split('|')]
-            gq_hist_meta = ifile.header.info.get('GQ_HIST', None)
-            if gq_hist_meta is None:
-                raise Exception('Missing GQ_HIST INFO field.')
-            gq_mids = [float(x) for x in gq_hist_meta.description.split(':', 1)[-1].strip().split('|')]
+            for x in ['DP_HIST', 'DP_HIST_R', 'GQ_HIST', 'GQ_HIST_R']:
+                meta = ifile.header.info.get(x, None)
+                if x not in ifile.header.info:
+                    raise Exception('Missing {} INFO field.'.format(x))
+	    dp_hist_mids = map(float, ifile.header.info['DP_HIST'].description.split(':', 1)[-1].strip().split('|'))
+	    dp_hist_r_mids = map(float, ifile.header.info['DP_HIST_R'].description.split(':', 1)[-1].strip().split('|'))
+	    gq_hist_mids = map(float, ifile.header.info['GQ_HIST'].description.split(':', 1)[-1].strip().split('|'))
+            gq_hist_r_mids = map(float, ifile.header.info['GQ_HIST_R'].description.split(':', 1)[-1].strip().split('|'))
         for record in ifile.fetch(chrom, start_bp, end_bp):
             try:
                 annotations = dict()
@@ -139,10 +139,8 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
                     variant['cadd_raw'] = record.info['CADD_RAW'][i] if 'CADD_RAW' in record.info else None
                     variant['cadd_phred'] = record.info['CADD_PHRED'][i] if 'CADD_PHRED' in record.info else None
                     if histograms:
-                        hists_all = [record.info['DP_HIST'][0], record.info['DP_HIST'][i+1]]
-                        variant['genotype_depths'] = [zip(dp_mids, map(int, x.split('|'))) for x in hists_all]
-                        hists_all = [record.info['GQ_HIST'][0], record.info['GQ_HIST'][i+1]]
-                        variant['genotype_qualities'] = [zip(gq_mids, map(int, x.split('|'))) for x in hists_all]
+                        variant['genotype_depths'] = map(lambda x, y: zip(x, map(int, y.split('|'))), [dp_hist_mids, dp_hist_r_mids], [record.info['DP_HIST'], record.info['DP_HIST_R'][i + 1]])
+			variant['genotype_qualities'] = map(lambda x, y: zip(x, map(int, y.split('|'))), [gq_hist_mids, gq_hist_r_mids], [record.info['GQ_HIST'], record.info['GQ_HIST_R'][i + 1]])
                     variant['vep_annotations'] = allele_annotations
                     clean_annotation_consequences_for_variant(variant)
                     pop_afs = get_pop_afs(variant)
