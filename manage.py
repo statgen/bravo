@@ -50,9 +50,9 @@ argparser_custom_variants.add_argument('-n', '--name', metavar = 'name', require
 argparser_custom_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of thrads to use.')
 
 
-argparser_update_variants = argparser_subparsers.add_parser('update', help = 'Updates variants collection with provided INFO fields from input VCF/BCF.')
-argparser_update_variants.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
-argparser_update_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of threads to use.')
+#argparser_update_variants = argparser_subparsers.add_parser('update', help = 'Updates variants collection with provided INFO fields from input VCF/BCF.')
+#argparser_update_variants.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
+#argparser_update_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of threads to use.')
 
 
 def get_db_connection():
@@ -265,16 +265,17 @@ def _update_collection(args, collection, reader):
         sys.stdout.write('Finished. VCF/BCF {}. Processed {} document(s) in {} second(s), {} matched, {} modified.\n'.format(file, n_documents, int(time.time() - start_time), n_matched, n_modified))
 
 
+'''
 def update_variants(variants_files, threads):
-    """Updates varians collection with AVGDP, AVGGQ, AVGDP_ALT, AVGGQ_ALT fields.
+    """Updates varians collection with custom fields.
 
     Arguments:
     variants_files -- list of one or more VCF/BCF files with variants (no genotypes) compressed using bgzip and indexed using tabix.
     threads -- number of threads to use.
     """
     with contextlib.closing(multiprocessing.Pool(threads)) as threads_pool:
-        threads_pool.map(functools.partial(_update_collection, collection = 'variants', reader = parsing.get_variants_from_sites_vcf_only_dp_gq), get_file_contig_pairs(variants_files))
-
+        threads_pool.map(functools.partial(_update_collection, collection = 'variants', reader = ), get_file_contig_pairs(variants_files))
+'''
 
 if __name__ == '__main__':
     global mongo_host
@@ -329,9 +330,9 @@ if __name__ == '__main__':
         sys.stdout.write('Creating {} collection in {} database.\n'.format(args.collection_name, mongo_db_name))
         load_custom_variants(args.variants_files, args.collection_name, args.threads)
         sys.stdout.write('Done creating {} collection in {} database.\n'.format(args.collection_name, mongo_db_name))
-    elif args.command == 'update':
-        sys.stdout.write('Updating variants collection in {} database.\n'.format(mongo_db_name))
-        update_variants(args.variants_files, args.threads)
-        sys.stdout.write('Done updating variants collection in {} databased.\n'.format(mongo_db_name))
+#    elif args.command == 'update':
+#        sys.stdout.write('Updating variants collection in {} database.\n'.format(mongo_db_name))
+#        update_variants(args.variants_files, args.threads)
+#        sys.stdout.write('Done updating variants collection in {} databased.\n'.format(mongo_db_name))
     else:
         raise Exception('Command {} is not supported.'.format(args.command))

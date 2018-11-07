@@ -92,6 +92,9 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
         if vep_meta is None:
             raise Exception('Missing CSQ INFO field from VEP (Variant Effect Predictor)')
         vep_field_names = vep_meta.description.split(':', 1)[-1].strip().split('|')
+        for x in ['AVGDP', 'AVGDP_R', 'AVGGQ', 'AVGGQ_R']:
+            if x not in ifile.header.info:
+                raise Exception('Missing {} INFO field.'.format(x))
         if histograms:
             for x in ['DP_HIST', 'DP_HIST_R', 'GQ_HIST', 'GQ_HIST_R']:
                 meta = ifile.header.info.get(x, None)
@@ -134,8 +137,10 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
                     variant['quality_metrics'] = {x: record.info[x] for x in METRICS if x in record.info}
                     variant['genes'] = list(set(annotation['Gene'] for annotation in allele_annotations if annotation['Gene']))
                     variant['transcripts'] = list(set(annotation['Feature'] for annotation in allele_annotations if annotation['Feature']))
-                    if 'AVGDP' in record.info:
-                        variant['avgdp'] = record.info['AVGDP']
+                    variant['avgdp'] = record.info['AVGDP']
+                    variant['avgdp_alt'] = record.info['AVGDP_R'][i + 1]
+                    variant['avggq'] = record.info['AVGGQ']
+                    variant['avggq_alt'] = record.info['AVGGQ_R'][i + 1]
                     variant['cadd_raw'] = record.info['CADD_RAW'][i] if 'CADD_RAW' in record.info else None
                     variant['cadd_phred'] = record.info['CADD_PHRED'][i] if 'CADD_PHRED' in record.info else None
                     if histograms:
