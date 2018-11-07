@@ -41,42 +41,6 @@ def get_variants_from_sites_vcf_only_percentiles(sites_vcf):
             raise
 
 
-def get_variants_from_sites_vcf_only_dp_gq(vcf, chrom, start_bp, end_bp):
-    """Reads sites VCF/BCF file and returns iterator over veriant dicts with AVGDP, AVGGQ, AVGDP_ALT, and AVGGQ_ALT fields.
-
-    Arguments:
-    vcf -- VCF/BCF file name.
-    chrom -- chromosome name.
-    start_bp -- start position in base-pairs.
-    end_bp -- end position in base-pairs.
-    """
-    with closing(pysam.VariantFile(vcf)) as ifile:
-        if 'AVGDP' not in ifile.header.info:
-            raise Exception('Missing AVGDP INFO field')
-        if 'AVGDP_R' not in ifile.header.info:
-            raise Exception('Missing AVGDP_R INFO field')
-        if 'AVGGQ' not in ifile.header.info:
-            raise Exception('Missing AVGGQ INFO field')
-        if 'AVGGQ_R' not in ifile.header.info:
-            raise Exception('Missing AVGGQ_R INFO field')
-        for record in ifile.fetch(chrom, start_bp, end_bp):
-            try:
-                for i, alt_allele in enumerate(record.alts):
-                    variant = {}
-                    chrom = record.contig[3:] if record.contig.startswith('chr') else record.contig
-                    pos, variant['ref'], variant['alt'] = get_minimal_representation(record.pos, record.ref, alt_allele)
-                    variant['xpos'] = Xpos.from_chrom_pos(chrom, pos)
-                    variant['avgdp'] = record.info['AVGDP']
-                    variant['avgdp_alt'] = record.info['AVGDP_R'][i + 1]
-                    variant['avggq'] = record.info['AVGGQ']
-                    variant['avggq_alt'] = record.info['AVGGQ_R'][i + 1]
-                    yield variant
-            except:
-                print("Error parsing VCF/BCF record: " + record.__str__())
-                traceback.print_exc()
-                raise
-
-
 def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True):
     """Reads sites VCF/BCF file and returns iterator over veriant dicts.
 
@@ -92,14 +56,17 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
         if vep_meta is None:
             raise Exception('Missing CSQ INFO field from VEP (Variant Effect Predictor)')
         vep_field_names = vep_meta.description.split(':', 1)[-1].strip().split('|')
+        for x in ['AVGDP', 'AVGDP_R', 'AVGGQ', 'AVGGQ_R']:
+            if x not in ifile.header.info:
+                raise Exception('Missing {} INFO field.'.format(x))
         if histograms:
             for x in ['DP_HIST', 'DP_HIST_R', 'GQ_HIST', 'GQ_HIST_R']:
                 meta = ifile.header.info.get(x, None)
                 if x not in ifile.header.info:
                     raise Exception('Missing {} INFO field.'.format(x))
-	    dp_hist_mids = map(float, ifile.header.info['DP_HIST'].description.split(':', 1)[-1].strip().split('|'))
-	    dp_hist_r_mids = map(float, ifile.header.info['DP_HIST_R'].description.split(':', 1)[-1].strip().split('|'))
-	    gq_hist_mids = map(float, ifile.header.info['GQ_HIST'].description.split(':', 1)[-1].strip().split('|'))
+            dp_hist_mids = map(float, ifile.header.info['DP_HIST'].description.split(':', 1)[-1].strip().split('|'))
+            dp_hist_r_mids = map(float, ifile.header.info['DP_HIST_R'].description.split(':', 1)[-1].strip().split('|'))
+            gq_hist_mids = map(float, ifile.header.info['GQ_HIST'].description.split(':', 1)[-1].strip().split('|'))
             gq_hist_r_mids = map(float, ifile.header.info['GQ_HIST_R'].description.split(':', 1)[-1].strip().split('|'))
         for record in ifile.fetch(chrom, start_bp, end_bp):
             try:
@@ -134,13 +101,15 @@ def get_variants_from_sites_vcf(vcf, chrom, start_bp, end_bp, histograms = True)
                     variant['quality_metrics'] = {x: record.info[x] for x in METRICS if x in record.info}
                     variant['genes'] = list(set(annotation['Gene'] for annotation in allele_annotations if annotation['Gene']))
                     variant['transcripts'] = list(set(annotation['Feature'] for annotation in allele_annotations if annotation['Feature']))
-                    if 'AVGDP' in record.info:
-                        variant['avgdp'] = record.info['AVGDP']
+                    variant['avgdp'] = record.info['AVGDP']
+                    variant['avgdp_alt'] = record.info['AVGDP_R'][i + 1]
+                    variant['avggq'] = record.info['AVGGQ']
+                    variant['avggq_alt'] = record.info['AVGGQ_R'][i + 1]
                     variant['cadd_raw'] = record.info['CADD_RAW'][i] if 'CADD_RAW' in record.info else None
                     variant['cadd_phred'] = record.info['CADD_PHRED'][i] if 'CADD_PHRED' in record.info else None
                     if histograms:
                         variant['genotype_depths'] = map(lambda x, y: zip(x, map(int, y.split('|'))), [dp_hist_mids, dp_hist_r_mids], [record.info['DP_HIST'], record.info['DP_HIST_R'][i + 1]])
-			variant['genotype_qualities'] = map(lambda x, y: zip(x, map(int, y.split('|'))), [gq_hist_mids, gq_hist_r_mids], [record.info['GQ_HIST'], record.info['GQ_HIST_R'][i + 1]])
+                        variant['genotype_qualities'] = map(lambda x, y: zip(x, map(int, y.split('|'))), [gq_hist_mids, gq_hist_r_mids], [record.info['GQ_HIST'], record.info['GQ_HIST_R'][i + 1]])
                     variant['vep_annotations'] = allele_annotations
                     clean_annotation_consequences_for_variant(variant)
                     pop_afs = get_pop_afs(variant)
