@@ -6,83 +6,75 @@ from contextlib import closing
 import argparse
 
 argparser = argparse.ArgumentParser(description = 'Adds CADD scores to VCF.')
-argparser.add_argument('--in-gzvcf', metavar = 'file', dest = 'inGZVCF', required = True, help = 'Input VCF file compressed with gzip')
-argparser.add_argument('--in-cadd', metavar = 'file', dest = 'inCADDFiles', nargs = '+', required = True, help = 'Input CADD (from http://cadd.gs.washington.edu) files indexed with tabix')
-argparser.add_argument('--out-gzvcf', metavar = 'file', dest = 'outGZVCF', required = True, help = 'Output VCF file compressed with gzip')
+argparser.add_argument('-i', '--in-vcf', metavar = 'file', dest = 'in_VCF', required = True, help = 'Input VCF/BCF file. File may be compressed with gzip/bgzip.')
+argparser.add_argument('-c', '--in-cadd', metavar = 'file', dest = 'in_CADD_files', nargs = '+', required = True, help = 'Input CADD (from http://cadd.gs.washington.edu) files. Must be compressed with bgzip and indexed with tabix.')
+argparser.add_argument('-o', '--out-vcf', metavar = 'file', dest = 'out_VCF', required = True, help = 'Output VCF file. File will be compressed with bgzip.')
 
-def readCADD(inCADDFiles, contig, start, end):
-   CADD = dict()
 
-   for CADDFile in inCADDFiles:
-      with closing(pysam.Tabixfile(CADDFile)) as tabix:
-         for row in tabix.fetch(contig, start - 1, end, parser = pysam.asTuple()):
-            name = row[0] + ':' + row[1] + '_' + row[2] + '/' + row[3]
-            cadd_raw = float(row[4])
-            cadd_phred = float(row[5])
+class CADD(object):
+    def __init__(self, files):
+        self.step_bp = 1000000
+        self.files = files
+        self.has_chr_prefix = False
+        for f in self.files:
+            with pysam.Tabixfile(f, 'r') as tabix:
+                if any(c.startswith('chr') for c in tabix.contigs):
+                    self.has_chr_prefix = True
+                    break
+        self.chrom = None
+        self.start = None
+        self.stop = None
+        self.data = None
+    def overlaps(self, chrom, position):
+        if self.chrom is None or self.start is None or self.stop is None or self.data is None or self.chrom != chrom or self.start > position or self.stop < position:
+            return False
+        return True
+    def get(self, chrom, position, ref, alt):
+        if self.has_chr_prefix and not chrom.startswith('chr'):
+            chrom = 'chr' + chrom
+        elif not self.has_chr_prefix and chrom.startswith('chr'):
+            chrom = chrom[3:]
+        if not self.overlaps(chrom, position):
+            self.chrom = chrom
+            self.start = position
+            self.stop = position + self.step_bp
+            self.data = dict()
+            for f in self.files:
+                with pysam.Tabixfile(f, 'r') as tabix:
+                    for row in tabix.fetch(self.chrom, self.start - 1, self.stop + 1, parser = pysam.asTuple()):
+                        name = ':'.join(row[:4])
+                        cadd_raw, cadd_phred = map(float, row[4:6])
+                        if name in self.data:
+                            if self.data[name][1] < cadd_phred:
+                                self.data[name] = (cadd_raw, cadd_phred)
+                        else:
+                            self.data[name] = (cadd_raw, cadd_phred)
+        return self.data.get(':'.join((chrom, str(position), ref, alt)), (None, None))
 
-            if name in CADD:
-               if CADD[name][1] < cadd_phred:
-                  CADD[name] = (cadd_raw, cadd_phred)
-            else:
-               CADD[name] = (cadd_raw, cadd_phred)
 
-   return CADD
-
-def addCADD(inGZVCF, inCADDFiles, outGZVCF):
-   metaInfoPattern = re.compile('^##INFO=<ID=([a-zA-Z0-9_\-]+),Number=(A|R|G|\.|[0-9]+),Type=(Integer|Float|Flag|Character|String),Description="((?:[^"]|\\\\")*)"(?:,Source="(?:[^"]|\\\\")*")?(?:,Version="(?:[^"]|\\\\")*")?>')
-
-   CADDcontig = ''
-   CADDposition = -1
-   CADD = None
-   stepSize = 1000000
-
-   with gzip.GzipFile(inGZVCF, 'r') as iz, gzip.GzipFile(outGZVCF, 'w') as oz:
-      for line in iz:
-         if line.startswith('##'):
-            match = metaInfoPattern.match(line.rstrip())
-            if match: 
-               if match.group(1) == 'CADD_RAW':
-                  raise Exception('CADD_RAW already exists in input VCF')
-               elif match.group(1) == 'CADD_PHRED':
-                  raise Exception('CADD_PHRED already exists in input VCF')
-            oz.write(line)
-         else:
-            break
-           
-      oz.write('##INFO=<ID=CADD_RAW,Number=A,Type=Float,Description="Raw CADD scores">\n')
-      oz.write('##INFO=<ID=CADD_PHRED,Number=A,Type=Float,Desctiption="Phred-scaled CADD scores">\n')
-      oz.write(line)
-
-      for line in iz:
-         if line.startswith('#'):
-            oz.write(line)
-            continue
-         scores = []
-         fields = line.rstrip().split('\t')
-         contig = fields[0]
-         position = long(fields[1])
-         if CADDcontig != contig or CADDposition < position:
-            CADDcontig = contig
-            CADDposition = position + stepSize
-            CADD = readCADD(inCADDFiles, CADDcontig, position, CADDposition)
- 
-         for altAllele in fields[4].split(','):
-            name = fields[0] + ':' + fields[1] + '_' + fields[3] + '/' + altAllele 
-            if name in CADD:
-               scores.append(CADD[name])
-         
-         oz.write('%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]))
-         if scores:
-            oz.write(';CADD_RAW=%.6f' % scores[0][0])
-            for i in xrange(1, len(scores)):
-               oz.write(',%.6f' % scores[i][0])
-            oz.write(';CADD_PHRED=%.6f' % scores[0][1])
-            for i in xrange(1, len(scores)):
-               oz.write(',%.6f' % scores[i][1])
-         oz.write('\n')
+def addCADD(in_VCF, in_CADD_files, out_VCF):
+    cadds = CADD(in_CADD_files)
+    with pysam.VariantFile(in_VCF, 'r') as ifile, pysam.BGZFile(out_VCF, 'w') as ofile:
+        for x in ['CADD_RAW', 'CADD_PHRED']:
+            if x in ifile.header.info:
+                raise Exception('{} already exists in input VCF/BCF.'.format(x))
+        ifile.header.add_line('##INFO=<ID=CADD_RAW,Number=A,Type=Float,Description="Raw CADD scores">')
+        ifile.header.add_line('##INFO=<ID=CADD_PHRED,Number=A,Type=Float,Desctiption="Phred-scaled CADD scores">')
+        ofile.write('{}'.format(ifile.header))
+        for record in ifile:
+            raw_scores = []
+            phred_scores = []
+            for alt in record.alts:
+                cadd_raw, cadd_phred = cadds.get(record.chrom, record.pos, record.ref, alt)
+                raw_scores.append(cadd_raw)
+                phred_scores.append(cadd_phred)
+            if any(x for x in raw_scores) and any(x for x in phred_scores):
+                record.info['CADD_RAW'] = raw_scores
+                record.info['CADD_PHRED'] = phred_scores
+            ofile.write('{}'.format(record))
 
 
 if __name__ == "__main__":
    args = argparser.parse_args()
-   addCADD(args.inGZVCF, args.inCADDFiles, args.outGZVCF)
+   addCADD(args.in_VCF, args.in_CADD_files, args.out_VCF)
 
