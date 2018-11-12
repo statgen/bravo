@@ -326,7 +326,7 @@ int main(int argc, char *argv[]) {
 
         cout << "Computing percentiles... " << flush;
         percentiles.compute(probabilities);
-        string output_percentiles_file = output_prefix + ".all_percentiles.gz";
+        string output_percentiles_file = output_prefix + ".all_percentiles.json.gz";
         BGZF *ofp = bgzf_open(output_percentiles_file.c_str(), "w");
         if (!ofp) {
             throw runtime_error("Error while opening output file!");
@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
  
         /* Second pass to write percentiles */
         cout << "Writing variant percentiles... " << flush;
-        string output_file = output_prefix + ".variant_percentile.gz";            
+        string output_file = output_prefix + ".variant_percentile.vcf.gz";            
         BGZF *variant_ofp = bgzf_open(output_file.c_str(), "w");
         if (!variant_ofp) {
             throw runtime_error("Error while opening output file!");
