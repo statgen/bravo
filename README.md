@@ -134,10 +134,10 @@ We recommend to process each chromosome separately in parallel. You can further 
    python add_cadd_scores.py -i [input vcf.gz] -c [cadd_file1.tsv.gz] [cadd_file2.tsv.gz] ...  -o [output vcf.gz]
    ```
    CADD score files must by accompanied by the corresponding index files. If multiple CADD score files are specified, then the maximal CADD score across all files will be used.
-5. Now you are ready to import VCF's from step (4) into Mongo database. Index all input VCF files with `tabix` and run the following command:
+<!-- 5. Now you are ready to import VCF's from step (4) into Mongo database. Index all input VCF files with `tabix` and run the following command:
    ```
    python manage.py variants -t [threads] -v [input chr1 vcf.gz] [input chr2 vcf.gz] ...
-   ```
+   ``` -->
 
 ### Prepare percentiles
 Percentiles must be computed separately for each INFO field.
@@ -152,19 +152,22 @@ Percentiles must be computed separately for each INFO field.
    ./cget/bin/ComputePercentiles -i /mymachine/myhome/mydata/chr*.mystudy.vcf.gz -m ABE -t 10 -p 10 -d "Expected allele Balance towards Reference Allele on Heterozygous Sites" -o ABE
    ```
 
-2. For each INFO field `X` in step (1), you will have two files `X.all_percentiles.gz` and `X.variant_percentiles.gz`. The first is a compressed text file with INFO field description and percentiles in JSON format. The second is a compressed VCF file with `X_PCTL` INFO field which stores the corresponding percentile for every variant. Concatenate `*.all_percentiles.gz` files using your favourite tool e.g.:
-   ```
-   for f in *.all_percentiles.gz; do (zcat ${f}); echo; done | gzip -c > ALL.all_percentiles.gz;
-   ```
+2. For each INFO field `X` in step (1), you will have two files `X.all_percentiles.json.gz` and `X.variant_percentile.vcf.gz`. The first is a compressed text file with INFO field description and percentiles in JSON format. The second is a compressed VCF file with `X_PCTL` INFO field which stores the corresponding percentile for every variant.
    
- 3. Import `ALL.all_percentiles.gz` from step (2) into Mongo database:
+3. Index `X.variant_percentile.vcf.gz` using `tabix` and annotate your VCF files from previous step:
+   ```
+   find . -maxdepth 1 -name "*.variant_percentile..gz" -exec tabix {} \;
+   python add_percentiles.py -i [input vcf.gz] - p QUAL.variant_percentile.vcf.gz ABE.variant_percentile.vcf.gz ... -o [output vcf.gz]
+   ```
+
+<!-- 3. Import `ALL.all_percentiles.gz` from step (2) into Mongo database:
     ```
     python manage.py metrics -m ALL.all_percentiles.gz
     ```
  4. Update Mongo database with variant percentiles from `*.variant_percentiles.gz` files:
     ```
     [will be added soon]
-    ```
+    ``` -->
 
 ### Prepare coverage
 
