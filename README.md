@@ -131,10 +131,10 @@ We recommend to process each chromosome separately in parallel. You can further 
 
 4. (Optional) Obtain CADD scores from [https://cadd.gs.washington.edu](https://cadd.gs.washington.edu) and annotate VCF from step (3):
    ```
-   python add_cadd_scores.py --in-gzvcf [input vcf.gz] --in-cadd [cadd_file1] [cadd_file2] ...  --out-gzvcf [output vcf.gz]
+   python add_cadd_scores.py -i [input vcf.gz] -c [cadd_file1.tsv.gz] [cadd_file2.tsv.gz] ...  -o [output vcf.gz]
    ```
-
-5. Now you are ready to import VCF's from step (4) into Mongo database:
+   CADD score files must by accompanied by the corresponding index files. If multiple CADD score files are specified, then the maximal CADD score across all files will be used.
+5. Now you are ready to import VCF's from step (4) into Mongo database. Index all input VCF files with `tabix` and run the following command:
    ```
    python manage.py variants -t [threads] -v [input chr1 vcf.gz] [input chr2 vcf.gz] ...
    ```
