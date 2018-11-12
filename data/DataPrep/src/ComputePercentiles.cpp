@@ -12,11 +12,9 @@
 #include "vcf.h"
 #include "synced_bcf_reader.h"
 #include "TypeSwitcher.h"
-#include "aux.h"
-
 #include <boost/program_options.hpp>
-
 #include "Percentiles.h"
+#include "aux.h"
 
 namespace po = boost::program_options;
 
@@ -231,6 +229,9 @@ int main(int argc, char *argv[]) {
         unsigned int step =
                 n_threads > input_files.size() ? 1 : (unsigned int) lround(input_files.size() / (double) n_threads);
         unsigned int start = 0u, end = 0u;
+
+        cout << "Reading files... " << endl;
+
         /* First pass to compute percentiles */
         while (end < input_files.size()) {
             if ((start + step) / step < n_threads) {
@@ -244,7 +245,7 @@ int main(int argc, char *argv[]) {
                     const char *input_file = input_files.at(f).c_str();
 
                     cout_mutex.lock();
-                    cout << "First read of " << input_file << endl;
+                    cout << " " << input_file << endl;
                     cout_mutex.unlock();
 
                     bcf_header_summary header_summary;
@@ -317,6 +318,7 @@ int main(int argc, char *argv[]) {
             thread.join();
         }
 
+        cout << "Done." << endl;
         cout << "Merging... " << flush;
         Percentiles percentiles(qual ? "QUAL" : metric_name, qual ? "Phred-scaled site quality score" : metric_desc,
                                 percentiles_per_file);
@@ -324,117 +326,82 @@ int main(int argc, char *argv[]) {
 
         cout << "Computing percentiles... " << flush;
         percentiles.compute(probabilities);
-
         string output_percentiles_file = output_prefix + ".all_percentiles.gz";
         BGZF *ofp = bgzf_open(output_percentiles_file.c_str(), "w");
         if (!ofp) {
             throw runtime_error("Error while opening output file!");
         }
         percentiles.write(ofp);
+        write(ofp, "\n");
         if (bgzf_close(ofp) != 0) {
             throw runtime_error("Error while closing output file!");
         }
-
         cout << "Done." << endl;
 
-        /* Second pass to compute percentile for each variant */
-        threads.clear();
-        start = end = 0u;
-        while (end < input_files.size()) {
-            if ((start + step) / step < n_threads) {
-                end = start + step;
-            } else {
-                end = input_files.size();
+ 
+        /* Second pass to write percentiles */
+        cout << "Writing variant percentiles... " << flush;
+        string output_file = output_prefix + ".variant_percentile.gz";            
+        BGZF *variant_ofp = bgzf_open(output_file.c_str(), "w");
+        if (!variant_ofp) {
+            throw runtime_error("Error while opening output file!");
+        }
+        write(variant_ofp, "##fileformat=VCFv4.3\n");
+        if (qual) {
+            write(variant_ofp, "##INFO=<ID=QUAL_PCTL,Number=2,Type=Float,Description=\"Phred-scaled quality score for the assertion made in ALT\">\n");
+        } else {
+            write(variant_ofp, "##INFO=<ID=%s_PCTL,Number=2,Type=Float,Description=\"%s\">\n", metric_name.c_str(), metric_desc.c_str());
+        }
+        write(variant_ofp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+        for (auto&& input_file : input_files) {
+            bcf_header_summary header_summary;
+            bcf_record_summary record_summary;
+            double p_low = 0.0, p_high = 0.0;
+            bcf_srs_t *sr = bcf_sr_init();
+            if (bcf_sr_add_reader(sr, input_file.c_str()) <= 0) {
+                throw runtime_error("Error while initializing VCF/BCF reader!");
             }
-
-            threads.emplace_back([&](unsigned int start, unsigned int end) {
-                for (unsigned int f = start; f < end; ++f) {
-                    const char *input_file = input_files.at(f).c_str();
-                    string output_file = output_prefix + "." + to_string(f) + ".variant_percentile.gz";
-
-                    cout_mutex.lock();
-                    cout << "Second read of " << input_file << endl;
-                    cout << "Output to " << output_file << endl;
-                    cout_mutex.unlock();
-
-                    bcf_header_summary header_summary;
-                    bcf_record_summary record_summary;
-                    double p_low = 0.0, p_high = 0.0;
-
-                    bcf_srs_t *sr = bcf_sr_init();
-                    if (bcf_sr_add_reader(sr, input_file) <= 0) {
-                        throw runtime_error("Error while initializing VCF/BCF reader!");
+            bcf_hdr_t *header = bcf_sr_get_header(sr, 0);
+            parse_bcf_header(header, metric_name, header_summary, qual);
+            while (bcf_sr_next_line(sr) > 0) {
+                bcf1_t *rec = bcf_sr_get_line(sr, 0);
+                parse_bcf_record(header, rec, header_summary, record_summary, qual);
+                if (qual) {
+                    percentiles.probability(record_summary.qual, p_low, p_high);
+                    for (unsigned int i = 0u; i < record_summary.alts.size(); ++i) {
+                         write(variant_ofp, "%s\t%lu\t%s\t%s\t%s\t.\t.\tQUAL_PCTL=%g,%g\n", 
+                               record_summary.chrom, record_summary.position, record_summary.id,
+                               record_summary.ref, record_summary.alts[i], p_low, p_high);
                     }
-                    bcf_hdr_t *header = bcf_sr_get_header(sr, 0);
-                    parse_bcf_header(header, metric_name, header_summary, qual);
-
-                    BGZF *variant_ofp = bgzf_open(output_file.c_str(), "w");
-                    if (!variant_ofp) {
-                        throw runtime_error("Error while opening output file!");
+                } else {
+                    if (record_summary.metric_values.size() == 0) {
+                         continue;
                     }
-
-                    write(variant_ofp, "##fileformat=VCFv4.3\n");
-                    if (qual) {
-                        write(variant_ofp,
-                                "##INFO=<ID=QUAL_PCTL,Number=2,Type=Float,Description=\"Phred-scaled quality score for the assertion made in ALT\">\n");
+                    if (record_summary.metric_values.size() == 1) { // single metric for all alt alleles
+                         percentiles.probability(record_summary.metric_values[0], p_low, p_high);
+                         for (unsigned int i = 0u; i < record_summary.alts.size(); ++i) {
+                              write(variant_ofp, "%s\t%lu\t%s\t%s\t%s\t.\t.\t%s_PCTL=%g,%g\n", 
+                                    record_summary.chrom, record_summary.position, record_summary.id,
+                                    record_summary.ref, record_summary.alts[i], metric_name.c_str(), p_low, p_high);
+                         }
+                    } else if (record_summary.metric_values.size() == record_summary.alts.size()) { // one metric for per alt allele
+                         for (unsigned int i = 0u; i < record_summary.metric_values.size(); ++i) {
+                             percentiles.probability(record_summary.metric_values[i], p_low, p_high);
+                             write(variant_ofp, "%s\t%lu\t%s\t%s\t%s\t.\t.\t%s_PCTL=%g,%g\n", 
+                                   record_summary.chrom, record_summary.position, record_summary.id,
+                                   record_summary.ref, record_summary.alts[i], metric_name.c_str(), p_low, p_high);
+                         }
                     } else {
-                        write(variant_ofp, "##INFO=<ID=%s_PCTL,Number=2,Type=Float,Description=\"%s\">\n",
-                                             metric_name.c_str(), metric_desc.c_str());
-
-                    }
-                    write(variant_ofp, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
-                    while (bcf_sr_next_line(sr) > 0) {
-                        bcf1_t *rec = bcf_sr_get_line(sr, 0);
-                        parse_bcf_record(header, rec, header_summary, record_summary, qual);
-                        if (qual) {
-                            percentiles.probability(record_summary.qual, p_low, p_high);
-                            for (unsigned int i = 0u; i < record_summary.alts.size(); ++i) {
-                                write(variant_ofp, "%s\t%lu\t%s\t%s\t%s\t.\t.\tQUAL_PCTL=%g,%g\n",
-                                                     record_summary.chrom, record_summary.position, record_summary.id,
-                                                     record_summary.ref, record_summary.alts[i], p_low, p_high);
-                            }
-                        } else {
-                            if (record_summary.metric_values.size() == 0) {
-                                continue;
-                            }
-                            if (record_summary.metric_values.size() == 1) { // single metric for all alt alleles
-                                percentiles.probability(record_summary.metric_values[0], p_low, p_high);
-                                for (unsigned int i = 0u; i < record_summary.alts.size(); ++i) {
-                                    write(variant_ofp, "%s\t%lu\t%s\t%s\t%s\t.\t.\t%s_PCTL=%g,%g\n",
-                                                         record_summary.chrom, record_summary.position,
-                                                         record_summary.id,
-                                                         record_summary.ref, record_summary.alts[i],
-                                                         metric_name.c_str(), p_low, p_high);
-                                }
-                            } else if (record_summary.metric_values.size() ==
-                                       record_summary.alts.size()) { // one metric for per alt allele
-                                for (unsigned int i = 0u; i < record_summary.metric_values.size(); ++i) {
-                                    percentiles.probability(record_summary.metric_values[i], p_low, p_high);
-                                    write(variant_ofp, "%s\t%lu\t%s\t%s\t%s\t.\t.\t%s_PCTL=%g,%g\n",
-                                                         record_summary.chrom, record_summary.position,
-                                                         record_summary.id,
-                                                         record_summary.ref, record_summary.alts[i],
-                                                         metric_name.c_str(), p_low, p_high);
-                                }
-                            } else {
-                                throw runtime_error("Number of metrics doesn't match number of alternate alleles.");
-                            }
-                        }
-                    }
-                    bcf_sr_destroy(sr);
-                    if (bgzf_close(variant_ofp) != 0) {
-                        throw runtime_error("Error while closing output file!");
+                         throw runtime_error("Number of metrics doesn't match number of alternate alleles.");
                     }
                 }
-            }, start, end);
-
-            start = end;
+            }
+            bcf_sr_destroy(sr);
         }
-        for (auto &&thread : threads) {
-            thread.join();
+        if (bgzf_close(variant_ofp) != 0) {
+            throw runtime_error("Error while closing output file!");
         }
-
-
+        cout << "Done." << endl;
     } catch (exception &e) {
         cout << "Error: " << endl;
         cout << e.what() << endl;
