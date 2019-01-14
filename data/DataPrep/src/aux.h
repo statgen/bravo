@@ -6,6 +6,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <cmath>
+#include <cstdarg>
 #include "bgzf.h"
 
 using namespace std;
