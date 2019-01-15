@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
 	string output_file("");
 	string samples_file("");
 	string samples("");
-	string region("");
+   string region("");
 
 	vector<double> hist_borders = { 0, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96, numeric_limits<double>::max() };
 
@@ -176,21 +176,31 @@ int main(int argc, char* argv[]) {
 			if (gt_index == -1) {
 				throw runtime_error("GT field was not found in FORMAT!");
 			}
+         gt_switcher.init(&rec->d.fmt[gt_index]);
+
 
 			if (dp_index == -1) {
-				throw runtime_error("DP field was not found in FORMAT!");
-			}
+            cerr << "[warning] DP field missing for " << bcf_seqname(header, rec) << ":" << rec->pos + 1 << ":" << rec->d.allele[0] << "/" << rec->d.allele[1];
+            for (int i = 2; i < rec->n_allele; ++i) {
+               cerr << "/" << rec->d.allele[i];
+            }
+            cerr << endl;
+			} else {
+            dp_switcher.init(&rec->d.fmt[dp_index]);
+         }
 
 			if (gq_index == -1) {
-				throw runtime_error("GQ field was not found in FORMAT!");
-			}
+            cerr << "[warning] GQ field missing for " << bcf_seqname(header, rec) << ":" << rec->pos + 1 << ":" << rec->d.allele[0] << "/" << rec->d.allele[1];
+            for (int i = 2; i < rec->n_allele; ++i) {
+               cerr << "/" << rec->d.allele[i];
+            }
+            cerr << endl;
+			} else {
+            gq_switcher.init(&rec->d.fmt[gq_index]);
+         }
 
-			gt_switcher.init(&rec->d.fmt[gt_index]);
-			dp_switcher.init(&rec->d.fmt[dp_index]);
-			gq_switcher.init(&rec->d.fmt[gq_index]);
-
-            ns = 0u;
-            an = 0u;
+         ns = 0u;
+         an = 0u;
 			fill(ac.begin(), ac.end(), 0u); // cleanup allele, hom and het counts
             fill(hom.begin(), hom.end(), 0u);
             fill(het.begin(), het.end(), 0u);
@@ -214,15 +224,15 @@ int main(int argc, char* argv[]) {
 				gq_histograms.emplace_back(Histogram(hist_borders));
 			}
 
-            Histogram dp_histogram(hist_borders), gq_histogram(hist_borders);
+         Histogram dp_histogram(hist_borders), gq_histogram(hist_borders);
 
 			for (int i = 0; i < rec->n_sample; ++i) {
 				(gt_switcher.*(gt_switcher.read))(gt_values);
-				(dp_switcher.*(dp_switcher.read))(dp_values);
-				(gq_switcher.*(gq_switcher.read))(gq_values);
+				if (dp_index != -1) (dp_switcher.*(dp_switcher.read))(dp_values);
+            if (gq_index != -1) (gq_switcher.*(gq_switcher.read))(gq_values);
 
-                ac_sample = 0u;
-                hom_sample.clear();
+            ac_sample = 0u;
+            hom_sample.clear();
 				unique_alleles.clear();
 				for (auto&& v : gt_values) {
 					if (!bcf_gt_is_missing(v)) {
@@ -234,34 +244,34 @@ int main(int argc, char* argv[]) {
 					}
 				}
 
-                if (ac_sample == 0u) { // all alleles missing for this sample
-                    continue;
-                }
+            if (ac_sample == 0u) { // all alleles missing for this sample
+               continue;
+            }
 
-                ++ns;
-                an += ac_sample;
+            ++ns;
+            an += ac_sample;
 
-                if (hom_sample.size() == 1) { // homozygous for some allele
-                    hom[*hom_sample.begin()] += 1;
-                } else if (hom_sample.size() > 1) {
-                    if (hom_sample.erase(0) != 0) { // heterozygous with 1 REF and 1 ALT
-                        het[*hom_sample.begin()] += 1;
-                    }
-                }
+            if (hom_sample.size() == 1) { // homozygous for some allele
+               hom[*hom_sample.begin()] += 1;
+            } else if (hom_sample.size() > 1) {
+               if (hom_sample.erase(0) != 0) { // heterozygous with 1 REF and 1 ALT
+                  het[*hom_sample.begin()] += 1;
+               }
+            }
 
-				if (dp_values[0] != bcf_int32_missing) {
-					dp_histogram.add((int)dp_values[0]);
+				if (dp_index != -1 && dp_values[0] != bcf_int32_missing) {
+               dp_histogram.add((int)dp_values[0]);
 				}
 
-				if (gq_values[0] != bcf_int32_missing) {
-				    gq_histogram.add((int)gq_values[0]);
+				if (gq_index != -1 && gq_values[0] != bcf_int32_missing) {
+                gq_histogram.add((int)gq_values[0]);
 				}
 
 				for (auto&& allele: unique_alleles) {
-					if (dp_values[0] != bcf_int32_missing) {
+					if (dp_index != -1 && dp_values[0] != bcf_int32_missing) {
 						dp_histograms[allele].add((int)dp_values[0]);
 					}
-					if (gq_values[0] != bcf_int32_missing) {
+					if (gq_index != -1 && gq_values[0] != bcf_int32_missing) {
 						gq_histograms[allele].add((int)gq_values[0]);
 					}
 				}
@@ -309,27 +319,35 @@ int main(int argc, char* argv[]) {
             for (int i = 2; i < rec->n_allele; ++i) {
                 write(ofp, ",%d", hom[i]);
             }
-            write(ofp, ";DP=%d", (long long int)dp_histogram.get_total());
-            write(ofp, ";AVGDP=%g", dp_histogram.get_average());
-            write(ofp, ";AVGDP_R=%g", dp_histograms[0].get_average());
-            for (int i = 1; i < rec->n_allele; ++i) {
-                write(ofp, ",%g", dp_histograms[i].get_average());
+            if (dp_index != -1) {
+               write(ofp, ";DP=%d", (long long int)dp_histogram.get_total());
+               write(ofp, ";AVGDP=%g", dp_histogram.get_average());
+               write(ofp, ";AVGDP_R=%g", dp_histograms[0].get_average());
+               for (int i = 1; i < rec->n_allele; ++i) {
+                  write(ofp, ",%g", dp_histograms[i].get_average());
+               }
             }
-            write(ofp, ";AVGGQ=%g", gq_histogram.get_average());
-            write(ofp, ";AVGGQ_R=%g", gq_histograms[0].get_average());
-            for (int i = 1; i < rec->n_allele; ++i) {
-                write(ofp, ",%g", gq_histograms[i].get_average());
+            if (gq_index != -1) {
+               write(ofp, ";AVGGQ=%g", gq_histogram.get_average());
+               write(ofp, ";AVGGQ_R=%g", gq_histograms[0].get_average());
+               for (int i = 1; i < rec->n_allele; ++i) {
+                  write(ofp, ",%g", gq_histograms[i].get_average());
+               }
             }
-            write(ofp, ";DP_HIST=%s", dp_histogram.get_text());
-            write(ofp, ";DP_HIST_R=%s", dp_histograms[0].get_text());
-            for (int i = 1; i < rec->n_allele; ++i) {
-                write(ofp, ",%s", dp_histograms[i].get_text());
+            if (dp_index != -1) {
+               write(ofp, ";DP_HIST=%s", dp_histogram.get_text());
+               write(ofp, ";DP_HIST_R=%s", dp_histograms[0].get_text());
+               for (int i = 1; i < rec->n_allele; ++i) {
+                  write(ofp, ",%s", dp_histograms[i].get_text());
+               }
             }
-            write(ofp, ";GQ_HIST=%s", gq_histogram.get_text());
-			write(ofp, ";GQ_HIST_R=%s", gq_histograms[0].get_text());
-			for (int i = 1; i < rec->n_allele; ++i) {
-				write(ofp, ",%s", gq_histograms[i].get_text());
-			}
+            if (gq_index != -1) {
+               write(ofp, ";GQ_HIST=%s", gq_histogram.get_text());
+			      write(ofp, ";GQ_HIST_R=%s", gq_histograms[0].get_text());
+			      for (int i = 1; i < rec->n_allele; ++i) {
+				      write(ofp, ",%s", gq_histograms[i].get_text());
+			      }
+            }
 			write(ofp, "\n");
 		}
 
