@@ -149,8 +149,27 @@ void parse_bcf_record(bcf_hdr_t *header, bcf1_t *rec, bcf_header_summary &h, bcf
         }
     }
 
-    if ((r.alts.size() != r.ac_values.size()) || (r.ac_values.size() != r.af_values.size())) {
-        throw runtime_error("Missing values in the  AC and AF INFO fields!");
+    if (r.ac_values.size() == 0 && r.af_values.size() == 0) {
+        cerr << "[warning] No AC and AF INFO fields for " << r.chrom << ":" << r.position << ":" << r.ref << "/" << r.alts.at(0);
+        for (unsigned int i = 1u; i < r.alts.size(); ++i) {
+            cerr << "/" << r.alts.at(i);
+        }
+        cerr << ". Assuming AC = 0 and AF = 0.0 for all alternate alleles." << endl;
+        for (unsigned int i = 0; i < r.alts.size(); ++i) {
+            r.ac_values.push_back(0.0);
+            r.af_values.push_back(0.0);
+        }
+    } else if ((r.alts.size() != r.ac_values.size()) || (r.ac_values.size() != r.af_values.size())) {
+        
+        cerr << "[warning] Number of values in AC and AF INFO fields don't match for " << r.chrom << ":" << r.position << ":" << r.ref << "/" << r.alts.at(0);
+        for (unsigned int i = 1u; i < r.alts.size(); ++i) {
+            cerr << "/" << r.alts.at(i);
+        }
+        cerr << ". Assuming AC = 0 and AF = 0.0 for all alternate alleles." << endl;
+        for (unsigned int i = 0; i < r.alts.size(); ++i) {
+            r.ac_values.push_back(0.0);
+            r.af_values.push_back(0.0);
+        }
     }
 }
 
@@ -178,8 +197,7 @@ int main(int argc, char *argv[]) {
             ("min-maf,f", po::value<double>(&min_maf), "Minimal minor allele frequency.")
             ("max-maf,F", po::value<double>(&max_maf), "Maximal minor allele frequency.")
             ("ac,a", po::value<double>(&allele_count), "Allele count (e.g. set to 1 to keep singletons only.")
-            ("percentiles,p", po::value<unsigned int>(&n_percentiles)->default_value(100u),
-             "Number of percentiles to compute. Default is 100.")
+            ("percentiles,p", po::value<unsigned int>(&n_percentiles)->default_value(100u), "Number of percentiles to compute. Default is 100.")
             ("desc,d", po::value<string>(&metric_desc), "Description (saved into JSON result).")
             ("out,o", po::value<string>(&output_prefix)->required(),
              "Prefix for output files. Output is compressed using bgzip.");
