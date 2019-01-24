@@ -178,28 +178,39 @@ To prepare a coverage data for each base-pair position, you can use all your BAM
    samtools view -q 20 -F 0x0704 -uh [CRAM/BAM file] [chromosome] | samtools calmd -uAEr - [reference FASTA] | bam clipOverlap --in -.ubam --out -.ubam | samtools mpileup -f [reference FASTA] -Q 20 -t DP - | cut -f1-4 | bgzip > [chromosome].[sample].depth.gz
    ```
    In this step we use [clipOverlap from BamUtil](https://genome.sph.umich.edu/wiki/BamUtil:_clipOverlap).
+   
+2. For each chromosome, create tabix index files for `[chromosome].[sample].depth.gz` e.g.:
+   ```
+   for f in 10.*.depth.gz; do tabix $f; done
+   ```
  
-2. For each chromosome, aggregate base-pair coverage acrosss output files `[chromosome].[sample].depth.gz` from step (1):
+3. For each chromosome, aggregate base-pair coverage acrosss output files `[chromosome].[sample].depth.gz` from step (1):
    ```
    python base_coverage/create_coverage.py -i [files list] aggregate -c [chromosome] -s [start bp] -e [end bp] | bgzip -c > [chromosome].[start].[end].json.gz
    ```
-   The `files list` is a text file which lists all output files for a single chromosome from step (1).
+   The `files list` is a text file which lists all output files for a single chromosome from step (1). For example, you can create such list for chromosome 10 with `find . -name "10.*.depth.gz" -printf "%f\n" > depth_files.txt`.
    
-3. For each chromosome, merge files `[chromosome].[start].[end].json.bgz` from step (2):
+   To generate chunks for each chromosome you can use the following command:
+   ```
+   python base_coverage/create_coverage.py -i [files list] chunk -c [chromosome] -s [chunk size in bp]
+   ```
+   A typical chunk size is 250,000 bp or 500,000 bp.
+   
+4. For each chromosome, merge files `[chromosome].[start].[end].json.bgz` from step (3):
    ```
    python base_coverage/merge_coverage.py -i [files list] -o [chromosome].full.json.gz
    ```
-   The `files list` is a text file which lists all output files for a single chromosome from step (2).
+   The `files list` is a text file which lists all output files for a single chromosome from step (3).
  
-4. After step (3), you should have coverage summary across your samples for each base pair in files `1.full.json.gz`, `2.full.json.gz`, ..., `22.full.json.gz`. For faster web-based visualization, you should prepare several pruned version of the coverage summary e.g.:
+5. After step (4), you should have coverage summary across your samples for each base pair in files `1.full.json.gz`, `2.full.json.gz`, ..., `22.full.json.gz`. For faster web-based visualization, you should prepare several pruned version of the coverage summary e.g.:
    ```
    python base_coverage/prune_coverage.py -i 22.full.json.gz -l 0.25 -o 22.bin_0.25.json.gz
    python base_coverage/prune_coverage.py -i 22.full.json.gz -l 0.50 -o 22.bin_0.50.json.gz
    python base_coverage/prune_coverage.py -i 22.full.json.gz -l 0.75 -o 22.bin_0.75.json.gz
    python base_coverage/prune_coverage.py -i 22.full.json.gz -l 1.00 -o 22.bin_1.00.json.gz
    ```
-5. Tabix all coverage summary files.
-6. Reference all of the coverage files in `BASE_COVERAGE` in `default.py`.
+6. Tabix all coverage summary files.
+7. Reference all of the coverage files in `BASE_COVERAGE` in `default.py`.
 
 ### Prepare CRAM
 
