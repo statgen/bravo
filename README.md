@@ -214,7 +214,21 @@ To prepare a coverage data for each base-pair position, you can use all your BAM
 
 ### Prepare CRAM
 
-BRAVO uses IGV.js to visualize raw sequenced from up to 10 random alternate allele carriers.    
+BRAVO uses IGV.js to visualize raw sequenced from up to 10 random alternate allele carriers. To enable this visualization BRAVO uses a pre-computed combined CRAM file with all reads from the carriers. The following steps describe hot to prepare the combined CRAM file:
+
+1. In this step, for each variant you will extract IDs for 5 random heterozygous and 5 random homozygous alternate allele carriers from your original VCF file with genotypes.
+   ```
+   RandomHetHom -k 5 -e 1987 --i [input vcf.gz] -s [samples file] -r [CHR:START-END] -o [output vcf.gz]
+   ```
+   The value `1987` is a random seed, which you may want to change.
+   
+2. Prepare a text file (e.g. `samples.txt`) which lists BAM/CRAM file path for each sample:
+   ```
+   SAMPLEID1    /drive1/batch1/sampleid1.bam
+   SAMPLEID2    /drive1/batch1/sampleid2.bam
+   SAMPLEID3    /drive1/batch2/sampleid2.bam
+   ...
+   ```
 
 ## Load Data
 
