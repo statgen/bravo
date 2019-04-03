@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
+#include <algorithm>
 #include <vector>
 #include <set>
 #include "hts.h"
@@ -56,7 +57,10 @@ int main(int argc, char* argv[]) {
 
 	try {
         if (!samples_file.empty()) {
+            cout << "Reading samples file... " << flush;
             samples = read_samples(samples_file.c_str());
+            cout << "Done." << endl;
+            cout << "Found " << count(samples.begin(), samples.end(), ',')  + 1 << " sample(s)." << endl; 
         }
 
         BGZF *ofp = bgzf_open(output_file.c_str(), "w");
@@ -71,9 +75,12 @@ int main(int argc, char* argv[]) {
       	}
 
    		if (!region.empty()) {
+         cout << "Setting region... " << flush;
 			if (bcf_sr_set_regions(sr, region.c_str(), 0) < 0) {
 				throw runtime_error("Error while subsetting region!");
 			}
+         cout << "Done." << endl;
+         cout << "Set " << region.c_str() << " region." << endl;
 		}
 
 		if (bcf_sr_add_reader(sr, input_file.c_str()) <= 0) {
@@ -83,9 +90,11 @@ int main(int argc, char* argv[]) {
 		bcf_hdr_t* header = bcf_sr_get_header(sr, 0);
 
 		if (!samples.empty()) {
+         cout << "Setting sample(s)... " << flush;
 			if (bcf_hdr_set_samples(header, samples.c_str(), 0) != 0) {
 				throw runtime_error("Error while subsetting samples!");
 			}
+         cout << "Done." << endl;
 		}
 
 		int gt_id = bcf_hdr_id2int(header, BCF_DT_ID, "GT");
@@ -144,6 +153,7 @@ int main(int argc, char* argv[]) {
 		vector<Histogram> dp_histograms, gq_histograms;
 		set<int> unique_alleles;
 
+      cout << "Processing... " << flush;
 		while (bcf_sr_next_line(sr) > 0) {
 			bcf1_t* rec = bcf_sr_get_line(sr, 0);
 
@@ -350,6 +360,7 @@ int main(int argc, char* argv[]) {
             }
 			write(ofp, "\n");
 		}
+      cout << "Done." << endl;
 
 		bcf_sr_destroy(sr);
 
