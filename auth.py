@@ -52,4 +52,9 @@ class GoogleSignIn(object):
                 decoder = json.loads
         )
         me = oauth_session.get('').json()
+        if 'name' not in me:
+            # My `@umich.edu` login doesn't send `.name`.  Likewise for `@som.umaryland.edu`.
+            # Once we understand that, just use `(me['name'] if 'name' in me else me['email'])`
+            print('Login did not contain name.  Info was:', me)
+            return (me['email'], me['email'], me.get('picture'))
         return (me['name'], me['email'], me.get('picture'))
