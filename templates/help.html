@@ -34,13 +34,14 @@
                        </li>
                     </ul>
                     </li>
+                    <li><a href="#section_tutorial">5. Tutorial</a></li>
 		</ul>
                 <h2 id="section_setup" style="margin-top: 2em">1. Setup</h2>
                 <p>The steps below describe how to setup the Bravo API on your server or local machine.</p>
                 <ol>
                     <li>Enable API access from your Profile-&gt;Settings page.</li>
                     <img src="{{ url_for('.static', filename='img/settings.png') }}" width="800px" />
-                    <li>Download the <code>bravo</code> command line tool for Linux and Mac OS X from <a href={{ url_for('.static', filename='tools/bravo')  }}>here</a>. If you are using Windows, download the <code>bravo.exe</code> command line tool from <a href={{ url_for('.static', filename='tools/windows/bravo.exe')  }}>here</a>. Linux and Mac OS X users will need to set executable bits by running <code>chmod +x bravo</code>. All code examples below are provided for Linux and Max OS X.</li>
+                    <li>Download the <code>bravo</code> command line tool for Linux and Mac OS X from <a href={{ url_for('.static', filename='tools/bravo')  }}>here</a>, or for Windows from <a href={{ url_for('.static', filename='tools/windows/bravo.exe')  }}>here</a>. Linux and Mac OS X users will need to set executable bits by running <code>chmod +x bravo</code>. All code examples below are provided for Linux and Max OS X.</li>
                     <li>Run <code>./bravo login</code> from your command line and go to the provided link in your browser.</li>
                     <img src="{{ url_for('.static', filename='img/bravo_api_login.png') }}" width="800px" />
                     <li>Sign in with your Google account.</li>
@@ -547,6 +548,10 @@
 }</pre>                
                 </li>
                 </ol>
+                <h2 id="section_tutorial" style="margin-top: 2em">5. Tutorial</h2>
+                <p>
+                The Bravo API tutorial with step-by-step examples is available from <a href={{ url_for('.static', filename='tools/tutorial/Bravo_API_Tutorial.html')  }}>here</a>.
+                </p>
            </div>
         </div>
     </div>
