@@ -1,2 +1,2 @@
 # This cron job every 5 minutes checks if Bravo IGV cache needs cleaning
-*/5 * * * * python [full path to sequences_cache_monitor.py] -p [full path to PID file] > /dev/null 2>&1
+*/5 * * * * /var/gvs-installs/common-venv/bin/python /var/gvs-installs/gvs-freeze5-hg38/sequences_cache_monitor.py -p /var/gvs-installs/gvs-freeze5-hg38/igv_cache.pid > /dev/null 2>&1
