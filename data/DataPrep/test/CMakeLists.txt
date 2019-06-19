@@ -23,10 +23,15 @@ install(FILES
             input.vcf.gz.tbi
             input.subset.vcf.gz
             input.subset.vcf.gz.tbi
+            input_no_GT.vcf.gz
+            input_no_GT.region.vcf.gz
+            input_no_DP_GQ.vcf.gz
             samples.txt
             allelecounts.output_ok.vcf.gz
             allelecounts.region.output_ok.vcf.gz
             histograms.output_ok.vcf.gz
             histograms.region.output_ok.vcf.gz
             allelecounts_and_histograms.output_ok.vcf.gz
+            allelecounts_and_histograms.no_GQ.output_ok.vcf.gz
+            allelecounts_and_histograms.region.no_GQ.output_ok.vcf.gz
         DESTINATION test)
