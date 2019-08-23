@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
     string samples_file("");
     string samples("");
     string region("");
+    vector<string> info_fields;
 
     vector<double> hist_borders = { 0, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76, 81, 86, 91, 96, numeric_limits<double>::max() };
 
@@ -36,6 +37,7 @@ int main(int argc, char* argv[]) {
             ("in,i", po::value<string>(&input_file)->required(), "Input VCF/BCF file. Must be indexed using tabix.")
             ("samples,s", po::value<string>(&samples_file), "Input file with samples. One sample per line.")
             ("region,r", po::value<string>(&region), "Region to be processed. Must follow <CHR>:<START_BP>-<END_BP> format.")
+            ("fields,f", po::value<vector<string>>(&info_fields)->multitoken(), "Whitespace delimited list of INFO column fields to carry over to the output file.")
             ("out,o", po::value<string>(&output_file)->required(), "Output file. Compressed using gzip.")
             ;
 
@@ -113,6 +115,8 @@ int main(int argc, char* argv[]) {
             throw runtime_error("GQ field was not found!");
         }
 
+        vector<string> input_info_fields;
+
         write(ofp, "##fileformat=VCFv4.2\n");
         for (int i = 0; i < header->nhrec; ++i) {
             if (strcmp(header->hrec[i]->key, "FILTER") == 0) {
@@ -125,7 +129,38 @@ int main(int argc, char* argv[]) {
                 }
                 write(ofp, ">\n");
             }
+            if (strcmp(header->hrec[i]->key, "INFO") == 0) {
+                if ((strcmp(header->hrec[i]->vals[0], "NS") == 0) || (strcmp(header->hrec[i]->vals[0], "AN") == 0) ||
+                    (strcmp(header->hrec[i]->vals[0], "AC") == 0) || (strcmp(header->hrec[i]->vals[0], "AF") == 0) ||
+                    (strcmp(header->hrec[i]->vals[0], "Het") == 0) || (strcmp(header->hrec[i]->vals[0], "Hom") == 0) ||
+                    (strcmp(header->hrec[i]->vals[0], "DP") == 0) || (strcmp(header->hrec[i]->vals[0], "AVGDP") == 0) ||
+                    (strcmp(header->hrec[i]->vals[0], "AVGDP_R") == 0) || (strcmp(header->hrec[i]->vals[0], "AVGGQ") == 0) ||
+                    (strcmp(header->hrec[i]->vals[0], "AVGGQ_R") == 0) || (strcmp(header->hrec[i]->vals[0], "DP_HIST") == 0) ||
+                    (strcmp(header->hrec[i]->vals[0], "DP_HIST_R") == 0) || (strcmp(header->hrec[i]->vals[0], "GQ_HIST") == 0) ||
+                    (strcmp(header->hrec[i]->vals[0], "GQ_HIST_R") == 0)) {
+                    continue;
+                }
+                if (find(info_fields.begin(), info_fields.end(), header->hrec[i]->vals[0]) != info_fields.end()) {
+                    input_info_fields.emplace_back(header->hrec[i]->vals[0]);
+                    cout << "Carrying over '" << header->hrec[i]->vals[0] << "' INFO field." << endl;
+                    write(ofp, "##%s=<%s=%s", header->hrec[i]->key, header->hrec[i]->keys[0], header->hrec[i]->vals[0]);
+                    for (int j = 1; j < header->hrec[i]->nkeys; ++j) {
+                        if (strcmp(header->hrec[i]->keys[j], "IDX") == 0) {
+                            continue;
+                        }
+                        write(ofp, ",%s=%s", header->hrec[i]->keys[j], header->hrec[i]->vals[j]);
+                    }
+                    write(ofp, ">\n");
+                }
+            }
         }
+
+        for (auto&& field : info_fields) {
+            if (find(input_info_fields.begin(), input_info_fields.end(), field) == input_info_fields.end()) {
+                throw runtime_error("Field '" + string(field) + "' was not found in INFO meta-information lines!");
+            }
+        }
+
         write(ofp, "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Coverage\">\n");
         write(ofp, "##INFO=<ID=AN,Number=1,Type=Integer,Description=\"Number of Alleles in Samples with Coverage\">\n");
         write(ofp, "##INFO=<ID=AC,Number=A,Type=Integer,Description=\"Alternate Allele Counts in Samples with Coverage\">\n");
@@ -167,6 +202,10 @@ int main(int argc, char* argv[]) {
 
             if ((rec->unpacked & BCF_UN_FLT) == 0) {
                 bcf_unpack(rec, BCF_UN_FLT);
+            }
+
+            if (!input_info_fields.empty() && ((rec->unpacked & BCF_UN_INFO) == 0)) {
+                bcf_unpack(rec, BCF_UN_INFO);
             }
 
             gt_index = -1;
@@ -356,6 +395,27 @@ int main(int argc, char* argv[]) {
                 write(ofp, ";GQ_HIST_R=%s", gq_histograms[0].get_text());
                 for (int i = 1; i < rec->n_allele; ++i) {
                     write(ofp, ",%s", gq_histograms[i].get_text());
+                }
+            }
+            if (!input_info_fields.empty()) {
+                for (auto&& field : input_info_fields) {
+                    bcf_info_t *info = bcf_get_info(header, rec, field.c_str());
+                    int header_type = bcf_hdr_id2type(header, BCF_HL_INFO, info->key);
+                    if ((header_type != BCF_HT_REAL) || (info->type != BCF_BT_FLOAT)) {
+                        throw runtime_error("This version can carry over only float INFO fields.");
+                    }
+                    void *dst = nullptr;
+                    int ndst = 0;
+                    if (bcf_get_info_values(header, rec, field.c_str(), &dst, &ndst, header_type) <= 0) {
+                        throw runtime_error("Error while writing '" + string(field) + "' value!");
+                    }
+                    write(ofp, ";%s=%g", field.c_str(), ((float*)dst)[0]);
+                    for (int i = 1; i < ndst; ++i) {
+                        write(ofp, ",%g", ((float*)dst)[i]);
+                    }
+                    if (dst != nullptr) {
+                        free(dst);
+                    }
                 }
             }
             write(ofp, "\n");

@@ -89,6 +89,15 @@ TEST_F(ExecutableTest, AlleleCountsAndHistograms) {
     ASSERT_TRUE(equal(istreambuf_iterator<char>(ok_file.rdbuf()), istreambuf_iterator<char>(), istreambuf_iterator<char>(test_output_file.rdbuf())));
 }
 
+TEST_F(ExecutableTest, AlleleCountsAndHistogramsWithInfo) {
+    string executable = "../bin/ComputeAlleleCountsAndHistograms";
+    vector<string> args = { "--in", "input.with_info_fields.vcf.gz", "-f", "ASN_AF", "EUR_AF", "--out", "allelecounts_and_histograms.with_info_fields.output.vcf.gz" };
+    ASSERT_EQ(pr::system(executable, args), 0u);
+    ifstream ok_file("allelecounts_and_histograms.with_info_fields.output_ok.vcf.gz");
+    ifstream test_output_file("allelecounts_and_histograms.with_info_fields.output.vcf.gz");
+    ASSERT_TRUE(equal(istreambuf_iterator<char>(ok_file.rdbuf()), istreambuf_iterator<char>(), istreambuf_iterator<char>(test_output_file.rdbuf())));
+}
+
 TEST_F(ExecutableTest, AlleleCountsAndHistograms2) {
     string executable = "../bin/ComputeAlleleCountsAndHistograms2";
     vector<string> args = { "--genotypes", "input_no_DP_GQ.vcf.gz", "--depth", "input_no_GT.vcf.gz", "--out", "allelecounts_and_histograms.no_GQ.output.vcf.gz" };
