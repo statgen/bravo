@@ -12,6 +12,7 @@
 #include "Histogram.h"
 #include "TypeSwitcher.h"
 #include "aux.h"
+#include <chrono>
 
 #include <boost/program_options.hpp>
 
@@ -129,7 +130,8 @@ int main(int argc, char* argv[]) {
         write(ofp, "##INFO=<ID=Het,Number=A,Type=Integer,Description=\"Heterozygous Counts\">\n");
         write(ofp, "##INFO=<ID=Hom,Number=A,Type=Integer,Description=\"Homozygous Alternate Counts\">\n");
         write(ofp, "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Total depth at site\">\n");
-		write(ofp, "##INFO=<ID=AVGDP,Number=1,Type=Float,Description=\"Average depth per sample\">\n");
+		  write(ofp, "##INFO=<ID=DP_R,Number=R,Type=Integer,Description=\"Total depth at site accross samples carrying allele\">\n");
+        write(ofp, "##INFO=<ID=AVGDP,Number=1,Type=Float,Description=\"Average depth per sample\">\n");
         write(ofp, "##INFO=<ID=AVGDP_R,Number=R,Type=Float,Description=\"Average depth per sample carrying allele\">\n");
         write(ofp, "##INFO=<ID=DP_HIST,Number=1,Type=String,Description=\"Histogram of DP across all samples; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
 		write(ofp, "##INFO=<ID=DP_HIST_R,Number=R,Type=String,Description=\"Histograms of DP across samples carrying allele; Mids: 2.5|7.5|12.5|17.5|22.5|27.5|32.5|37.5|42.5|47.5|52.5|57.5|62.5|67.5|72.5|77.5|82.5|87.5|92.5|97.5\">\n");
@@ -147,7 +149,8 @@ int main(int argc, char* argv[]) {
 
         cout << "Processing... " << flush;
 		while ((bcf_sr_next_line(gt_sr) > 0) && (bcf_sr_next_line(dp_sr) > 0)) {
-			bcf1_t* gt_rec = bcf_sr_get_line(gt_sr, 0);
+         //auto start = std::chrono::system_clock::now();
+         bcf1_t* gt_rec = bcf_sr_get_line(gt_sr, 0);
             bcf1_t* dp_rec = bcf_sr_get_line(dp_sr, 0);
 
             if (gt_rec->pos < dp_rec->pos) {
@@ -296,9 +299,13 @@ int main(int argc, char* argv[]) {
 			for (int i = 2; i < gt_rec->n_allele; ++i) {
 				ac_total += ac[i];
 			}
-			if (ac_total == 0) {
-				continue;
-			}
+			//if (ac_total == 0) {
+			//	continue;
+			//}
+
+         //auto end = std::chrono::system_clock::now();
+         //std::chrono::duration<double> elapsed = end - start;
+         //std::cout << "Segment load elapsed time: " << elapsed.count() << " s\n";
 
 			write(ofp, "%s\t%lu\t%s\t%s\t%s", bcf_seqname(gt_sr_header, gt_rec), gt_rec->pos + 1, gt_rec->d.id, gt_rec->d.allele[0], gt_rec->d.allele[1]);
 			for (int i = 2; i < gt_rec->n_allele; ++i) {
@@ -336,10 +343,22 @@ int main(int argc, char* argv[]) {
             }
             if (dp_index != -1) {
                write(ofp, ";DP=%d", (long long int)dp_histogram.get_total());
+               write(ofp, ";DP_R=%d", (long long int)dp_histograms[0].get_total());
+               for (int i = 1; i < gt_rec->n_allele; ++i) {
+                  if (dp_histograms[i].get_n() > 0) {
+                     write(ofp, ",%d", (long long int)dp_histograms[i].get_total());
+                  } else {
+                     write(ofp, ",.");
+                  }
+               }
                write(ofp, ";AVGDP=%g", dp_histogram.get_average());
                write(ofp, ";AVGDP_R=%g", dp_histograms[0].get_average());
                for (int i = 1; i < gt_rec->n_allele; ++i) {
-                  write(ofp, ",%g", dp_histograms[i].get_average());
+                  if (dp_histograms[i].get_n() > 0) {
+                     write(ofp, ",%g", dp_histograms[i].get_average());
+                  } else {
+                     write(ofp, ",.");
+                  }
                }
             }
             if (dp_index != -1) {
