@@ -31,8 +31,8 @@ variants = []
 window_bp = None
 
 
-def process_sample(cram_path, reference_path, regions, ocram):
-    with pysam.AlignmentFile(cram_path, 'rc', reference_filename = reference_path) as icram:
+def process_sample(cram_path, crai_path, reference_path, regions, ocram):
+    with pysam.AlignmentFile(cram_path, 'rc', index_filename = crai_path, reference_filename = reference_path) as icram:
         for region in regions:
             process_region(icram, region, ocram)
 
@@ -70,10 +70,11 @@ if __name__ == '__main__':
         with open(args.inCRAMs, 'r') as ifile:
             for line in ifile:
                 fields = line.rstrip().split()
-                if len(fields) >= 2:
+                if len(fields) >= 3:
                     sample_id = fields[0].strip()
                     cram_path = fields[1].strip()
-                    crams[sample_id] = cram_path
+                    cram_crai = fields[2].strip()
+                    crams[sample_id] = (cram_path, cram_crai)
         if len(crams) == 0:
             sys.exit(0)
         samples = dict()
@@ -107,12 +108,12 @@ if __name__ == '__main__':
                    'RG': [],
                    'CO': [ f'MAX_HOM={max_hom};MAX_HET={max_het}', f'REGION={next(iter(chrom))}:{start}-{stop}' ]
                 }
-        with pysam.AlignmentFile(crams[next(iter(crams))], 'rc') as icram:
+        with pysam.AlignmentFile(crams[next(iter(crams))][0], 'rc') as icram:
             for sq_line in icram.header['SQ']:
                 header['SQ'].append(sq_line)
         with pysam.AlignmentFile(args.outFile, 'wc', reference_filename = args.inReference, header = header) as ocram:
             for i, (sample, sample_variants) in enumerate(samples.items(), 1):
-                process_sample(crams[sample], args.inReference, sample_variants, ocram)
+                process_sample(crams[sample][0], crams[sample][1], args.inReference, sample_variants, ocram)
                 if i % 100 == 0:
                     sys.stdout.write('Processed {}/{} sample(s).\n'.format(i, len(samples)))
         sys.stdout.write('Done ({}/{}).\n'.format(i, len(samples)))
