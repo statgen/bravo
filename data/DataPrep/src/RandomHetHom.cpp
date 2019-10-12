@@ -114,6 +114,9 @@ int main(int argc, char* argv[]) {
         int pl_id = bcf_hdr_id2int(header, BCF_DT_ID, "PL");
         bool pl_exists = (bcf_hdr_idinfo_exists(header, BCF_HL_FMT, pl_id) != 0);
 
+        // don't need pl_exists or move it to options (many times PL is defined in header but not present in variant lines and this cause htslib to crash)
+        pl_exists = false;
+
         int gt_index;
         int pl_index;
         TypeSwitcher gt_switcher;
