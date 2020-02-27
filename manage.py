@@ -50,6 +50,11 @@ argparser_custom_variants.add_argument('-n', '--name', metavar = 'name', require
 argparser_custom_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of thrads to use.')
 
 
+argparser_percentiles = argparser_subparsers.add_parser('percentiles', help = 'Loads percentiles for each variant from INFO field in the provided VCF. Percentiles in the INFO field must have \'_P\' suffix and store two comma separated values: lower bound and upper bound.')
+argparser_percentiles.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
+argparser_percentiles.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of thrads to use.')
+
+
 #argparser_update_variants = argparser_subparsers.add_parser('update', help = 'Updates variants collection with provided INFO fields from input VCF/BCF.')
 #argparser_update_variants.add_argument('-v', '--variants', metavar = 'file', required = True, type = str, nargs = '+', dest = 'variants_files', help = 'VCF/BCF file (or multiple files split by chromosome) with variants, compressed using bgzip and indexed using tabix.')
 #argparser_update_variants.add_argument('-t', '--threads', metavar = 'number', required = True, type = int, default = 1, dest = 'threads', help = 'Number of threads to use.')
@@ -238,6 +243,44 @@ def load_custom_variants(variants_files, collection_name, threads):
     sys.stdout.write('Inserted {} variant(s).\n'.format(db[collection_name].count()))
 
 
+def _load_percentiles_from_vcf(vcf):
+    db = get_db_connection()
+    n_variants = 0
+    n_matched = 0
+    n_modified = 0
+    with gzip.GzipFile(vcf, 'r') as ivcf:
+        start_time = time.time()
+        requests = []
+        for variant in parsing.get_variants_from_sites_vcf_only_percentiles(ivcf):
+            requests.append(pymongo.operations.UpdateOne(
+                {'xpos': variant['xpos'], 'ref': variant['ref'], 'alt': variant['alt']},
+                {'$set': {'quality_metrics_percentiles': variant['percentiles']}},
+                upsert = False))
+            n_variants += 1
+            if n_variants % 1000000 == 0:
+                res = db.variants.bulk_write(requests, ordered = False)
+                n_matched += res.matched_count
+                n_modified += res.modified_count
+                requests = []
+                print 'VCF {}. Processed {} variant(s) in {} second(s), {} matched, {} modified.'.format(vcf, n_variants, int(time.time() - start_time), n_matched, n_modified) 
+        if len(requests) > 0:
+            res = db.variants.bulk_write(requests, ordered = False)
+            n_matched += res.matched_count
+            n_modified += res.modified_count
+            print 'Finished. VCF {}. Processed {} variant(s) in {} second(s), {} matched, {} modified.'.format(vcf, n_variants, int(time.time() - start_time), n_matched, n_modified)
+
+
+def load_percentiles(variant_files, threads):
+    """Loads percentiles.
+
+    Arguments:
+    variants_files -- list of one or more VCF/BCF files with variants (no genotypes) compressed using bgzip and indexed using tabix.
+    threads -- number of threads to use.
+    """
+    with contextlib.closing(multiprocessing.Pool(threads)) as threads_pool:
+        threads_pool.map_async(_load_percentiles_from_vcf, variant_files).get(9999999)
+
+
 def _update_collection(args, collection, reader):
     file, chrom = args
     db = get_db_connection()
@@ -263,7 +306,6 @@ def _update_collection(args, collection, reader):
         n_matched += res.matched_count
         n_modified += res.modified_count
         sys.stdout.write('Finished. VCF/BCF {}. Processed {} document(s) in {} second(s), {} matched, {} modified.\n'.format(file, n_documents, int(time.time() - start_time), n_matched, n_modified))
-
 
 '''
 def update_variants(variants_files, threads):
@@ -330,6 +372,10 @@ if __name__ == '__main__':
         sys.stdout.write('Creating {} collection in {} database.\n'.format(args.collection_name, mongo_db_name))
         load_custom_variants(args.variants_files, args.collection_name, args.threads)
         sys.stdout.write('Done creating {} collection in {} database.\n'.format(args.collection_name, mongo_db_name))
+    elif args.command == 'percentiles':
+        sys.stdout.write('Loading percentiles into {} database.\n'.format(mongo_db_name))
+        load_percentiles(args.variants_files, args.threads)
+        sys.stdout.write('Done loading percentiles into {} database.\n'.format(mongo_db_name))
 #    elif args.command == 'update':
 #        sys.stdout.write('Updating variants collection in {} database.\n'.format(mongo_db_name))
 #        update_variants(args.variants_files, args.threads)
