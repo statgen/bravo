@@ -8,13 +8,15 @@ TypeSwitcher::~TypeSwitcher() noexcept {
 
 }
 
-template<typename Tbcf, Tbcf (*convert)(const uint8_t*), Tbcf missing>
+template<typename Tbcf, Tbcf (*convert)(const uint8_t*), Tbcf missing, Tbcf vector_end>
 void TypeSwitcher::get_read(vector<int32_t>& v) {
 	v.clear();
 	for (int j = 0; j < fmt->n; ++j) {
 		Tbcf p = convert(fmt_p + j * sizeof(Tbcf));
 		if (p == missing) {
 			v.push_back(bcf_int32_missing);
+      } else if (p == vector_end) {
+         break;
 		} else {
 			v.push_back((int32_t)p);
 		}
@@ -27,13 +29,13 @@ void TypeSwitcher::init(bcf_fmt_t* fmt) throw (runtime_error) {
 	this->fmt_p = fmt->p;
 	switch (fmt->type) {
 		case BCF_BT_INT8:
-			read = &TypeSwitcher::get_read<int8_t, le_to_i8, bcf_int8_missing>;
+			read = &TypeSwitcher::get_read<int8_t, le_to_i8, bcf_int8_missing, bcf_int8_vector_end>;
 			break;
 		case BCF_BT_INT16:
-			read = &TypeSwitcher::get_read<int16_t, le_to_i16, bcf_int16_missing>;
+			read = &TypeSwitcher::get_read<int16_t, le_to_i16, bcf_int16_missing, bcf_int16_vector_end>;
 			break;
 		case BCF_BT_INT32:
-			read = &TypeSwitcher::get_read<int32_t, le_to_i32, bcf_int32_missing>;
+			read = &TypeSwitcher::get_read<int32_t, le_to_i32, bcf_int32_missing, bcf_int32_vector_end>;
 			break;
 		default:
 			throw runtime_error("Error while resolving data types in FORMAT!");

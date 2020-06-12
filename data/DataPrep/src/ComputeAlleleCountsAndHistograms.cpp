@@ -227,7 +227,6 @@ int main(int argc, char* argv[]) {
             }
             gt_switcher.init(&rec->d.fmt[gt_index]);
 
-
             if (dp_index == -1) {
                 cerr << "[warning] DP field missing for " << bcf_seqname(header, rec) << ":" << rec->pos + 1 << ":" << rec->d.allele[0] << "/" << rec->d.allele[1];
                 for (int i = 2; i < rec->n_allele; ++i) {
@@ -296,7 +295,7 @@ int main(int argc, char* argv[]) {
                 if (ac_sample == 0u) { // all alleles missing for this sample
                     continue;
                 }
-
+ 
                 ++ns;
                 an += ac_sample;
 
@@ -324,6 +323,10 @@ int main(int argc, char* argv[]) {
                         gq_histograms[allele].add((int)gq_values[0]);
                     }
                 }
+
+                gt_values.clear();
+                dp_values.clear();
+                gq_values.clear();
             }
 
             ac_total = ac[1];
