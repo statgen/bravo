@@ -23,6 +23,7 @@ add_executable(ComputeAlleleCountsAndHistograms ComputeAlleleCountsAndHistograms
 add_executable(ComputeAlleleCountsAndHistograms2 ComputeAlleleCountsAndHistograms2.cpp ${AUX_SRCS})
 add_executable(ComputePercentiles ComputePercentiles.cpp ${AUX_SRCS})
 add_executable(RandomHetHom RandomHetHom.cpp ${AUX_SRCS})
+add_executable(Crams Crams.cpp ${AUX_SRCS})
 
 target_link_libraries(ComputeAlleleCounts ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB} ${LBZ2_LIB} ${Z_LIB} ${CURL_LIB} ${LZMA_LIB} ${CRYPTO_LIB} ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(ComputeHistograms ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB} ${LBZ2_LIB} ${Z_LIB}  ${CURL_LIB} ${LZMA_LIB} ${CRYPTO_LIB} ${CMAKE_THREAD_LIBS_INIT})
@@ -30,5 +31,6 @@ target_link_libraries(ComputeAlleleCountsAndHistograms ${BOOST_PROGRAM_OPTIONS_L
 target_link_libraries(ComputeAlleleCountsAndHistograms2 ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB} ${LBZ2_LIB} ${Z_LIB}  ${CURL_LIB} ${LZMA_LIB} ${CRYPTO_LIB} ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(ComputePercentiles ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB} ${LBZ2_LIB} ${Z_LIB}  ${CURL_LIB} ${LZMA_LIB} ${CRYPTO_LIB} ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(RandomHetHom ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB} ${LBZ2_LIB} ${Z_LIB}  ${CURL_LIB} ${LZMA_LIB} ${CRYPTO_LIB} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(Crams ${BOOST_PROGRAM_OPTIONS_LIB} ${HTS_LIB} ${LBZ2_LIB} ${Z_LIB}  ${CURL_LIB} ${LZMA_LIB} ${CRYPTO_LIB} ${CMAKE_THREAD_LIBS_INIT})
 
-install(TARGETS ComputeAlleleCounts ComputeHistograms ComputeAlleleCountsAndHistograms ComputeAlleleCountsAndHistograms2 ComputePercentiles RandomHetHom COMPONENT cli RUNTIME DESTINATION bin)
+install(TARGETS ComputeAlleleCounts ComputeHistograms ComputeAlleleCountsAndHistograms ComputeAlleleCountsAndHistograms2 ComputePercentiles RandomHetHom Crams COMPONENT cli RUNTIME DESTINATION bin)
