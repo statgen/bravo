@@ -11,7 +11,7 @@ using namespace std;
 
 class TypeSwitcher {
 private:
-	template<typename Tbcf, Tbcf (*convert)(const uint8_t*), Tbcf missing>
+	template<typename Tbcf, Tbcf (*convert)(const uint8_t*), Tbcf missing, Tbcf vector_end>
 	void get_read(vector<int32_t>& v);
 
 public:
