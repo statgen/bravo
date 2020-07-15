@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <tuple>
 #include <unordered_set>
+#include <chrono>
+#include <thread>
 #include "hts.h"
 #include "synced_bcf_reader.h"
 #include "htslib/sam.h"
@@ -45,10 +47,34 @@ vector<string> optional_tag_names {
     "XA", "XS"
 };
 
+samFile* open_cram_with_retry(const char* cram_path, unsigned int max_retries = 10, unsigned int sleep_seconds = 60) {
+    unsigned int retry = 1u;
+    samFile *in_cram_fp = sam_open(cram_path, "r");
+    while ((!in_cram_fp) && (retry <= max_retries)) {
+        cout << "Re-trying (" << retry << ") to open " << cram_path << endl << flush;
+        this_thread::sleep_for(chrono::seconds(sleep_seconds));
+        in_cram_fp = sam_open(cram_path, "r");
+        ++retry;
+    }
+    return in_cram_fp;
+}
+
+hts_idx_t* open_index_with_retry(samFile* in_cram_fp, const char* cram_path, const char* crai_path, unsigned int max_retries = 10, unsigned int sleep_seconds = 60) {
+    unsigned int retry = 1u;
+    hts_idx_t *in_idx = sam_index_load2(in_cram_fp, cram_path, crai_path);
+    while ((!in_idx) && (retry <= max_retries)) {
+        cout << "Re-trying (" << retry << ") to open " << cram_path << endl << flush;
+        this_thread::sleep_for(chrono::seconds(sleep_seconds));
+        in_idx = sam_index_load2(in_cram_fp, cram_path, crai_path);
+        ++retry;
+    }
+    return in_idx;
+}
+
 void process_sample(
         const string& cram_path, const string& crai_path, const string& reference_path,
         vector<Region>& regions, samFile* out_cram_fp, bam_hdr_t* out_header, vector<Variant>& variants, unsigned int& window) {
-    samFile *in_cram_fp = sam_open(cram_path.c_str(), "r");
+    samFile *in_cram_fp = open_cram_with_retry(cram_path.c_str());
     if (!in_cram_fp) {
         throw runtime_error("Error while opening input CRAM file.");
     }
@@ -59,7 +85,7 @@ void process_sample(
     if (!in_header) {
         throw runtime_error("Error while reading header from input CRAM file.");
     }
-    hts_idx_t *in_idx = sam_index_load2(in_cram_fp, cram_path.c_str(), crai_path.c_str());
+    hts_idx_t *in_idx = open_index_with_retry(in_cram_fp, cram_path.c_str(), crai_path.c_str());
     if (!in_idx) {
         throw runtime_error("Error while reading input CRAI file.");
     }
@@ -308,7 +334,7 @@ int main(int argc, char* argv[]) {
     // END.
 
     // BEGIN: Copy SQ header lines from input CRAM files to output header.
-    samFile *in_cram_fp = sam_open(get<0>(begin(crams)->second).c_str(), "r");
+    samFile *in_cram_fp = open_cram_with_retry(get<0>(begin(crams)->second).c_str());
     if (!in_cram_fp) {
         throw runtime_error("Error while opening input CRAM file.");
     }
@@ -344,8 +370,8 @@ int main(int argc, char* argv[]) {
     // BEGIN: Process sample by sample.
     unsigned int counter = 0;
     for (auto &&sample: samples) {
+        cout << "Processing sample " << sample.first << " (" << ++counter << " out of " << samples.size() << ")" << endl << flush;
         process_sample(get<0>(crams.at(sample.first)), get<1>(crams.at(sample.first)), reference_file, sample.second, out_cram_fp, out_header, variants, window);
-        cout << "Sample " << ++counter << " out of " << samples.size() << endl << flush;
     }
     // END.
 
