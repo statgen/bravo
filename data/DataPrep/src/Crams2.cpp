@@ -33,7 +33,7 @@ vector<string> optional_tag_names {
 };
 
 vector<string> variants_file_header {
-        "#SAMPLE", "CHROM", "POS", "REF", "ALT", "IS_HOM", "SAMPLE_INDEX"
+        "CHROM", "POS", "REF", "ALT", "IS_HOM", "SAMPLE_INDEX"
 };
 
 struct Region {
@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
     }
 
     // BEGIN: Read variants for sample.
-    unordered_map<string, vector<Region>> samples;
+    vector<Region> regions;
 
     BGZF *if_variants = bgzf_open(variants_file.c_str(), "r");
     if (!if_variants) {
@@ -143,20 +143,12 @@ int main(int argc, char* argv[]) {
         if (tokens.size() != variants_file_header.size()) {
             throw runtime_error("Incorrect number of columns in variants file.");
         }
-        samples.emplace(tokens[0], vector<Region>()).first->second.emplace_back(
-                tokens[5].compare("1") == 0, stoul(tokens[6]), stoul(tokens[2]), tokens[3], tokens[4], tokens[1]);
+//        0 - "CHROM", 1 - "POS", 2 -  "REF", 3 - "ALT", 4 - "IS_HOM", 5 - "SAMPLE_INDEX"
+        regions.emplace_back(tokens[4].compare("1") == 0, stoul(tokens[5]), stoul(tokens[1]), tokens[2], tokens[3], tokens[0]);
     }
     free(ks_release(&kline));
     if (bgzf_close(if_variants) != 0) {
         throw runtime_error("Error while closing variants file!");
-    }
-    // END.
-
-    // BEGIN: Sanity check - only single sample is allowed.
-    if (samples.size() == 0) {
-        return 0;
-    } else if (samples.size() > 1) {
-        throw runtime_error("Multiple samples found in variants file. Only single sample is allowed.");
     }
     // END.
 
@@ -220,7 +212,6 @@ int main(int argc, char* argv[]) {
     // END.
 
     // BEGIN: Copy sequences from input CRAM to output CRAM.
-    vector<Region>& regions = begin(samples)->second;
     sort(regions.begin(), regions.end());
     unsigned int start = 0u, stop = 0u;
     int ret = 0;
