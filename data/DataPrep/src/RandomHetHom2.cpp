@@ -30,7 +30,7 @@ struct Variant {
 
 int main(int argc, char* argv[]) {
     string input_file("");
-    string output_suffix("");
+    string output_file("");
     string samples_file("");
     string samples("");
     string region("");
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
             ("region,r", po::value<string>(&region), "Region to be processed. Must follow <CHR>:<START_BP>-<END_BP> format.")
             ("k,k", po::value<int>(&n_random)->default_value(1), "How many individuals to select at random.")
             ("seed,e", po::value<int>(&random_seed)->default_value(rd()), "Random seed.")
-            ("out,o", po::value<string>(&output_suffix)->default_value(".variants.tsv.gz"), "Suffix for the output file with sampled samples. Output file is compressed using gzip.")
+            ("out,o", po::value<string>(&output_file)->default_value("variants.tsv.gz"), "Output file name (compressed using bgzip).")
             ;
 
     po::variables_map vm;
@@ -264,29 +264,25 @@ int main(int argc, char* argv[]) {
             }
         }
 
-
+        BGZF *ofp = bgzf_open(output_file.c_str(), "w");
+        if (!ofp) {
+            throw runtime_error("Error while opening output file!");
+        }
+        write(ofp, "#RANDOM_SEED=%d\n", random_seed);
+        write(ofp, "#MAX_RANDOM_HOM_HETS=%d\n", n_random);
+        if (!samples.empty()) {
+            write(ofp, "#SAMPLES_USED=%d\n", count(samples.begin(), samples.end(), ',') + 1);
+        } else {
+            write(ofp, "#SAMPLES_USED=ALL\n");
+        }
+        write(ofp, "#SAMPLE\tCHROM\tPOS\tREF\tALT\tIS_HOM\tSAMPLE_INDEX\n");
         for (auto &&selected_sample: selected_samples) {
-            string output_file(selected_sample.first + output_suffix);
-            BGZF *ofp = bgzf_open(output_file.c_str(), "w");
-            if (!ofp) {
-                throw runtime_error("Error while opening output file!");
-            }
-
-            write(ofp, "#RANDOM_SEED=%d\n", random_seed);
-            write(ofp, "#MAX_RANDOM_HOM_HETS=%d\n", n_random);
-            if (!samples.empty()) {
-                write(ofp, "#SAMPLES_USED=%d\n", count(samples.begin(), samples.end(), ',') + 1);
-            } else {
-                write(ofp, "#SAMPLES_USED=ALL\n");
-            }
-            write(ofp, "#SAMPLE=%s\n", selected_sample.first.c_str());
-            write(ofp, "#CHROM\tPOS\tREF\tALT\tIS_HOM\tSAMPLE_INDEX\n");
             for (auto &&variant : selected_sample.second) {
-                write(ofp, "%s\t%lu\t%s\t%s\t%d\t%d\n", variant.chrom.c_str(), variant.pos, variant.ref.c_str(), variant.alt.c_str(), variant.is_hom, variant.sample_idx);
+                write(ofp, "%s\t%s\t%lu\t%s\t%s\t%d\t%d\n", selected_sample.first.c_str(), variant.chrom.c_str(), variant.pos, variant.ref.c_str(), variant.alt.c_str(), variant.is_hom, variant.sample_idx);
             }
-            if (bgzf_close(ofp) != 0) {
-                throw runtime_error("Error while closing output file!");
-            }
+        }
+        if (bgzf_close(ofp) != 0) {
+            throw runtime_error("Error while closing output file!");
         }
         bcf_sr_destroy(sr);
     } catch (exception &e) {
