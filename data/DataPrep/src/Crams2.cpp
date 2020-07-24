@@ -33,7 +33,7 @@ vector<string> optional_tag_names {
 };
 
 vector<string> variants_file_header {
-        "CHROM", "POS", "REF", "ALT", "IS_HOM", "SAMPLE_INDEX"
+        "#SAMPLE", "CHROM", "POS", "REF", "ALT", "IS_HOM", "SAMPLE_INDEX"
 };
 
 struct Region {
@@ -122,6 +122,7 @@ int main(int argc, char* argv[]) {
         throw runtime_error("Error while opening variants file!");
     }
     kstring_t kline = KS_INITIALIZE;
+    bool found_header = false;
     vector<string> tokens;
     auto separator = regex("[ \t]");
     while (bgzf_getline(if_variants, '\n', &kline) >= 0) {
@@ -129,6 +130,7 @@ int main(int argc, char* argv[]) {
         copy(cregex_token_iterator(kline.s, kline.s + kline.l, separator, -1), cregex_token_iterator(), back_inserter(tokens));
         if ((tokens.size() == 0) || (tokens[0].empty()) || (tokens[0][0] == '#')) { // header lines
             if ((tokens.size() > 0) && (tokens[0].compare(variants_file_header[0]) == 0)) {
+                found_header = true;
                 if (tokens.size() != variants_file_header.size()) {
                     throw runtime_error("Incorrect header in variants file!");
                 }
@@ -140,11 +142,16 @@ int main(int argc, char* argv[]) {
             }
             continue;
         }
+        if (!found_header) {
+            throw runtime_error("No header in variants file!");
+        }
         if (tokens.size() != variants_file_header.size()) {
             throw runtime_error("Incorrect number of columns in variants file.");
         }
-//        0 - "CHROM", 1 - "POS", 2 -  "REF", 3 - "ALT", 4 - "IS_HOM", 5 - "SAMPLE_INDEX"
-        regions.emplace_back(tokens[4].compare("1") == 0, stoul(tokens[5]), stoul(tokens[1]), tokens[2], tokens[3], tokens[0]);
+        // 0 - "#SAMPLE", 1 - "CHROM", 2 - "POS", 3 -  "REF", 4 - "ALT", 5 - "IS_HOM", 6 - "SAMPLE_INDEX"
+        // cout << (tokens[5].compare("1") == 0) << " " << stoul(tokens[6]) << " " << stoul(tokens[2]) << " " << tokens[3] << " " << tokens[4] << " " << tokens[1] << endl;
+
+        regions.emplace_back(tokens[5].compare("1") == 0, stoul(tokens[6]), stoul(tokens[2]), tokens[3], tokens[4], tokens[1]);
     }
     free(ks_release(&kline));
     if (bgzf_close(if_variants) != 0) {
