@@ -21,7 +21,7 @@ sortedcontainers==1.4.4
 Werkzeug==0.14.1
 WTForms==2.1
 boltons
-psutil==5.4.3
+psutil==5.6.6
 gevent
 gunicorn
 webargs
