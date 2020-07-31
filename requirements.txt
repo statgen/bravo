@@ -18,7 +18,7 @@ pysam==0.12
 rauth==0.7.2
 requests[security]
 sortedcontainers==1.4.4
-Werkzeug==0.14.1
+Werkzeug==0.15.3
 WTForms==2.1
 boltons
 psutil==5.4.3
