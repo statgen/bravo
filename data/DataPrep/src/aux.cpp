@@ -1,5 +1,6 @@
 #include "aux.h"
 
+/* to read samples from list saved in the text file - one sample per line */
 string aux::read_samples(const char* samples_file) throw (runtime_error) {
    string line;
    stringstream buffer;
@@ -23,6 +24,67 @@ string aux::read_samples(const char* samples_file) throw (runtime_error) {
    buffer.flush();
    return buffer.str();
 }
+
+/* to read samples from tab-delimited (without header) table saved in the text file */
+string aux::read_samples(const char* samples_file, unsigned int col_idx) throw (runtime_error) {
+    string line;
+    vector<string> tokens;
+    auto separator = regex("[ \t]");
+    stringstream buffer;
+    ifstream if_samples;
+    if_samples.exceptions(ifstream::failbit | ifstream::badbit);
+    try {
+        if_samples.open(samples_file);
+        while (getline(if_samples, line)) {
+            copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
+            if (tokens.size() < col_idx) {
+                throw runtime_error("Samples file has less columns than required.");
+            }
+            if (buffer.tellp() > 0) {
+                buffer << ",";
+            }
+            buffer << tokens.at(col_idx - 1);
+            tokens.clear();
+        }
+        if_samples.close();
+    } catch (exception& e) {
+        if (!if_samples.eof()) {
+            throw runtime_error("Error while reading samples file! Check if file exists and has read permissions.");
+        }
+        if_samples.close();
+    }
+    buffer.flush();
+    return buffer.str();
+}
+
+/* to read sample new and current names from tab-delimited (without header) table saved in the text file */
+map<string, string> aux::read_sample_names_map(const char* samples_file, unsigned int name_col_idx, unsigned int new_name_col_idx) throw (runtime_error) {
+    string line;
+    vector<string> tokens;
+    map<string, string> names;
+    auto separator = regex("[ \t]");
+    ifstream if_samples;
+    if_samples.exceptions(ifstream::failbit | ifstream::badbit);
+    try {
+        if_samples.open(samples_file);
+        while (getline(if_samples, line)) {
+            copy(sregex_token_iterator(line.begin(), line.end(), separator, -1), sregex_token_iterator(), back_inserter(tokens));
+            if ((tokens.size() < name_col_idx) || (tokens.size() < new_name_col_idx)) {
+                throw runtime_error("Samples file has less columns than required.");
+            }
+            names.emplace(make_pair(tokens.at(name_col_idx - 1), tokens.at(new_name_col_idx - 1)));
+            tokens.clear();
+        }
+        if_samples.close();
+    } catch (exception& e) {
+        if (!if_samples.eof()) {
+            throw runtime_error("Error while reading samples file! Check if file exists and has read permissions.");
+        }
+        if_samples.close();
+    }
+    return names;
+}
+
 
 void aux::write(BGZF* f, const char* format, ...) throw (runtime_error) {
    va_list arguments;
