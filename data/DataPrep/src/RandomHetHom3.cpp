@@ -263,7 +263,7 @@ int main(int argc, char* argv[]) {
 
             for (int i = 1; i < rec->n_allele; ++i) {
                 // CHROM, POS, REF, ALT, HOM, HET
-                write(ofp, "%s\t%lu\t.\t%s\t%s\t", bcf_seqname(header, rec), rec->pos + 1, rec->d.allele[0], rec->d.allele[i]);
+                write(ofp, "%s\t%lu\t%s\t%s\t", bcf_seqname(header, rec), rec->pos + 1, rec->d.allele[0], rec->d.allele[i]);
 
                 auto hom_it = hom_samples.find(i);
                 if (hom_it != hom_samples.end()) {
