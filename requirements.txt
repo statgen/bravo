@@ -8,7 +8,7 @@ Flask-Mail==0.9.1
 Flask-Script==2.0.5
 Flask-WTF==0.12
 Flask-Limiter==1.0.1
-ipython==2.1.0
+ipython==7.16.3
 itsdangerous==0.24
 Jinja2==2.10
 MarkupSafe==1.0
